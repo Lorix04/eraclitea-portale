@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-blue: #1e3a5f;
+  --primary-blue-light: #2d4a6f;
+  --accent-blue: #3b82f6;
+  --success-green: #22c55e;
+  --warning-yellow: #eab308;
+  --danger-red: #ef4444;
+  --background: #f5f7fa;
+  --card-bg: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+}
+
+html, body, :root {
+  height: 100%;
+  background: var(--background);
+}

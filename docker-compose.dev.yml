@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: portale_dev_db
+    environment:
+      POSTGRES_USER: portale
+      POSTGRES_PASSWORD: portale_dev
+      POSTGRES_DB: portale_formazione
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+
+  minio:
+    image: minio/minio:latest
+    container_name: portale_dev_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_dev_data:/data
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+      mc mb myminio/certificates --ignore-existing;
+      mc mb myminio/attachments --ignore-existing;
+      exit 0;"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: portale_dev_mailhog
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+volumes:
+  postgres_dev_data:
+  minio_dev_data:
