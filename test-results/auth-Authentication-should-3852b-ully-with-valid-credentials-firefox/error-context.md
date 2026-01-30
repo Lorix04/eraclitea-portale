@@ -1,0 +1,58 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "Vai al contenuto principale" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=e5]:
+      - generic [ref=e6]:
+        - img "Eraclitea" [ref=e8]
+        - generic [ref=e9]:
+          - paragraph [ref=e10]: Portale
+          - paragraph [ref=e11]: Clienti
+      - navigation [ref=e12]:
+        - link "Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /
+          - img [ref=e14]
+          - text: Dashboard
+        - link "Corsi" [ref=e19] [cursor=pointer]:
+          - /url: /corsi
+          - img [ref=e20]
+          - text: Corsi
+        - link "Notifiche" [ref=e23] [cursor=pointer]:
+          - /url: /notifiche
+          - img [ref=e24]
+          - text: Notifiche
+        - link "Attestati" [ref=e27] [cursor=pointer]:
+          - /url: /attestati
+          - img [ref=e28]
+          - text: Attestati
+        - link "Storico" [ref=e31] [cursor=pointer]:
+          - /url: /storico
+          - img [ref=e32]
+          - text: Storico
+        - link "Profilo" [ref=e36] [cursor=pointer]:
+          - /url: /profilo
+          - img [ref=e37]
+          - text: Profilo
+      - button "Esci" [ref=e42] [cursor=pointer]:
+        - img [ref=e43]
+        - text: Esci
+    - generic [ref=e47]:
+      - banner [ref=e48]:
+        - generic [ref=e50]:
+          - paragraph [ref=e51]: Benvenuto
+          - heading "Dashboard Cliente" [level=2] [ref=e52]
+        - generic [ref=e53]:
+          - button "Cerca... Ctrl K" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - generic [ref=e58]: Cerca...
+            - generic:
+              - generic: Ctrl
+              - text: K
+          - button "Notifiche" [ref=e60] [cursor=pointer]:
+            - img [ref=e61]
+      - main [ref=e64]
+  - region "Notifications alt+T"
+```

@@ -1,0 +1,248 @@
+// Prisma schema for Portale Clienti Ente di Formazione
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(CLIENT)
+  clientId     String?
+  client       Client?   @relation(fields: [clientId], references: [id])
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  resetToken   String?   @unique
+  resetTokenExpiry DateTime?
+  auditLogs    AuditLog[]
+  uploadedCertificates Certificate[]
+}
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum VisibilityType {
+  ALL
+  SELECTED_CLIENTS
+  BY_CATEGORY
+}
+
+model Client {
+  id                String             @id @default(cuid())
+  ragioneSociale    String
+  piva              String             @unique
+  indirizzo         String?
+  referenteNome     String
+  referenteEmail    String
+  telefono          String?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  users             User[]
+  employees         Employee[]
+  registrations     CourseRegistration[]
+  certificates      Certificate[]
+  notificationReads NotificationRead[]
+  courseVisibility  CourseVisibility[]
+  categories        ClientCategory[]
+}
+
+model Course {
+  id               String             @id @default(cuid())
+  title            String
+  description      String?
+  durationHours    Int?
+  dateStart        DateTime?
+  dateEnd          DateTime?
+  deadlineRegistry DateTime?
+  status           CourseStatus       @default(DRAFT)
+  visibilityType   VisibilityType     @default(ALL)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  registrations    CourseRegistration[]
+  certificates     Certificate[]
+  notifications    Notification[]
+  visibility       CourseVisibility[]
+  visibilityCategories CourseVisibilityCategory[]
+  categories       CourseCategory[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courses     CourseCategory[]
+  clients     ClientCategory[]
+  visibleCourses CourseVisibilityCategory[]
+}
+
+model CourseCategory {
+  courseId   String
+  categoryId String
+  assignedAt DateTime @default(now())
+
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, categoryId])
+}
+
+model CourseVisibilityCategory {
+  courseId   String
+  categoryId String
+  assignedAt DateTime @default(now())
+
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, categoryId])
+}
+
+model ClientCategory {
+  clientId   String
+  categoryId String
+  assignedAt DateTime @default(now())
+
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, categoryId])
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+model CourseVisibility {
+  id       String @id @default(cuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, clientId])
+}
+
+model Employee {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  nome          String
+  cognome       String
+  codiceFiscale String
+  dataNascita   DateTime?
+  luogoNascita  String?
+  email         String?
+  mansione      String?
+  note          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  registrations CourseRegistration[]
+  certificates  Certificate[]
+
+  @@unique([clientId, codiceFiscale])
+}
+
+model CourseRegistration {
+  id         String             @id @default(cuid())
+  clientId   String
+  client     Client             @relation(fields: [clientId], references: [id])
+  courseId   String
+  course     Course             @relation(fields: [courseId], references: [id])
+  employeeId String
+  employee   Employee           @relation(fields: [employeeId], references: [id])
+  status     RegistrationStatus @default(INSERTED)
+  insertedAt DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([courseId, employeeId])
+  @@index([clientId, status])
+  @@index([courseId, status])
+}
+
+enum RegistrationStatus {
+  INSERTED
+  CONFIRMED
+  TRAINED
+}
+
+model Certificate {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id])
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id])
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  filePath   String
+  achievedAt DateTime?
+  expiresAt  DateTime?
+  uploadedAt DateTime @default(now())
+  uploadedBy String
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+
+  @@index([clientId])
+  @@index([expiresAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String?
+  courseId  String?
+  course    Course?          @relation(fields: [courseId], references: [id])
+  isGlobal  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  reads     NotificationRead[]
+
+  @@index([createdAt])
+  @@index([isGlobal])
+}
+
+enum NotificationType {
+  COURSE_PUBLISHED
+  CERT_UPLOADED
+  REMINDER
+}
+
+model NotificationRead {
+  id             String       @id @default(cuid())
+  notificationId String
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id])
+  readAt         DateTime     @default(now())
+
+  @@unique([notificationId, clientId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String?
+  entityId   String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([action])
+}

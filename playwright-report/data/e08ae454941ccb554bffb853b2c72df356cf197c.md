@@ -1,0 +1,110 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - link "Vai al contenuto principale" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=e5]:
+      - generic [ref=e6]:
+        - img "Eraclitea" [ref=e8]
+        - generic [ref=e9]:
+          - paragraph [ref=e10]: Portale
+          - paragraph [ref=e11]: Clienti
+      - navigation [ref=e12]:
+        - link "Dashboard" [ref=e13] [cursor=pointer]:
+          - /url: /admin
+          - img [ref=e14]
+          - text: Dashboard
+        - link "Corsi" [ref=e19] [cursor=pointer]:
+          - /url: /admin/corsi
+          - img [ref=e20]
+          - text: Corsi
+        - link "Categorie" [ref=e23] [cursor=pointer]:
+          - /url: /admin/categorie
+          - img [ref=e24]
+          - text: Categorie
+        - link "Clienti" [ref=e27] [cursor=pointer]:
+          - /url: /admin/clienti
+          - img [ref=e28]
+          - text: Clienti
+        - link "Attestati" [ref=e33] [cursor=pointer]:
+          - /url: /admin/attestati
+          - img [ref=e34]
+          - text: Attestati
+        - link "Export" [ref=e38] [cursor=pointer]:
+          - /url: /admin/export
+          - img [ref=e39]
+          - text: Export
+        - link "Audit" [ref=e45] [cursor=pointer]:
+          - /url: /admin/audit
+          - img [ref=e46]
+          - text: Audit
+        - link "Status" [ref=e49] [cursor=pointer]:
+          - /url: /admin/status
+          - img [ref=e50]
+          - text: Status
+      - button "Esci" [ref=e53] [cursor=pointer]:
+        - img [ref=e54]
+        - text: Esci
+    - generic [ref=e58]:
+      - banner [ref=e59]:
+        - generic [ref=e61]:
+          - paragraph [ref=e62]: Pannello
+          - heading "Dashboard Admin" [level=2] [ref=e63]
+        - button "Cerca... Ctrl K" [ref=e65] [cursor=pointer]:
+          - img [ref=e66]
+          - generic [ref=e69]: Cerca...
+          - generic:
+            - generic: Ctrl
+            - text: K
+      - main [ref=e70]:
+        - generic [ref=e71]:
+          - heading "Nuovo corso" [level=1] [ref=e72]
+          - paragraph [ref=e73]: Crea un nuovo corso e definisci la visibilita.
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - text: Titolo
+                - textbox "Titolo" [ref=e78]: E2E Test Course
+              - generic [ref=e79]:
+                - generic [ref=e80]: Categorie
+                - generic [ref=e81]:
+                  - textbox "Cerca categoria" [ref=e82]
+                  - paragraph [ref=e84]: Nessuna categoria
+            - generic [ref=e85]:
+              - text: Descrizione
+              - textbox "Descrizione" [ref=e86]: Corso creato da test automatico
+            - generic [ref=e87]:
+              - generic [ref=e88]:
+                - text: Data Inizio
+                - textbox "Data Inizio" [ref=e89]:
+                  - /placeholder: GG/MM/AAAA
+              - generic [ref=e90]:
+                - text: Data Fine
+                - textbox "Data Fine" [ref=e91]:
+                  - /placeholder: GG/MM/AAAA
+              - generic [ref=e92]:
+                - text: Deadline Anagrafiche
+                - textbox "Deadline Anagrafiche" [ref=e93]:
+                  - /placeholder: GG/MM/AAAA
+              - generic [ref=e94]:
+                - text: Ore
+                - spinbutton "Ore" [ref=e95]
+            - generic [ref=e96]:
+              - paragraph [ref=e97]: Visibilita
+              - generic [ref=e98]:
+                - generic [ref=e99]:
+                  - radio "Tutti i clienti" [checked] [ref=e100]
+                  - text: Tutti i clienti
+                - generic [ref=e101]:
+                  - radio "Clienti selezionati" [ref=e102]
+                  - text: Clienti selezionati
+                - generic [ref=e103]:
+                  - radio "Categoria per clienti" [ref=e104]
+                  - text: Categoria per clienti
+            - generic [ref=e105]:
+              - button "Salva come bozza" [active] [ref=e106] [cursor=pointer]
+              - button "Pubblica" [ref=e107] [cursor=pointer]
+  - region "Notifications alt+T"
+```
