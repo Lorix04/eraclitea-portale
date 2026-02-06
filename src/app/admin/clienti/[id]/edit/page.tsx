@@ -27,6 +27,10 @@ export default async function AdminEditClientePage({
     referenteEmail: client.referenteEmail,
     telefono: client.telefono ?? "",
     userEmail: client.users[0]?.email ?? client.referenteEmail,
+    primaryColor: client.primaryColor ?? "",
+    secondaryColor: client.secondaryColor ?? "",
+    sidebarBgColor: client.sidebarBgColor ?? "",
+    sidebarTextColor: client.sidebarTextColor ?? "",
     categoryIds: client.categories.map((entry) => entry.categoryId),
   };
 
@@ -37,7 +41,14 @@ export default async function AdminEditClientePage({
         Aggiorna i dati del cliente.
       </p>
       <div className="mt-6">
-        <ClientForm clientId={client.id} initialData={initialData} />
+        <ClientForm
+          clientId={client.id}
+          initialData={initialData}
+          initialBranding={{
+            logoPath: client.logoPath ?? null,
+            logoLightPath: client.logoLightPath ?? null,
+          }}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { getClientIP, logAudit } from "@/lib/audit";
 
 const categorySchema = z.object({
@@ -25,8 +26,26 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const includeStats = searchParams.get("stats") === "true";
+  const search = searchParams.get("search") || "";
+  const sortBy = searchParams.get("sortBy") || "name";
+  const sortOrder: Prisma.SortOrder =
+    searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
+
+  const where = search
+    ? { name: { contains: search, mode: Prisma.QueryMode.insensitive } }
+    : undefined;
+
+  let orderBy: Prisma.CategoryOrderByWithRelationInput = { name: "asc" };
+  if (sortBy === "createdAt") {
+    orderBy = { createdAt: sortOrder };
+  } else if (sortBy === "coursesCount") {
+    orderBy = { courses: { _count: sortOrder } };
+  } else {
+    orderBy = { name: sortOrder };
+  }
 
   const categories = await prisma.category.findMany({
+    where,
     include: {
       courses: includeStats
         ? { include: { course: { select: { id: true, title: true, status: true } } } }
@@ -36,7 +55,7 @@ export async function GET(request: Request) {
         : false,
       _count: { select: { courses: true, clients: true } },
     },
-    orderBy: { name: "asc" },
+    orderBy,
   });
 
   return NextResponse.json({ data: categories });

@@ -85,6 +85,26 @@ export const clientSchema = z.object({
   referenteNome: z.string().min(2).max(100),
   referenteEmail: z.string().email(),
   telefono: z.string().max(20).optional().or(z.literal("")),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional()
+    .or(z.literal("")),
+  secondaryColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional()
+    .or(z.literal("")),
+  sidebarBgColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional()
+    .or(z.literal("")),
+  sidebarTextColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional()
+    .or(z.literal("")),
 });
 
 export const clientCreateSchema = z.object({
@@ -101,14 +121,14 @@ export const clientUpdateSchema = z.object({
   user: z
     .object({
       email: z.string().email(),
-      password: z.string().min(6).optional(),
+      password: z.string().min(6).optional().or(z.literal("")),
     })
     .optional(),
   categoryIds: z.array(z.string().cuid()).optional(),
 });
 
 export const certificateUploadSchema = z.object({
-  courseId: z.string().cuid(),
+  courseId: z.string().cuid().optional(),
   clientId: z.string().cuid(),
   associations: z.array(
     z.object({

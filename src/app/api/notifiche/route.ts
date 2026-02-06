@@ -51,7 +51,9 @@ export async function GET(request: Request) {
       page: z.coerce.number().min(1).default(1),
       limit: z.coerce.number().min(1).max(50).default(20),
       unreadOnly: z.coerce.boolean().optional(),
-      type: z.enum(["COURSE_PUBLISHED", "CERT_UPLOADED", "REMINDER"]).optional(),
+      type: z
+        .enum(["COURSE_PUBLISHED", "CERT_UPLOADED", "REMINDER", "ATTENDANCE_RECORDED"])
+        .optional(),
     })
   );
   if ("error" in validation) {

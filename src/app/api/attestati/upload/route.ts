@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { saveFile } from "@/lib/storage";
+import { saveCertificateFile } from "@/lib/certificate-storage";
 import { send } from "@/lib/email";
 import { certificatesUploadedTemplate } from "@/lib/email-templates";
 import { getClientIP, logAudit } from "@/lib/audit";
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const clientId = String(formData.get("clientId") || "");
   const associationsRaw = formData.get("associations");
 
-  if (!courseId || !clientId) {
+  if (!clientId) {
     return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
   }
 
@@ -53,21 +53,45 @@ export async function POST(request: Request) {
     associationList.map((item) => [item.filename, item.employeeId])
   );
 
-  const registrations = await prisma.courseRegistration.findMany({
-    where: { courseId, clientId },
-    include: { employee: true },
-  });
+  const hasCourse = Boolean(courseId);
+  const course = hasCourse
+    ? await prisma.course.findUnique({
+        where: { id: courseId },
+        select: { title: true },
+      })
+    : null;
+
+  if (hasCourse && !course) {
+    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  }
+
+  const employees = hasCourse
+    ? (
+        await prisma.courseRegistration.findMany({
+          where: { courseId, clientId },
+          include: { employee: true },
+        })
+      ).map((entry) => entry.employee)
+    : await prisma.employee.findMany({
+        where: { clientId },
+        select: { id: true, nome: true, cognome: true, codiceFiscale: true },
+      });
+
+  if (!employees.length) {
+    return NextResponse.json(
+      { error: "Nessun dipendente disponibile per il cliente selezionato" },
+      { status: 400 }
+    );
+  }
 
   const cfMap = new Map(
-    registrations.map((entry) => [
-      entry.employee.codiceFiscale.toUpperCase(),
-      entry.employee.id,
+    employees.map((entry) => [
+      entry.codiceFiscale.toUpperCase(),
+      entry.id,
     ])
   );
 
-  const allowedEmployeeIds = new Set(
-    registrations.map((entry) => entry.employeeId)
-  );
+  const allowedEmployeeIds = new Set(employees.map((entry) => entry.id));
 
   const missing: string[] = [];
   const pending: Array<{ file: File; employeeId: string }> = [];
@@ -94,34 +118,36 @@ export async function POST(request: Request) {
 
   const savedFiles = [] as Array<{ filePath: string; employeeId: string }>;
   for (const item of pending) {
-    const filePath = await saveFile(item.file, clientId, courseId);
+    const filePath = await saveCertificateFile(item.file, clientId, item.employeeId);
     savedFiles.push({ filePath, employeeId: item.employeeId });
   }
-
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { title: true },
-  });
 
   await prisma.$transaction(async (tx) => {
     await tx.certificate.createMany({
       data: savedFiles.map((item) => ({
         clientId,
-        courseId,
+        courseId: courseId || null,
         employeeId: item.employeeId,
         filePath: item.filePath,
         uploadedBy: session.user.id,
       })),
     });
 
+    const notificationTitle = hasCourse
+      ? "Nuovi attestati disponibili"
+      : "Nuovi attestati esterni disponibili";
+    const notificationMessage = hasCourse
+      ? `Caricati ${savedFiles.length} attestati per il corso "${
+          course?.title ?? ""
+        }"`
+      : `Caricati ${savedFiles.length} attestati esterni.`;
+
     await tx.notification.create({
       data: {
         type: "CERT_UPLOADED",
-        title: "Nuovi attestati disponibili",
-        message: `Caricati ${savedFiles.length} attestati per il corso "${
-          course?.title ?? ""
-        }"`,
-        courseId,
+        title: notificationTitle,
+        message: notificationMessage,
+        ...(hasCourse ? { courseId } : {}),
         isGlobal: false,
       },
     });
@@ -132,7 +158,10 @@ export async function POST(request: Request) {
     await send({
       to: client.referenteEmail,
       subject: "Nuovi attestati disponibili",
-      html: certificatesUploadedTemplate(course?.title ?? "Corso", savedFiles.length),
+      html: certificatesUploadedTemplate(
+        course?.title ?? "Attestato esterno",
+        savedFiles.length
+      ),
     });
   }
 
@@ -140,7 +169,7 @@ export async function POST(request: Request) {
     userId: session.user.id,
     action: "CERT_UPLOAD",
     entityType: "Certificate",
-    entityId: courseId,
+    entityId: courseId || savedFiles[0]?.employeeId || "external",
     ipAddress: getClientIP(request),
   });
 

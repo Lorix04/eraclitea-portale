@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import ClientSidebar from "@/components/ClientSidebar";
 
 type MobileSidebarProps = {
   role?: "CLIENT" | "ADMIN";
@@ -71,11 +72,18 @@ export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <Sidebar
-              role={role}
-              onNavigate={() => setOpen(false)}
-              className="h-auto w-full border-r-0 shadow-none"
-            />
+            {role === "ADMIN" ? (
+              <Sidebar
+                role="ADMIN"
+                onNavigate={() => setOpen(false)}
+                className="h-auto w-full border-r-0 shadow-none"
+              />
+            ) : (
+              <ClientSidebar
+                onNavigate={() => setOpen(false)}
+                className="h-auto w-full border-r-0 shadow-none"
+              />
+            )}
           </div>
         </aside>
       </dialog>

@@ -12,19 +12,23 @@ type Client = {
   ragioneSociale: string;
 };
 
-type Registration = {
-  employeeId: string;
-  employee: {
-    id: string;
-    nome: string;
-    cognome: string;
-    codiceFiscale: string;
-  };
+type Employee = {
+  id: string;
+  nome: string;
+  cognome: string;
+  codiceFiscale: string;
 };
 
 type UploadItem = {
   file: File;
   employeeId?: string;
+};
+
+type EmployeeOption = {
+  id: string;
+  label: string;
+  codiceFiscale: string;
+  searchValue: string;
 };
 
 const CF_REGEX = /[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]/i;
@@ -37,12 +41,15 @@ function extractCFFromFilename(filename: string) {
 export default function AdminUploadAttestatiPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [courseId, setCourseId] = useState("");
   const [clientId, setClientId] = useState("");
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attendanceWarnings, setAttendanceWarnings] = useState<
+    Record<string, { percentage: number; belowMinimum: boolean }>
+  >({});
 
   useEffect(() => {
     const loadBase = async () => {
@@ -59,19 +66,60 @@ export default function AdminUploadAttestatiPage() {
   }, []);
 
   useEffect(() => {
-    const loadRegistrations = async () => {
-      if (!courseId || !clientId) {
-        setRegistrations([]);
+    const loadEmployees = async () => {
+      if (!clientId) {
+        setEmployees([]);
         return;
       }
-      const res = await fetch(
-        `/api/corsi/${courseId}/registrazioni?clientId=${clientId}`
-      );
+
+      if (courseId) {
+        const res = await fetch(
+          `/api/corsi/${courseId}/registrazioni?clientId=${clientId}`
+        );
+        const json = await res.json();
+        const list = (json.data ?? []).map(
+          (reg: { employee: Employee }) => reg.employee
+        );
+        setEmployees(list);
+        return;
+      }
+
+      const res = await fetch(`/api/dipendenti?clientId=${clientId}&limit=500`);
       const json = await res.json();
-      setRegistrations(json.data ?? []);
+      setEmployees(json.data ?? []);
     };
-    loadRegistrations();
+    loadEmployees();
   }, [courseId, clientId]);
+
+  useEffect(() => {
+    const loadAttendanceWarnings = async () => {
+      if (!courseId) {
+        setAttendanceWarnings({});
+        return;
+      }
+      try {
+        const res = await fetch(`/api/corsi/${courseId}/presenze`);
+        if (!res.ok) {
+          setAttendanceWarnings({});
+          return;
+        }
+        const json = await res.json();
+        const map: Record<string, { percentage: number; belowMinimum: boolean }> = {};
+        (json.stats ?? []).forEach(
+          (stat: { employeeId: string; percentage: number; belowMinimum: boolean }) => {
+            map[stat.employeeId] = {
+              percentage: stat.percentage,
+              belowMinimum: stat.belowMinimum,
+            };
+          }
+        );
+        setAttendanceWarnings(map);
+      } catch {
+        setAttendanceWarnings({});
+      }
+    };
+    loadAttendanceWarnings();
+  }, [courseId]);
 
   useEffect(() => {
     setUploads([]);
@@ -79,12 +127,19 @@ export default function AdminUploadAttestatiPage() {
 
   const employeeOptions = useMemo(
     () =>
-      registrations.map((reg) => ({
-        id: reg.employee.id,
-        label: `${reg.employee.nome} ${reg.employee.cognome} (${reg.employee.codiceFiscale})`,
-        codiceFiscale: reg.employee.codiceFiscale.toUpperCase(),
-      })),
-    [registrations]
+      employees.map((employee) => {
+        const warning = attendanceWarnings[employee.id];
+        const label = `${employee.nome} ${employee.cognome} (${employee.codiceFiscale})`;
+        return {
+          id: employee.id,
+          label: warning?.belowMinimum
+            ? `${label} ⚠️ ${warning.percentage}%`
+            : label,
+          codiceFiscale: employee.codiceFiscale.toUpperCase(),
+          searchValue: `${employee.nome} ${employee.cognome} ${employee.codiceFiscale}`.toLowerCase(),
+        };
+      }),
+    [employees, attendanceWarnings]
   );
 
   const handleFiles = (fileList: FileList | File[]) => {
@@ -112,8 +167,8 @@ export default function AdminUploadAttestatiPage() {
 
   const handleUpload = async () => {
     setError(null);
-    if (!courseId || !clientId) {
-      setError("Seleziona corso e cliente.");
+    if (!clientId) {
+      setError("Seleziona un cliente.");
       return;
     }
     if (!uploads.length) {
@@ -165,13 +220,13 @@ export default function AdminUploadAttestatiPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
-          Corso
+          Corso (opzionale)
           <select
             className="rounded-md border bg-background px-3 py-2"
             value={courseId}
             onChange={(event) => setCourseId(event.target.value)}
           >
-            <option value="">Seleziona corso</option>
+            <option value="">Nessun corso (attestato esterno)</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>
                 {course.title}
@@ -198,7 +253,9 @@ export default function AdminUploadAttestatiPage() {
       </div>
 
       <div className="rounded-lg border bg-card p-4">
-        <p className="text-sm font-medium">Dipendenti iscritti al corso</p>
+        <p className="text-sm font-medium">
+          {courseId ? "Dipendenti iscritti al corso" : "Dipendenti del cliente"}
+        </p>
         <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
           {employeeOptions.length === 0 ? (
             <li>Nessun dipendente trovato.</li>
@@ -240,25 +297,18 @@ export default function AdminUploadAttestatiPage() {
               className="flex flex-col gap-2 rounded-md border bg-card p-3 text-sm md:flex-row md:items-center md:justify-between"
             >
               <span>{item.file.name}</span>
-              <select
-                className="rounded-md border bg-background px-3 py-2 text-sm"
-                value={item.employeeId ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
+              <EmployeeSearchSelect
+                options={employeeOptions}
+                value={item.employeeId}
+                placeholder="Associa dipendente"
+                onChange={(value) => {
                   setUploads((prev) => {
                     const next = [...prev];
                     next[index] = { ...next[index], employeeId: value || undefined };
                     return next;
                   });
                 }}
-              >
-                <option value="">Associa dipendente</option>
-                {employeeOptions.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.label}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           ))
         )}
@@ -274,6 +324,80 @@ export default function AdminUploadAttestatiPage() {
       >
         {loading ? "Caricamento..." : "Conferma e salva"}
       </button>
+    </div>
+  );
+}
+
+function EmployeeSearchSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  options: EmployeeOption[];
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const selected = options.find((option) => option.id === value);
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return options;
+    return options.filter((option) => option.searchValue.includes(normalized));
+  }, [options, query]);
+
+  return (
+    <div className="relative w-full md:w-80">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left text-sm"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
+          {selected?.label ?? placeholder}
+        </span>
+        <span className="text-xs text-muted-foreground">▾</span>
+      </button>
+
+      {open ? (
+        <div className="absolute z-50 mt-2 w-full rounded-md border bg-card shadow-lg">
+          <div className="border-b p-2">
+            <input
+              type="text"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              placeholder="Cerca per nome, cognome o CF..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground">
+                Nessun risultato.
+              </p>
+            ) : (
+              filtered.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="w-full border-b px-3 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => {
+                    onChange(option.id);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <span className="font-medium">{option.label}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

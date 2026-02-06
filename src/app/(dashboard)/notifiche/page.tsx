@@ -8,6 +8,8 @@ import NotificationList, {
   type NotificationItem,
 } from "@/components/NotificationList";
 import { LoadingTable } from "@/components/ui/loading-table";
+import { BrandedButton } from "@/components/BrandedButton";
+import { BrandedTabs } from "@/components/BrandedTabs";
 
 type FilterType =
   | "all"
@@ -85,47 +87,36 @@ export default function NotifichePage() {
           Notifiche
         </h1>
         {data?.unreadCount ? (
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+          <BrandedButton
+            variant="outline"
+            size="sm"
             onClick={() => markAllReadMutation.mutate()}
             disabled={markAllReadMutation.isPending}
           >
             <Check className="mr-2 h-4 w-4" />
             Segna tutte come lette ({data.unreadCount})
-          </button>
+          </BrandedButton>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {[
-          { value: "all", label: "Tutte" },
-          { value: "unread", label: "Non lette" },
-          { value: "COURSE_PUBLISHED", label: "Corsi" },
-          { value: "CERT_UPLOADED", label: "Attestati" },
-          { value: "REMINDER", label: "Promemoria" },
-        ].map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className={`rounded-full px-4 py-2 text-sm ${
-              filter === item.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-            onClick={() => {
-              setFilter(item.value as FilterType);
-              setPage(1);
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <BrandedTabs
+        tabs={[
+          { id: "all", label: "Tutte" },
+          { id: "unread", label: "Non lette" },
+          { id: "COURSE_PUBLISHED", label: "Corsi" },
+          { id: "CERT_UPLOADED", label: "Attestati" },
+          { id: "REMINDER", label: "Promemoria" },
+        ]}
+        activeTab={filter}
+        onTabChange={(value) => {
+          setFilter(value as FilterType);
+          setPage(1);
+        }}
+      />
 
       <div className="relative">
         {isFetching && !isLoading ? (
-          <div className="absolute right-2 top-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="absolute right-2 top-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
         ) : null}
 
         {isLoading ? (
@@ -152,22 +143,22 @@ export default function NotifichePage() {
             Pagina {page} di {data.totalPages}
           </span>
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded-md border px-3 py-1"
+            <BrandedButton
+              variant="outline"
+              size="sm"
               disabled={page <= 1}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             >
               Precedente
-            </button>
-            <button
-              type="button"
-              className="rounded-md border px-3 py-1"
+            </BrandedButton>
+            <BrandedButton
+              variant="outline"
+              size="sm"
               disabled={page >= data.totalPages}
               onClick={() => setPage((prev) => Math.min(data.totalPages, prev + 1))}
             >
               Successiva
-            </button>
+            </BrandedButton>
           </div>
         </div>
       ) : null}

@@ -40,6 +40,14 @@ export async function GET(
       referenteNome: client.referenteNome,
       referenteEmail: client.referenteEmail,
       telefono: client.telefono,
+      primaryColor: client.primaryColor,
+      secondaryColor: client.secondaryColor,
+      sidebarBgColor: client.sidebarBgColor,
+      sidebarTextColor: client.sidebarTextColor,
+      logoPath: client.logoPath,
+      logoLightPath: client.logoLightPath,
+      logoFileName: client.logoFileName,
+      logoLightFileName: client.logoLightFileName,
       isActive: client.isActive,
       user: client.users[0] ?? null,
       categories: client.categories.map((entry) => ({
@@ -77,6 +85,10 @@ export async function PUT(
         referenteNome: client.referenteNome,
         referenteEmail: client.referenteEmail,
         telefono: client.telefono || null,
+        primaryColor: client.primaryColor || null,
+        secondaryColor: client.secondaryColor || null,
+        sidebarBgColor: client.sidebarBgColor || null,
+        sidebarTextColor: client.sidebarTextColor || null,
       },
     });
 

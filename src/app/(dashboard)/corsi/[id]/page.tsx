@@ -1,11 +1,14 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useSubmitRegistrations } from "@/hooks/useSubmitRegistrations";
+import { BrandedTabs } from "@/components/BrandedTabs";
+import { BrandedButton } from "@/components/BrandedButton";
 
 type CourseDetail = {
   id: string;
@@ -35,9 +38,27 @@ type CourseDetail = {
   progress: { total: number; completed: number };
 };
 
+type AttendanceSummary = {
+  totalLessons: number;
+  totalHours: number;
+  stats: Array<{
+    employeeId: string;
+    employeeName: string;
+    totalLessons: number;
+    present: number;
+    absent: number;
+    justified: number;
+    percentage: number;
+    totalHours: number;
+    attendedHours: number;
+    belowMinimum: boolean;
+  }>;
+};
+
 const TABS = [
   { value: "anagrafiche", label: "Anagrafiche" },
   { value: "attestati", label: "Attestati" },
+  { value: "presenze", label: "Presenze" },
   { value: "info", label: "Info" },
 ];
 
@@ -57,6 +78,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [loading, setLoading] = useState(true);
   const [selectedCerts, setSelectedCerts] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(
+    null
+  );
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
   const submitMutation = useSubmitRegistrations(params.id);
 
   const loadCourse = useCallback(async () => {
@@ -70,6 +96,31 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   useEffect(() => {
     loadCourse();
   }, [loadCourse]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const loadAttendance = async () => {
+      if (tab !== "presenze") return;
+      setAttendanceLoading(true);
+      const res = await fetch(`/api/corsi/${params.id}/presenze`);
+      if (!res.ok) {
+        setAttendanceSummary(null);
+        setAttendanceLoading(false);
+        return;
+      }
+      const json = await res.json();
+      setAttendanceSummary({
+        totalLessons: json.totalLessons ?? 0,
+        totalHours: json.totalHours ?? 0,
+        stats: json.stats ?? [],
+      });
+      setAttendanceLoading(false);
+    };
+    loadAttendance();
+  }, [tab, params.id]);
 
   const rows = useMemo(() => {
     if (!course) return [];
@@ -206,22 +257,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         ) : null}
       </div>
 
-      <div className="flex gap-2">
-        {TABS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className={`rounded-full px-4 py-2 text-sm ${
-              tab === item.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-            onClick={() => setTab(item.value)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <BrandedTabs
+        tabs={TABS.map((item) => ({ id: item.value, label: item.label }))}
+        activeTab={tab}
+        onTabChange={setTab}
+      />
 
       {tab === "anagrafiche" ? (
         <div className="space-y-4">
@@ -234,7 +274,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             </div>
             <div className="h-2 w-full rounded-full bg-muted">
               <div
-                className="h-2 rounded-full bg-primary"
+                className="h-2 rounded-full bg-brand-primary"
                 style={{
                   width: registrationStats.total
                     ? `${Math.round(
@@ -273,14 +313,12 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             readOnly={isSubmitted}
           />
 
-          <button
-            type="button"
-            className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+          <BrandedButton
             onClick={() => setConfirmOpen(true)}
             disabled={!registrationStats.canSubmit || isSubmitted || submitMutation.isPending}
           >
             Invia Anagrafiche ({registrationStats.valid} dipendenti)
-          </button>
+          </BrandedButton>
         </div>
       ) : null}
 
@@ -290,14 +328,14 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             <p className="text-sm text-muted-foreground">
               {course.certificates.length} attestati disponibili
             </p>
-            <button
-              type="button"
-              className="rounded-md border px-3 py-2 text-sm"
+            <BrandedButton
+              variant="outline"
+              size="sm"
               onClick={handleDownloadZip}
               disabled={course.certificates.length === 0}
             >
               Download ZIP
-            </button>
+            </BrandedButton>
           </div>
           <div className="rounded-lg border bg-card">
             {course.certificates.length === 0 ? (
@@ -325,13 +363,72 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                     </div>
                     <Link
                       href={`/api/attestati/${cert.id}/download`}
-                      className="rounded-md border px-3 py-2 text-xs"
+                      className="btn-brand-outline rounded-md px-3 py-2 text-xs"
                     >
                       Scarica
                     </Link>
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "presenze" ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Lezioni: {attendanceSummary?.totalLessons ?? 0} · Ore totali:{" "}
+              {attendanceSummary?.totalHours ?? 0}
+            </p>
+            <Link
+              href={`/corsi/${course.id}/presenze`}
+              className="btn-brand-outline rounded-md px-3 py-2 text-xs"
+            >
+              Vedi dettaglio
+            </Link>
+          </div>
+          <div className="rounded-lg border bg-card">
+            {attendanceLoading ? (
+              <p className="p-4 text-sm text-muted-foreground">
+                Caricamento presenze...
+              </p>
+            ) : !attendanceSummary || attendanceSummary.stats.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">
+                Nessuna presenza registrata.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-left">
+                  <tr>
+                    <th className="px-4 py-3">Dipendente</th>
+                    <th className="px-4 py-3">Presenze</th>
+                    <th className="px-4 py-3">Percentuale</th>
+                    <th className="px-4 py-3">Stato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceSummary.stats.map((stat) => (
+                    <tr key={stat.employeeId} className="border-t">
+                      <td className="px-4 py-3 font-medium">
+                        {stat.employeeName}
+                      </td>
+                      <td className="px-4 py-3">
+                        {stat.present + stat.justified}/{stat.totalLessons}
+                      </td>
+                      <td className="px-4 py-3">{stat.percentage}%</td>
+                      <td className="px-4 py-3">
+                        {stat.belowMinimum ? (
+                          <span className="text-amber-700">⚠️ Minimo</span>
+                        ) : (
+                          <span className="text-emerald-700">✅ OK</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
@@ -350,34 +447,36 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         </div>
       ) : null}
 
-      {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-            <h2 className="text-lg font-semibold">Conferma invio anagrafiche</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}.
-              Dopo l&apos;invio non sar&agrave; possibile modificare i dati.
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-md border px-4 py-2 text-sm"
-                onClick={() => setConfirmOpen(false)}
-              >
-                Annulla
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-                onClick={handleSend}
-                disabled={submitMutation.isPending}
-              >
-                {submitMutation.isPending ? "Invio..." : "Conferma invio"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {confirmOpen && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+                <h2 className="text-lg font-semibold">Conferma invio anagrafiche</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}.
+                  Dopo l&apos;invio non sar&agrave; possibile modificare i dati.
+                </p>
+                <div className="mt-6 flex justify-end gap-2">
+                  <BrandedButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmOpen(false)}
+                  >
+                    Annulla
+                  </BrandedButton>
+                  <BrandedButton
+                    size="sm"
+                    onClick={handleSend}
+                    disabled={submitMutation.isPending}
+                  >
+                    {submitMutation.isPending ? "Invio..." : "Conferma invio"}
+                  </BrandedButton>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import ExcelSheet from "@/components/ExcelSheet";
 import EmployeeCardForm from "@/components/EmployeeCardForm";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useSaveRegistrations } from "@/hooks/useSaveRegistrations";
+import { BrandedButton } from "@/components/BrandedButton";
 
 type EmployeeRow = {
   nome: string;
@@ -70,14 +71,12 @@ export default function AnagraficheResponsive({
         <div className="space-y-4">
           <ExcelSheet data={rows} onChange={handleChange} readOnly={readOnly} />
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+            <BrandedButton
               onClick={handleSave}
               disabled={isSaving || readOnly}
             >
               {isSaving ? "Salvataggio..." : "Salva"}
-            </button>
+            </BrandedButton>
             {status ? <span className="text-sm text-muted-foreground">{status}</span> : null}
           </div>
         </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoadingTable } from "@/components/ui/loading-table";
+import { BrandedTabs } from "@/components/BrandedTabs";
 
 type Tab = "tutti" | "disponibili" | "in_progress" | "completati";
 
@@ -102,22 +103,14 @@ export default function ClientCorsiPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className={`rounded-full px-4 py-2 text-sm ${
-              activeTab === item.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-            onClick={() => setActiveTab(item.value)}
-            onMouseEnter={() => prefetchTab(item.value)}
-          >
-            {item.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <BrandedTabs
+          tabs={TABS.map((item) => ({ id: item.value, label: item.label }))}
+          activeTab={activeTab}
+          onTabChange={(value) => setActiveTab(value as Tab)}
+          onTabHover={(value) => prefetchTab(value as Tab)}
+          className="flex-1"
+        />
         <select
           className="rounded-full border bg-background px-4 py-2 text-sm"
           value={categoryFilter}
@@ -222,7 +215,7 @@ export default function ClientCorsiPage() {
                     <div className="mt-4">
                       <div className="h-2 w-full rounded-full bg-muted">
                         <div
-                          className="h-2 rounded-full bg-primary"
+                          className="h-2 rounded-full bg-brand-primary"
                           style={{ width: `${progress}%` }}
                           role="progressbar"
                           aria-valuenow={progress}
@@ -240,7 +233,7 @@ export default function ClientCorsiPage() {
                   <div className="mt-4">
                     <Link
                       href={`/corsi/${course.id}`}
-                      className="inline-flex rounded-md bg-primary px-3 py-2 text-xs text-primary-foreground"
+                      className="btn-brand-primary inline-flex rounded-md px-3 py-2 text-xs"
                     >
                       {course.status === "COMPLETED"
                         ? "Visualizza"

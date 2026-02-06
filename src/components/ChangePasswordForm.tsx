@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { BrandedButton } from "@/components/BrandedButton";
 
 const passwordSchema = z
   .object({
@@ -114,13 +115,9 @@ export default function ChangePasswordForm() {
           <p className="text-sm text-destructive">{errors.confirmPassword}</p>
         ) : null}
       </div>
-      <button
-        type="submit"
-        className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
-        disabled={loading}
-      >
+      <BrandedButton type="submit" disabled={loading}>
         {loading ? "Salvataggio..." : "Cambia password"}
-      </button>
+      </BrandedButton>
     </form>
   );
 }

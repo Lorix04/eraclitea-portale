@@ -7,11 +7,13 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useDataTableKeyboard } from "@/components/ui/data-table-keyboard";
 import { trackEvent } from "@/lib/analytics";
+import { useBranding } from "@/components/BrandingProvider";
+import { BrandedButton } from "@/components/BrandedButton";
 
 type CertificateRow = {
   id: string;
   employee: { nome: string; cognome: string };
-  course: { title: string };
+  course?: { title: string } | null;
   achievedAt?: string | null;
   expiresAt?: string | null;
   uploadedAt?: string | null;
@@ -58,6 +60,7 @@ export default function CertificateTable({
   isFetching,
   pagination,
 }: CertificateTableProps) {
+  const { primaryColor } = useBranding();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { tableRef, focusedIndex } = useDataTableKeyboard({
@@ -123,31 +126,33 @@ export default function CertificateTable({
   return (
     <div className="space-y-4">
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-blue-50 px-4 py-3 text-sm">
+        <div
+          className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3 text-sm"
+          style={{ backgroundColor: `${primaryColor}10` }}
+        >
           <span className="font-medium">
             {selectedIds.size} attestati selezionati
           </span>
-          <button
-            type="button"
-            className="rounded-md bg-primary px-3 py-2 text-xs text-primary-foreground"
+          <BrandedButton
+            size="sm"
             onClick={() => downloadMutation.mutate(Array.from(selectedIds))}
             disabled={downloadMutation.isPending}
           >
             Scarica ZIP
-          </button>
-          <button
-            type="button"
-            className="rounded-md border px-3 py-2 text-xs"
+          </BrandedButton>
+          <BrandedButton
+            variant="outline"
+            size="sm"
             onClick={() => setSelectedIds(new Set())}
           >
             Deseleziona
-          </button>
+          </BrandedButton>
         </div>
       ) : null}
 
       {isFetching ? (
         <div
-          className="ml-auto h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+          className="ml-auto h-4 w-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent"
           role="status"
           aria-live="polite"
         />
@@ -224,14 +229,17 @@ export default function CertificateTable({
                   const uploaderInfo = cert.uploadedByEmail
                     ? ` da ${cert.uploadedByEmail}`
                     : "";
+                  const rowStyle: React.CSSProperties = {
+                    ...(selected ? { backgroundColor: `${primaryColor}08` } : {}),
+                    ...(focusedIndex === index ? { outlineColor: primaryColor } : {}),
+                  };
                   return (
                     <tr
                       key={cert.id}
-                      className={`border-t ${selected ? "bg-blue-50" : ""} ${
-                        focusedIndex === index
-                          ? "outline outline-1 outline-primary"
-                          : ""
+                      className={`border-t ${
+                        focusedIndex === index ? "outline outline-1" : ""
                       }`}
+                      style={rowStyle}
                     >
                       <td className="px-4 py-3">
                         <input
@@ -244,7 +252,9 @@ export default function CertificateTable({
                       <td className="px-4 py-3">
                         {cert.employee.cognome} {cert.employee.nome}
                       </td>
-                      <td className="px-4 py-3">{cert.course.title}</td>
+                      <td className="px-4 py-3">
+                        {cert.course?.title ?? "Esterno"}
+                      </td>
                       <td
                         className="px-4 py-3"
                         title={`${uploadedInfo}${uploaderInfo}`}
@@ -265,7 +275,7 @@ export default function CertificateTable({
                       <td className="px-4 py-3">
                         <a
                           href={`/api/attestati/${cert.id}/download`}
-                          className="inline-flex items-center rounded-md border px-2 py-1 text-xs"
+                          className="btn-brand-outline inline-flex items-center rounded-md px-2 py-1 text-xs"
                           aria-label="Scarica attestato"
                         >
                           <Download className="h-4 w-4" />
@@ -311,16 +321,21 @@ export default function CertificateTable({
             return (
               <article
                 key={cert.id}
-                className={`space-y-3 rounded-lg border bg-card p-4 ${
-                  selected ? "border-primary/40 bg-blue-50/60" : ""
-                }`}
+                className="space-y-3 rounded-lg border bg-card p-4"
+                style={
+                  selected
+                    ? { borderColor: primaryColor, backgroundColor: `${primaryColor}10` }
+                    : undefined
+                }
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold">
                       {cert.employee.cognome} {cert.employee.nome}
                     </p>
-                    <p className="text-xs text-muted-foreground">{cert.course.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {cert.course?.title ?? "Esterno"}
+                    </p>
                   </div>
                   <input
                     type="checkbox"
@@ -348,7 +363,7 @@ export default function CertificateTable({
                   </span>
                   <a
                     href={`/api/attestati/${cert.id}/download`}
-                    className="inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs"
+                    className="btn-brand-outline inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs"
                     aria-label="Scarica attestato"
                   >
                     <Download className="h-4 w-4" />
@@ -367,17 +382,17 @@ export default function CertificateTable({
             Pagina {pagination.page} di {pagination.totalPages}
           </span>
           <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded-md border px-3 py-1"
+            <BrandedButton
+              variant="outline"
+              size="sm"
               disabled={pagination.page <= 1}
               onClick={() => pagination.onPageChange(Math.max(1, pagination.page - 1))}
             >
               Precedente
-            </button>
-            <button
-              type="button"
-              className="rounded-md border px-3 py-1"
+            </BrandedButton>
+            <BrandedButton
+              variant="outline"
+              size="sm"
               disabled={pagination.page >= pagination.totalPages}
               onClick={() =>
                 pagination.onPageChange(
@@ -386,7 +401,7 @@ export default function CertificateTable({
               }
             >
               Successiva
-            </button>
+            </BrandedButton>
           </div>
         </div>
       ) : null}

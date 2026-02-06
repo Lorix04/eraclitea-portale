@@ -17,7 +17,7 @@ type CourseListItem = {
 type CertificateItem = {
   id: string;
   employee: { nome: string; cognome: string };
-  course: { title: string };
+  course?: { title: string } | null;
 };
 
 type Stats = {
@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const latestCertificates = (certificatesResponse?.data ?? []).map((cert) => ({
     id: cert.id,
     employeeName: `${cert.employee.cognome} ${cert.employee.nome}`,
-    courseTitle: cert.course.title,
+    courseTitle: cert.course?.title ?? "Esterno",
   }));
 
   const availableCourses = courses

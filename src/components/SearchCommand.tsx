@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search, BookOpen, Users, Award, Building2 } from "lucide-react";
 
@@ -10,7 +11,7 @@ type SearchResults = {
   certificates: Array<{
     id: string;
     employee: { nome: string; cognome: string };
-    course: { title: string };
+    course?: { title: string } | null;
   }>;
   clients: Array<{ id: string; ragioneSociale: string; piva: string }>;
 };
@@ -19,6 +20,7 @@ export default function SearchCommand() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -30,6 +32,10 @@ export default function SearchCommand() {
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
+  }, []);
+
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -99,115 +105,118 @@ export default function SearchCommand() {
         </kbd>
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-card p-4 shadow-lg">
-            <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                className="flex-1 bg-transparent text-sm outline-none"
-                placeholder="Cerca corsi, dipendenti, attestati..."
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                autoFocus
-              />
-              <button
-                type="button"
-                className="text-xs text-muted-foreground"
-                onClick={() => setOpen(false)}
-              >
-                ESC
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              {!results && query.length >= 2 ? (
-                <p className="text-sm text-muted-foreground">Ricerca in corso...</p>
-              ) : null}
-
-              {results && !hasResults ? (
-                <p className="text-sm text-muted-foreground">Nessun risultato trovato.</p>
-              ) : null}
-
-              {results?.courses.length ? (
-                <div>
-                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Corsi</p>
-                  <div className="space-y-1">
-                    {results.courses.map((course) => (
-                      <button
-                        key={course.id}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
-                        onClick={() => handleSelect("course", course.id)}
-                      >
-                        <BookOpen className="h-4 w-4 text-muted-foreground" />
-                        {course.title}
-                      </button>
-                    ))}
-                  </div>
+      {open && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4">
+              <div className="w-full max-w-2xl rounded-lg bg-card p-4 shadow-lg">
+                <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <input
+                    className="flex-1 bg-transparent text-sm outline-none"
+                    placeholder="Cerca corsi, dipendenti, attestati..."
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground"
+                    onClick={() => setOpen(false)}
+                  >
+                    ESC
+                  </button>
                 </div>
-              ) : null}
 
-              {results?.employees.length ? (
-                <div>
-                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Dipendenti</p>
-                  <div className="space-y-1">
-                    {results.employees.map((emp) => (
-                      <button
-                        key={emp.id}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
-                        onClick={() => handleSelect("employee", emp.id)}
-                      >
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        {emp.cognome} {emp.nome} - {emp.codiceFiscale}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+                <div className="mt-4 space-y-4">
+                  {!results && query.length >= 2 ? (
+                    <p className="text-sm text-muted-foreground">Ricerca in corso...</p>
+                  ) : null}
 
-              {results?.certificates.length ? (
-                <div>
-                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Attestati</p>
-                  <div className="space-y-1">
-                    {results.certificates.map((cert) => (
-                      <button
-                        key={cert.id}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
-                        onClick={() => handleSelect("certificate", cert.id)}
-                      >
-                        <Award className="h-4 w-4 text-muted-foreground" />
-                        {cert.employee.cognome} - {cert.course.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+                  {results && !hasResults ? (
+                    <p className="text-sm text-muted-foreground">Nessun risultato trovato.</p>
+                  ) : null}
 
-              {results?.clients.length ? (
-                <div>
-                  <p className="mb-2 text-xs font-semibold text-muted-foreground">Clienti</p>
-                  <div className="space-y-1">
-                    {results.clients.map((client) => (
-                      <button
-                        key={client.id}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
-                        onClick={() => handleSelect("client", client.id)}
-                      >
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {client.ragioneSociale} ({client.piva})
-                      </button>
-                    ))}
-                  </div>
+                  {results?.courses.length ? (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Corsi</p>
+                      <div className="space-y-1">
+                        {results.courses.map((course) => (
+                          <button
+                            key={course.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+                            onClick={() => handleSelect("course", course.id)}
+                          >
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            {course.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {results?.employees.length ? (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Dipendenti</p>
+                      <div className="space-y-1">
+                        {results.employees.map((emp) => (
+                          <button
+                            key={emp.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+                            onClick={() => handleSelect("employee", emp.id)}
+                          >
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            {emp.cognome} {emp.nome} - {emp.codiceFiscale}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {results?.certificates.length ? (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Attestati</p>
+                      <div className="space-y-1">
+                        {results.certificates.map((cert) => (
+                          <button
+                            key={cert.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+                            onClick={() => handleSelect("certificate", cert.id)}
+                          >
+                            <Award className="h-4 w-4 text-muted-foreground" />
+                            {cert.employee.cognome} - {cert.course?.title ?? "Esterno"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {results?.clients.length ? (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Clienti</p>
+                      <div className="space-y-1">
+                        {results.clients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+                            onClick={() => handleSelect("client", client.id)}
+                          >
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            {client.ragioneSociale} ({client.piva})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

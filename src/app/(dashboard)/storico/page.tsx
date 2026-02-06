@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
+import { BrandedButton } from "@/components/BrandedButton";
 
 type StoricoCourse = {
   id: string;
@@ -117,13 +118,13 @@ export default function StoricoPage() {
                     </span>
                   </div>
                   <div className="mt-3">
-                    <button
-                      type="button"
-                      className="rounded-md border px-3 py-2 text-sm"
+                    <BrandedButton
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleDownloadZip(course.certificateIds)}
                     >
                       Download attestati ZIP
-                    </button>
+                    </BrandedButton>
                   </div>
                 </div>
               ))}

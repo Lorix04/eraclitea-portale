@@ -51,7 +51,7 @@ export default function EmployeeCard({
         ) : null}
         {!disabled ? (
           <div className="mt-2 hidden gap-3 text-xs md:flex">
-            <button type="button" className="text-primary" onClick={onEdit}>
+            <button type="button" className="link-brand" onClick={onEdit}>
               Modifica
             </button>
             <button

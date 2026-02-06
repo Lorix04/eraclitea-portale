@@ -25,6 +25,9 @@ export async function GET() {
   });
   const certMap = new Map<string, string[]>();
   certificates.forEach((cert) => {
+    if (!cert.courseId) {
+      return;
+    }
     const list = certMap.get(cert.courseId) ?? [];
     list.push(cert.id);
     certMap.set(cert.courseId, list);

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { clientCreateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -16,19 +17,40 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search");
   const status = searchParams.get("status");
+  const isActiveParam = searchParams.get("isActive");
   const categoryId = searchParams.get("categoryId");
+  const sortBy = searchParams.get("sortBy") || "ragioneSociale";
+  const sortOrder: Prisma.SortOrder =
+    searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
 
   const where: Record<string, unknown> = {};
-  if (status === "active") where.isActive = true;
-  if (status === "inactive") where.isActive = false;
+  if (isActiveParam === "true") where.isActive = true;
+  if (isActiveParam === "false") where.isActive = false;
+  if (!isActiveParam) {
+    if (status === "active") where.isActive = true;
+    if (status === "inactive") where.isActive = false;
+  }
   if (search) {
     where.OR = [
-      { ragioneSociale: { contains: search, mode: "insensitive" } },
-      { piva: { contains: search, mode: "insensitive" } },
+      { ragioneSociale: { contains: search, mode: Prisma.QueryMode.insensitive } },
+      { piva: { contains: search, mode: Prisma.QueryMode.insensitive } },
+      { referenteEmail: { contains: search, mode: Prisma.QueryMode.insensitive } },
+      { users: { some: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
     ];
   }
   if (categoryId) {
     where.categories = { some: { categoryId } };
+  }
+
+  let orderBy: Prisma.ClientOrderByWithRelationInput = {
+    ragioneSociale: "asc",
+  };
+  if (sortBy === "createdAt") {
+    orderBy = { createdAt: sortOrder };
+  } else if (sortBy === "employeesCount") {
+    orderBy = { employees: { _count: sortOrder } };
+  } else {
+    orderBy = { ragioneSociale: sortOrder };
   }
 
   const clients = await prisma.client.findMany({
@@ -40,7 +62,7 @@ export async function GET(request: Request) {
       },
       categories: { include: { category: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy,
   });
 
   const data = clients.map((client) => ({
@@ -95,6 +117,10 @@ export async function POST(request: Request) {
         referenteNome: client.referenteNome,
         referenteEmail: client.referenteEmail,
         telefono: client.telefono || null,
+        primaryColor: client.primaryColor || null,
+        secondaryColor: client.secondaryColor || null,
+        sidebarBgColor: client.sidebarBgColor || null,
+        sidebarTextColor: client.sidebarTextColor || null,
         isActive: true,
         categories: categoryIds?.length
           ? {

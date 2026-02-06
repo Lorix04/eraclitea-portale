@@ -25,6 +25,11 @@
   --radius: 0.9rem;
   --shadow-soft: 0 8px 30px hsl(222 25% 10% / 0.08);
   --shadow-card: 0 12px 40px hsl(222 25% 10% / 0.1);
+
+  --color-primary: #3b82f6;
+  --color-secondary: #60a5fa;
+  --color-sidebar-bg: #ffffff;
+  --color-sidebar-text: #1f2937;
 }
 
 * {
@@ -82,6 +87,138 @@ body {
     border: 1px solid hsl(var(--border));
     box-shadow: var(--shadow-card);
   }
+}
+
+.bg-brand-primary {
+  background-color: var(--color-primary);
+}
+
+.text-brand-primary {
+  color: var(--color-primary);
+}
+
+.bg-brand-secondary {
+  background-color: var(--color-secondary);
+}
+
+.bg-brand-sidebar {
+  background-color: var(--color-sidebar-bg);
+}
+
+.text-brand-sidebar {
+  color: var(--color-sidebar-text);
+}
+
+.border-brand-primary {
+  border-color: var(--color-primary);
+}
+
+.hover\:bg-brand-primary:hover {
+  background-color: var(--color-primary);
+}
+
+/* Branded elements */
+.branded-button {
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.branded-button:hover {
+  background-color: var(--hover-bg);
+}
+
+.branded-button:focus-visible {
+  outline: 2px solid var(--ring-color);
+  outline-offset: 2px;
+}
+
+.branded-tab:hover {
+  background-color: var(--tab-hover-bg);
+  border-color: var(--tab-hover-border);
+}
+
+.branded-tab:focus-visible {
+  outline: 2px solid var(--ring-color);
+  outline-offset: 2px;
+}
+
+.btn-brand-primary {
+  background-color: var(--color-primary);
+  color: #ffffff;
+  border: none;
+}
+
+.btn-brand-primary:hover {
+  opacity: 0.9;
+  filter: brightness(0.95);
+}
+
+.btn-brand-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-brand-outline:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.btn-brand-ghost {
+  background-color: transparent;
+  color: inherit;
+}
+
+.btn-brand-ghost:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.btn-brand-ghost.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.badge-brand {
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.link-brand {
+  color: var(--color-primary);
+}
+
+.link-brand:hover {
+  text-decoration: underline;
+}
+
+.tab-brand {
+  transition: all 0.2s;
+}
+
+.tab-brand.active {
+  background-color: var(--color-primary);
+  color: #ffffff;
+}
+
+.tab-brand:not(.active):hover {
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.focus-brand:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.outline-brand-primary {
+  outline-color: var(--color-primary);
+}
+
+/* Safety fix: ensure modal overlays cover full viewport */
+.fixed.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
 }
 
 @media print {

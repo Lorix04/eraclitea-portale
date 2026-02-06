@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Search, X } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type CategoryRow = {
   id: string;
@@ -15,18 +18,43 @@ export default function AdminCategoriePage() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [searchName, setSearchName] = useState("");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [mounted, setMounted] = useState(false);
+
+  const debouncedSearch = useDebounce(searchName, 300);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("stats", "true");
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder) params.set("sortOrder", sortOrder);
+    return params.toString();
+  }, [debouncedSearch, sortBy, sortOrder]);
 
   const loadCategories = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/categorie?stats=true");
+    const res = await fetch(`/api/admin/categorie?${queryString}`);
     const json = await res.json();
     setCategories(json.data ?? []);
     setLoading(false);
-  }, []);
+  }, [queryString]);
 
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const resetFilters = () => {
+    setSearchName("");
+    setSortBy("name");
+    setSortOrder("asc");
+  };
 
   const handleDelete = async () => {
     if (!confirmId) return;
@@ -50,6 +78,49 @@ export default function AdminCategoriePage() {
         >
           Nuova categoria
         </Link>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full md:w-64">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
+            placeholder="Cerca categoria..."
+            value={searchName}
+            onChange={(event) => setSearchName(event.target.value)}
+            aria-label="Cerca categoria"
+          />
+        </div>
+        <select
+          className="rounded-md border bg-background px-3 py-2 text-sm"
+          value={`${sortBy}-${sortOrder}`}
+          onChange={(event) => {
+            const [field, order] = event.target.value.split("-");
+            setSortBy(field);
+            setSortOrder(order as "asc" | "desc");
+          }}
+          aria-label="Ordinamento categorie"
+        >
+          <option value="name-asc">Nome A-Z</option>
+          <option value="name-desc">Nome Z-A</option>
+          <option value="createdAt-desc">Piu recenti</option>
+          <option value="createdAt-asc">Piu antiche</option>
+          <option value="coursesCount-desc">Piu corsi</option>
+          <option value="coursesCount-asc">Meno corsi</option>
+        </select>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {categories.length} categorie
+          </span>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+          >
+            <X className="mr-1 h-4 w-4" />
+            Resetta
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -117,33 +188,36 @@ export default function AdminCategoriePage() {
         </table>
       </div>
 
-      {confirmId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-            <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Vuoi eliminare questa categoria? Le associazioni con corsi e clienti
-              verranno rimosse.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                className="rounded-md border px-4 py-2 text-sm"
-                onClick={() => setConfirmId(null)}
-              >
-                Annulla
-              </button>
-              <button
-                type="button"
-                className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground"
-                onClick={handleDelete}
-              >
-                Elimina
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {confirmId && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+                <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Vuoi eliminare questa categoria? Le associazioni con corsi e clienti
+                  verranno rimosse.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    className="rounded-md border px-4 py-2 text-sm"
+                    onClick={() => setConfirmId(null)}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground"
+                    onClick={handleDelete}
+                  >
+                    Elimina
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

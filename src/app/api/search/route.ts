@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
   const courses = await prisma.course.findMany({
     where: {
-      title: { contains: query, mode: "insensitive" },
+      title: { contains: query, mode: Prisma.QueryMode.insensitive },
       ...(isAdmin ? {} : { status: "PUBLISHED" }),
     },
     take: 5,
@@ -42,9 +43,9 @@ export async function GET(request: Request) {
     where: {
       ...(isAdmin ? {} : { clientId }),
       OR: [
-        { nome: { contains: query, mode: "insensitive" } },
-        { cognome: { contains: query, mode: "insensitive" } },
-        { codiceFiscale: { contains: query, mode: "insensitive" } },
+        { nome: { contains: query, mode: Prisma.QueryMode.insensitive } },
+        { cognome: { contains: query, mode: Prisma.QueryMode.insensitive } },
+        { codiceFiscale: { contains: query, mode: Prisma.QueryMode.insensitive } },
       ],
     },
     take: 5,
@@ -55,8 +56,8 @@ export async function GET(request: Request) {
     where: {
       ...(isAdmin ? {} : { clientId }),
       OR: [
-        { employee: { cognome: { contains: query, mode: "insensitive" } } },
-        { course: { title: { contains: query, mode: "insensitive" } } },
+        { employee: { cognome: { contains: query, mode: Prisma.QueryMode.insensitive } } },
+        { course: { title: { contains: query, mode: Prisma.QueryMode.insensitive } } },
       ],
     },
     take: 5,
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     ? await prisma.client.findMany({
         where: {
           OR: [
-            { ragioneSociale: { contains: query, mode: "insensitive" } },
+            { ragioneSociale: { contains: query, mode: Prisma.QueryMode.insensitive } },
             { piva: { contains: query } },
           ],
         },

@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import { toast } from "sonner";
 import { isValidItalianDate } from "@/lib/date-utils";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import CategorySelect from "@/components/CategorySelect";
 import SearchableCheckboxList from "@/components/SearchableCheckboxList";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 
 const optionalInt = z.preprocess(
   (value) => {
@@ -60,14 +62,24 @@ type CourseFormProps = {
     status?: string;
     visibilityType?: "ALL" | "SELECTED_CLIENTS" | "BY_CATEGORY";
   };
+  deleteStats?: {
+    registrationsCount: number;
+    lessonsCount: number;
+  };
 };
 
-export default function CourseForm({ courseId, initialData }: CourseFormProps) {
+export default function CourseForm({
+  courseId,
+  initialData,
+  deleteStats,
+}: CourseFormProps) {
   const router = useRouter();
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [visibilityCategories, setVisibilityCategories] = useState<CategoryOption[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [form, setForm] = useState<CourseFormState>({
     title: initialData?.title ?? "",
@@ -209,6 +221,29 @@ export default function CourseForm({ courseId, initialData }: CourseFormProps) {
     }
 
     router.push("/admin/corsi");
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseId) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/corsi/${courseId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Corso eliminato con successo");
+        router.push("/admin/corsi");
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      toast.error(data?.error ?? "Errore durante l'eliminazione");
+    } catch (error) {
+      console.error("Errore eliminazione corso:", error);
+      toast.error("Errore durante l'eliminazione del corso");
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
   };
 
   return (
@@ -367,6 +402,16 @@ export default function CourseForm({ courseId, initialData }: CourseFormProps) {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
+        {courseId ? (
+          <button
+            type="button"
+            className="rounded-md border border-destructive px-4 py-2 text-destructive"
+            onClick={() => setDeleteModalOpen(true)}
+            disabled={saving || isDeleting}
+          >
+            Elimina corso
+          </button>
+        ) : null}
         <button
           type="button"
           className="rounded-md border bg-background px-4 py-2"
@@ -384,6 +429,27 @@ export default function CourseForm({ courseId, initialData }: CourseFormProps) {
           Pubblica
         </button>
       </div>
+
+      {courseId ? (
+        <DeleteConfirmModal
+          isOpen={deleteModalOpen}
+          onClose={() => {
+            if (!isDeleting) setDeleteModalOpen(false);
+          }}
+          onConfirm={handleDeleteCourse}
+          title="Elimina corso"
+          description="Sei sicuro di voler eliminare questo corso?"
+          itemName={initialData?.title}
+          isDeleting={isDeleting}
+          warningMessage={
+            deleteStats &&
+            (deleteStats.registrationsCount > 0 ||
+              deleteStats.lessonsCount > 0)
+              ? `Questo corso ha ${deleteStats.registrationsCount} iscrizioni e ${deleteStats.lessonsCount} lezioni. Tutti i dati associati verranno eliminati permanentemente.`
+              : "Questa azione non può essere annullata."
+          }
+        />
+      ) : null}
     </div>
   );
 }

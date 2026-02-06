@@ -130,7 +130,7 @@ export async function GET(request: Request) {
       html: expiringCertificatesTemplate(
         certs.map((cert) => ({
           employee: `${cert.employee.cognome} ${cert.employee.nome}`,
-          course: cert.course.title,
+          course: cert.course?.title ?? "Attestato esterno",
           expiresAt: cert.expiresAt!,
         }))
       ),

@@ -122,3 +122,41 @@ export function validatePIVA(piva: string): boolean {
   const checkDigit = (10 - (sum % 10)) % 10;
   return checkDigit === digits[10];
 }
+
+export function validateEmail(value?: string | null): boolean {
+  if (!value) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+export function validatePhone(value?: string | null): boolean {
+  if (!value) return false;
+  return /^[+\d][\d\s().-]{4,}$/.test(value);
+}
+
+export function validateEmployee(data: {
+  nome?: string | null;
+  cognome?: string | null;
+  codiceFiscale?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+}): { valid: boolean; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+
+  if (!data.nome || !data.nome.trim()) {
+    errors.nome = "Nome obbligatorio";
+  }
+  if (!data.cognome || !data.cognome.trim()) {
+    errors.cognome = "Cognome obbligatorio";
+  }
+  if (data.codiceFiscale && !isValidCodiceFiscale(data.codiceFiscale)) {
+    errors.codiceFiscale = "Codice Fiscale non valido";
+  }
+  if (data.email && !validateEmail(data.email)) {
+    errors.email = "Email non valida";
+  }
+  if (data.telefono && !validatePhone(data.telefono)) {
+    errors.telefono = "Telefono non valido";
+  }
+
+  return { valid: Object.keys(errors).length === 0, errors };
+}

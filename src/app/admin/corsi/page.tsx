@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Bozza",
@@ -32,6 +36,10 @@ type Course = {
   deadlineRegistry?: string | null;
   status: string;
   visibilityType?: string;
+  _count?: {
+    registrations?: number;
+    lessons?: number;
+  };
 };
 
 const VISIBILITY_BADGE: Record<string, string> = {
@@ -47,23 +55,52 @@ const VISIBILITY_LABELS: Record<string, string> = {
 };
 
 export default function AdminCorsiPage() {
-  const [statusFilter, setStatusFilter] = useState("");
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTitle, setSearchTitle] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [visibilityType, setVisibilityType] = useState("all");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
   >([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{
+    id: string;
+    title: string;
+    registrationsCount: number;
+    lessonsCount: number;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const debouncedSearch = useDebounce(searchTitle, 300);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (statusFilter) params.set("status", statusFilter);
-    if (search) params.set("search", search);
-    if (categoryFilter) params.set("categoryId", categoryFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (categoryFilter !== "all") params.set("categoryId", categoryFilter);
+    if (visibilityType !== "all") params.set("visibilityType", visibilityType);
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder) params.set("sortOrder", sortOrder);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
     const qs = params.toString();
     return qs ? `?${qs}` : "";
-  }, [statusFilter, search, categoryFilter]);
+  }, [
+    statusFilter,
+    debouncedSearch,
+    categoryFilter,
+    visibilityType,
+    sortBy,
+    sortOrder,
+    dateFrom,
+    dateTo,
+  ]);
 
   const loadCourses = useCallback(async () => {
     setLoading(true);
@@ -90,9 +127,44 @@ export default function AdminCorsiPage() {
     loadCategories();
   }, []);
 
-  const handleArchive = async (id: string) => {
-    await fetch(`/api/corsi/${id}`, { method: "DELETE" });
-    loadCourses();
+  const handleDeleteClick = (course: Course) => {
+    setCourseToDelete({
+      id: course.id,
+      title: course.title,
+      registrationsCount: course._count?.registrations ?? 0,
+      lessonsCount: course._count?.lessons ?? 0,
+    });
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!courseToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/corsi/${courseToDelete.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Corso eliminato con successo");
+        setDeleteModalOpen(false);
+        setCourseToDelete(null);
+        loadCourses();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error ?? "Errore durante l'eliminazione");
+      }
+    } catch (error) {
+      console.error("Errore eliminazione corso:", error);
+      toast.error("Errore durante l'eliminazione del corso");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (isDeleting) return;
+    setDeleteModalOpen(false);
+    setCourseToDelete(null);
   };
 
   const handleStatusChange = async (id: string, status: string) => {
@@ -106,6 +178,17 @@ export default function AdminCorsiPage() {
       });
     }
     loadCourses();
+  };
+
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setSearchTitle("");
+    setCategoryFilter("all");
+    setVisibilityType("all");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+    setDateFrom("");
+    setDateTo("");
   };
 
   return (
@@ -125,43 +208,106 @@ export default function AdminCorsiPage() {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <input
-          className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-64"
-          placeholder="Cerca titolo..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value)}
-        >
-          <option value="">Tutte le categorie</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-        >
-          <option value="">Tutti gli stati</option>
-          <option value="DRAFT">Bozza</option>
-          <option value="PUBLISHED">Pubblicato</option>
-          <option value="CLOSED">Chiuso</option>
-          <option value="ARCHIVED">Archiviato</option>
-        </select>
-        <button
-          type="button"
-          onClick={loadCourses}
-          className="rounded-md border bg-background px-4 py-2 text-sm"
-        >
-          Aggiorna
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
+              placeholder="Cerca per titolo corso..."
+              value={searchTitle}
+              onChange={(event) => setSearchTitle(event.target.value)}
+              aria-label="Cerca per titolo corso"
+            />
+          </div>
+          <select
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            aria-label="Filtro stato corsi"
+          >
+            <option value="all">Tutti gli stati</option>
+            <option value="DRAFT">Bozza</option>
+            <option value="PUBLISHED">Pubblicato</option>
+            <option value="CLOSED">Chiuso</option>
+            <option value="ARCHIVED">Archiviato</option>
+          </select>
+          <select
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            aria-label="Filtro categoria corsi"
+          >
+            <option value="all">Tutte le categorie</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+            value={visibilityType}
+            onChange={(event) => setVisibilityType(event.target.value)}
+            aria-label="Filtro visibilita corsi"
+          >
+            <option value="all">Tutte le visibilita</option>
+            <option value="PUBLIC">Pubblico (tutti i clienti)</option>
+            <option value="PRIVATE">Privato (clienti selezionati)</option>
+            <option value="BY_CATEGORY">Per categoria</option>
+          </select>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="rounded-md border bg-background px-3 py-2 text-sm"
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(event) => {
+              const [field, order] = event.target.value.split("-");
+              setSortBy(field);
+              setSortOrder(order as "asc" | "desc");
+            }}
+            aria-label="Ordinamento corsi"
+          >
+            <option value="createdAt-desc">Piu recenti</option>
+            <option value="createdAt-asc">Piu antichi</option>
+            <option value="title-asc">Titolo A-Z</option>
+            <option value="title-desc">Titolo Z-A</option>
+            <option value="dateStart-asc">Data inizio crescente</option>
+            <option value="dateStart-desc">Data inizio decrescente</option>
+          </select>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>Inizio da:</span>
+            <input
+              type="date"
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              aria-label="Data inizio da"
+            />
+            <span>a:</span>
+            <input
+              type="date"
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              aria-label="Data inizio a"
+            />
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              {courses.length} corsi
+            </span>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+            >
+              <X className="mr-1 h-4 w-4" />
+              Resetta
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
@@ -269,9 +415,9 @@ export default function AdminCorsiPage() {
                       <button
                         type="button"
                         className="text-xs text-destructive"
-                        onClick={() => handleArchive(course.id)}
+                        onClick={() => handleDeleteClick(course)}
                       >
-                        Archivia
+                        Elimina
                       </button>
                     </div>
                   </td>
@@ -281,6 +427,23 @@ export default function AdminCorsiPage() {
           </tbody>
         </table>
       </div>
+
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleDeleteConfirm}
+        title="Elimina corso"
+        description="Sei sicuro di voler eliminare questo corso?"
+        itemName={courseToDelete?.title}
+        isDeleting={isDeleting}
+        warningMessage={
+          courseToDelete &&
+          (courseToDelete.registrationsCount > 0 ||
+            courseToDelete.lessonsCount > 0)
+            ? `Questo corso ha ${courseToDelete.registrationsCount} iscrizioni e ${courseToDelete.lessonsCount} lezioni. Tutti i dati associati verranno eliminati permanentemente.`
+            : "Questa azione non può essere annullata."
+        }
+      />
     </div>
   );
 }

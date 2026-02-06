@@ -83,7 +83,7 @@ export async function GET(request: Request) {
   const data = certificates.map((cert) => ({
     id: cert.id,
     employee: cert.employee,
-    course: cert.course,
+    course: cert.course ?? null,
     achievedAt: cert.achievedAt,
     expiresAt: cert.expiresAt,
     uploadedAt: cert.uploadedAt,

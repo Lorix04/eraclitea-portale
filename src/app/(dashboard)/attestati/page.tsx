@@ -17,7 +17,7 @@ type CertificateResponse = {
   data: Array<{
     id: string;
     employee: { nome: string; cognome: string };
-    course: { title: string };
+    course?: { title: string } | null;
     achievedAt?: string | null;
     expiresAt?: string | null;
     uploadedAt?: string | null;

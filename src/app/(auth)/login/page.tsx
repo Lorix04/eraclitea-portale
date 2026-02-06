@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
+import { LogIn } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -32,59 +32,57 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center text-center">
-          <Image
-            src="/brand/eraclitea-logo.svg"
-            alt="Eraclitea"
-            width={320}
-            height={80}
-            priority
-            className="h-20 w-80 object-contain"
-          />
-          <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <LogIn className="h-8 w-8 text-gray-700" />
+          </div>
+          <h1 className="mt-4 text-2xl font-semibold text-gray-900">Accedi</h1>
+        </div>
+        <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-muted-foreground text-center">
             Portale
           </p>
-          <h1 className="text-2xl font-semibold">Accedi al portale</h1>
-        </div>
-        <p className="mt-3 text-center text-sm text-muted-foreground">
-          Inserisci le credenziali fornite dall&apos;ente di formazione.
+        <p className="mt-3 text-center text-sm text-gray-500">
+          Inserisci le tue credenziali per accedere
         </p>
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          <label className="flex flex-col gap-2 text-sm">
+          <label className="flex flex-col gap-2 text-sm text-gray-700">
             Email
             <input
               type="email"
-              className="rounded-md border bg-background px-3 py-2"
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm">
+          <label className="flex flex-col gap-2 text-sm text-gray-700">
             Password
             <input
               type="password"
-              className="rounded-md border bg-background px-3 py-2"
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
             />
           </label>
 
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
-            className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+            className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900 disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Accesso in corso..." : "Accedi"}
           </button>
 
-          <a href="/recupera-password" className="text-center text-sm text-primary">
+          <a
+            href="/recupera-password"
+            className="text-center text-sm text-gray-600 hover:text-gray-800"
+          >
             Hai dimenticato la password?
           </a>
         </form>

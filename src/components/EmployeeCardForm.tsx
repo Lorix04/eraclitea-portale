@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import EmployeeCard from "@/components/EmployeeCard";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
+import { BrandedButton } from "@/components/BrandedButton";
 
 type EmployeeRow = {
   nome: string;
@@ -160,18 +161,17 @@ export default function EmployeeCardForm({
         </div>
         {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
         <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          <BrandedButton
+            size="sm"
             onClick={handleSubmit}
             disabled={readOnly}
           >
             {editingIndex !== null ? "Aggiorna" : "Aggiungi"}
-          </button>
+          </BrandedButton>
           {editingIndex !== null ? (
-            <button
-              type="button"
-              className="rounded-md border px-4 py-2 text-sm"
+            <BrandedButton
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditingIndex(null);
                 setForm(emptyRow);
@@ -179,7 +179,7 @@ export default function EmployeeCardForm({
               disabled={readOnly}
             >
               Annulla
-            </button>
+            </BrandedButton>
           ) : null}
         </div>
       </div>
@@ -207,20 +207,19 @@ export default function EmployeeCardForm({
         )}
       </div>
 
-      <button
-        type="button"
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+      <BrandedButton
+        className="w-full"
         onClick={onSave}
         disabled={saving || readOnly}
       >
         {saving ? "Salvataggio..." : "Salva anagrafiche"}
-      </button>
+      </BrandedButton>
 
       {!readOnly ? (
         <button
           type="button"
           onClick={handleFabAdd}
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-colors hover:bg-primary/90 md:hidden"
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-primary text-white shadow-lg transition-colors hover:opacity-90 md:hidden"
           aria-label="Aggiungi dipendente"
         >
           <Plus className="h-6 w-6" />

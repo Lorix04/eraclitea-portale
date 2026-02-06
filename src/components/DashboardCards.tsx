@@ -1,6 +1,9 @@
-﻿import Link from "next/link";
+﻿"use client";
+
+import Link from "next/link";
 import { formatItalianDate } from "@/lib/date-utils";
 import { Award, BookOpen, Download } from "lucide-react";
+import { useBranding } from "@/components/BrandingProvider";
 
 type AvailableCourse = {
   id: string;
@@ -49,11 +52,12 @@ export default function DashboardCards({
   latestCertificates,
   stats,
 }: DashboardCardsProps) {
+  const { primaryColor } = useBranding();
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="card-surface rounded-2xl p-6">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-primary" />
+          <BookOpen className="h-5 w-5" style={{ color: primaryColor }} />
           <h3 className="text-lg font-semibold">Corsi disponibili</h3>
         </div>
         <div className="mt-4 space-y-3">
@@ -78,7 +82,7 @@ export default function DashboardCards({
           )}
         </div>
         <div className="mt-4">
-          <Link href="/corsi" className="text-sm font-medium text-primary">
+          <Link href="/corsi" className="link-brand text-sm font-medium">
             Vedi tutti {"->"}
           </Link>
         </div>
@@ -108,7 +112,7 @@ export default function DashboardCards({
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted">
                     <div
-                      className="h-2 rounded-full bg-primary"
+                      className="h-2 rounded-full bg-brand-primary"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
@@ -124,7 +128,7 @@ export default function DashboardCards({
 
       <div className="card-surface rounded-2xl p-6">
         <div className="flex items-center gap-2">
-          <Award className="h-5 w-5 text-primary" />
+          <Award className="h-5 w-5" style={{ color: primaryColor }} />
           <h3 className="text-lg font-semibold">Ultimi attestati</h3>
         </div>
         <div className="mt-4 space-y-3">
@@ -141,17 +145,17 @@ export default function DashboardCards({
                 </div>
                 <Link
                   href={`/api/attestati/${cert.id}/download`}
-                  className="rounded-full border border-primary/20 px-2 py-1 text-xs text-primary transition hover:bg-primary/10"
+                  className="btn-brand-outline rounded-full px-2 py-1 text-xs"
                   aria-label="Scarica attestato"
                 >
-                  <Download className="h-4 w-4" />
+                  <Download className="h-4 w-4" style={{ color: primaryColor }} />
                 </Link>
               </div>
             ))
           )}
         </div>
         <div className="mt-4">
-          <Link href="/attestati" className="text-sm font-medium text-primary">
+          <Link href="/attestati" className="link-brand text-sm font-medium">
             Vedi tutti {"->"}
           </Link>
         </div>
@@ -183,3 +187,8 @@ export default function DashboardCards({
     </div>
   );
 }
+
+
+
+
+

@@ -92,13 +92,13 @@ export default function NotificationBell() {
               {hasUnread ? (
                 <button
                   type="button"
-                  className="text-primary"
+                  className="link-brand"
                   onClick={handleReadAll}
                 >
                   Segna tutte
                 </button>
               ) : null}
-              <Link href="/notifiche" className="text-primary">
+              <Link href="/notifiche" className="link-brand">
                 Vedi tutte
               </Link>
             </div>

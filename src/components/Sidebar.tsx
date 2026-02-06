@@ -22,6 +22,7 @@ import {
 const CLIENT_LINKS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/corsi", label: "Corsi", icon: BookOpen },
+  { href: "/dipendenti", label: "Dipendenti", icon: Users },
   { href: "/notifiche", label: "Notifiche", icon: Bell },
   { href: "/attestati", label: "Attestati", icon: Award },
   { href: "/storico", label: "Storico", icon: History },
@@ -33,6 +34,7 @@ const ADMIN_LINKS = [
   { href: "/admin/corsi", label: "Corsi", icon: BookOpen },
   { href: "/admin/categorie", label: "Categorie", icon: Tag },
   { href: "/admin/clienti", label: "Clienti", icon: Users },
+  { href: "/admin/dipendenti", label: "Dipendenti", icon: Users },
   { href: "/admin/attestati", label: "Attestati", icon: UploadCloud },
   { href: "/admin/export", label: "Export", icon: FileText },
   { href: "/admin/audit", label: "Audit", icon: ShieldCheck },

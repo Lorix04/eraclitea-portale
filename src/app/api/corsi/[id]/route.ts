@@ -143,7 +143,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
@@ -151,17 +151,46 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const course = await prisma.course.update({
+  const course = await prisma.course.findUnique({
     where: { id: context.params.id },
-    data: { status: "ARCHIVED" },
+    include: {
+      _count: {
+        select: {
+          registrations: true,
+          lessons: true,
+        },
+      },
+    },
+  });
+
+  if (!course) {
+    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.notification.deleteMany({
+      where: { courseId: course.id },
+    });
+
+    await tx.courseRegistration.deleteMany({
+      where: { courseId: course.id },
+    });
+
+    await tx.course.delete({
+      where: { id: course.id },
+    });
   });
 
   await logAudit({
     userId: session.user.id,
-    action: "COURSE_ARCHIVE",
+    action: "COURSE_DELETE",
     entityType: "Course",
     entityId: course.id,
+    ipAddress: getClientIP(request),
   });
 
-  return NextResponse.json({ data: course });
+  return NextResponse.json({
+    success: true,
+    message: "Corso eliminato con successo",
+  });
 }

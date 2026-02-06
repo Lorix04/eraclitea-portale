@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { courseSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -16,16 +17,60 @@ export async function GET(request: Request) {
   const status = searchParams.get("status");
   const search = searchParams.get("search");
   const categoryId = searchParams.get("categoryId");
+  const visibilityTypeParam = searchParams.get("visibilityType");
+  const sortBy = searchParams.get("sortBy") || "createdAt";
+  const sortOrder: Prisma.SortOrder =
+    searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
+  const dateFrom = searchParams.get("dateFrom");
+  const dateTo = searchParams.get("dateTo");
 
   const where: Record<string, unknown> = {};
   if (status) {
     where.status = status;
   }
   if (search) {
-    where.title = { contains: search, mode: "insensitive" };
+    where.title = { contains: search, mode: Prisma.QueryMode.insensitive };
   }
   if (categoryId) {
     where.categories = { some: { categoryId } };
+  }
+  if (visibilityTypeParam) {
+    const normalized =
+      visibilityTypeParam === "PUBLIC"
+        ? "ALL"
+        : visibilityTypeParam === "PRIVATE"
+          ? "SELECTED_CLIENTS"
+          : visibilityTypeParam;
+    where.visibilityType = normalized;
+  }
+  if (dateFrom || dateTo) {
+    const range: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) {
+      const parsed = new Date(dateFrom);
+      if (!Number.isNaN(parsed.getTime())) {
+        range.gte = parsed;
+      }
+    }
+    if (dateTo) {
+      const parsed = new Date(`${dateTo}T23:59:59.999Z`);
+      if (!Number.isNaN(parsed.getTime())) {
+        range.lte = parsed;
+      }
+    }
+    if (Object.keys(range).length) {
+      where.dateStart = range;
+    }
+  }
+
+  let orderBy: Prisma.CourseOrderByWithRelationInput = {
+    createdAt: "desc",
+  };
+  if (sortBy === "title") {
+    orderBy = { title: sortOrder };
+  } else if (sortBy === "dateStart") {
+    orderBy = { dateStart: sortOrder };
+  } else {
+    orderBy = { createdAt: sortOrder };
   }
 
   const courses = await prisma.course.findMany({
@@ -33,8 +78,9 @@ export async function GET(request: Request) {
     include: {
       visibility: true,
       categories: { include: { category: true } },
+      _count: { select: { registrations: true, lessons: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy,
   });
 
   return NextResponse.json({ data: courses });
