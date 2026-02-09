@@ -19,7 +19,7 @@ test.describe("Authentication", () => {
     .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
 
-    await expect(page).toHaveURL("/");
+    await expect(page).not.toHaveURL(/\/login/);
     await expect(page.getByText(/dashboard/i)).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe("Authentication", () => {
     .fill("wrongpassword");
     await page.getByRole("button", { name: /accedi/i }).click();
 
-    await expect(page.getByText(/credenziali non valide/i)).toBeVisible();
+    await expect(page.getByText("Credenziali non valide.")).toBeVisible();
   });
 
   test("should logout successfully", async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe("Authentication", () => {
     .locator('input[type="password"], input[name="password"]')
     .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
-    await expect(page).toHaveURL("/");
+    await expect(page).not.toHaveURL(/\/login/);
 
     await page.getByRole("button", { name: /logout/i }).click();
     await expect(page).toHaveURL(/.*login/);

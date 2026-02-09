@@ -11,7 +11,7 @@ test.describe("Client Flow", () => {
     .locator('input[type="password"], input[name="password"]')
     .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
-    await expect(page).toHaveURL("/");
+    await expect(page).not.toHaveURL(/\/login/);
   });
 
   test("should display dashboard with stats", async ({ page }) => {

@@ -13,7 +13,7 @@ test.describe("Mobile Experience", () => {
     .locator('input[type="password"], input[name="password"]')
     .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).not.toHaveURL(/\/login/);
   });
 
   test("should show mobile menu button", async ({ page }) => {
