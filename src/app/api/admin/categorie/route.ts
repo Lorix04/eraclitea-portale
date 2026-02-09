@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     where,
     include: {
       courses: includeStats
-        ? { include: { course: { select: { id: true, title: true, status: true } } } }
+        ? { include: { course: { select: { id: true, title: true } } } }
         : false,
       clients: includeStats
         ? { include: { client: { select: { id: true, ragioneSociale: true, isActive: true } } } }

@@ -4,31 +4,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
+const CLIENT_NOTIFICATION_TYPES = ["COURSE_PUBLISHED", "CERT_UPLOADED"] as const;
+const CLIENT_NOTIFICATION_TYPES_ARRAY = [...CLIENT_NOTIFICATION_TYPES];
+
 function visibilityFilter(
   clientId: string,
-  categoryIds: string[]
+  _categoryIds: string[]
 ): Prisma.NotificationWhereInput {
   return {
     OR: [
       { isGlobal: true },
-      { course: { visibilityType: "ALL", visibility: { none: {} } } },
-      {
-        course: {
-          visibilityType: "SELECTED_CLIENTS",
-          visibility: { some: { clientId } },
-        },
-      },
-      {
-        course: {
-          visibilityType: "BY_CATEGORY",
-          visibilityCategories: {
-            some: {
-              categoryId: { in: categoryIds.length ? categoryIds : [""] },
-            },
-          },
-        },
-      },
-      { course: { visibility: { some: { clientId } } } },
+      { courseEdition: { clientId } },
     ],
   };
 }
@@ -52,6 +38,7 @@ export async function POST() {
   const notifications = await prisma.notification.findMany({
     where: {
       ...visibilityFilter(clientId, clientCategoryIds),
+      type: { in: CLIENT_NOTIFICATION_TYPES_ARRAY },
     },
     select: { id: true },
   });

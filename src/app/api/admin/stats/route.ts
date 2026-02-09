@@ -29,11 +29,11 @@ export async function GET() {
     prisma.client.count(),
     prisma.client.count({ where: { isActive: true } }),
     prisma.course.count(),
-    prisma.course.count({ where: { status: "PUBLISHED" } }),
+    prisma.courseEdition.count({ where: { status: "PUBLISHED" } }),
     prisma.employee.count(),
     prisma.certificate.count(),
     prisma.courseRegistration.count({ where: { status: "CONFIRMED" } }),
-    prisma.course.count({
+    prisma.courseEdition.count({
       where: {
         status: "PUBLISHED",
         deadlineRegistry: { gte: now, lte: weekFromNow },
@@ -53,7 +53,12 @@ export async function GET() {
       orderBy: { updatedAt: "desc" },
       include: {
         client: { select: { ragioneSociale: true } },
-        course: { select: { title: true } },
+        courseEdition: {
+          select: {
+            editionNumber: true,
+            course: { select: { title: true } },
+          },
+        },
         employee: { select: { nome: true, cognome: true } },
       },
     }),

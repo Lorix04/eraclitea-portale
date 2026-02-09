@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 export default function ResetPasswordPage({
   params,
@@ -17,6 +20,7 @@ export default function ResetPasswordPage({
   const [isValid, setIsValid] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`/api/auth/reset-password/${params.token}`)
@@ -34,14 +38,27 @@ export default function ResetPasswordPage({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (password !== confirmPassword) {
-      setError("Le password non coincidono");
+    const nextErrors: Record<string, string> = {};
+    if (!password.trim()) {
+      nextErrors.password = "Questo campo è obbligatorio";
+    }
+    if (!confirmPassword.trim()) {
+      nextErrors.confirmPassword = "Questo campo è obbligatorio";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
       return;
     }
 
     if (password.length < 8) {
-      setError("La password deve essere di almeno 8 caratteri");
+      setFieldErrors({ password: "La password deve essere di almeno 8 caratteri" });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFieldErrors({ confirmPassword: "Le password non coincidono" });
       return;
     }
 
@@ -128,28 +145,46 @@ export default function ResetPasswordPage({
             </div>
           ) : null}
 
-          <label className="flex flex-col gap-2 text-sm">
-            Nuova password
+          <FormRequiredLegend />
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Nuova password</FormLabel>
             <input
               type="password"
-              className="rounded-md border bg-background px-3 py-2"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                fieldErrors.password
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              minLength={8}
-              required
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (fieldErrors.password) {
+                  setFieldErrors((prev) => ({ ...prev, password: "" }));
+                }
+              }}
             />
-          </label>
+            <FormFieldError message={fieldErrors.password} />
+          </div>
 
-          <label className="flex flex-col gap-2 text-sm">
-            Conferma password
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Conferma password</FormLabel>
             <input
               type="password"
-              className="rounded-md border bg-background px-3 py-2"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                fieldErrors.confirmPassword
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
               value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              required
+              onChange={(event) => {
+                setConfirmPassword(event.target.value);
+                if (fieldErrors.confirmPassword) {
+                  setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+                }
+              }}
             />
-          </label>
+            <FormFieldError message={fieldErrors.confirmPassword} />
+          </div>
 
           <button
             type="submit"

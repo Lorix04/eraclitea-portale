@@ -15,27 +15,33 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const course = await prisma.course.findFirst({
+  const edition = await prisma.courseEdition.findFirst({
     where: {
       id: params.id,
+      clientId: session.user.clientId,
       status: "PUBLISHED",
       OR: [
         { deadlineRegistry: null },
         { deadlineRegistry: { gte: new Date() } },
       ],
     },
+    select: {
+      id: true,
+      editionNumber: true,
+      course: { select: { title: true } },
+    },
   });
 
-  if (!course) {
+  if (!edition) {
     return NextResponse.json(
-      { error: "Corso non disponibile o deadline superata" },
+      { error: "Edizione non disponibile o deadline superata" },
       { status: 400 }
     );
   }
 
   const registrations = await prisma.courseRegistration.findMany({
     where: {
-      courseId: params.id,
+      courseEditionId: params.id,
       clientId: session.user.clientId,
       status: "INSERTED",
     },
@@ -71,7 +77,7 @@ export async function POST(
 
   await prisma.courseRegistration.updateMany({
     where: {
-      courseId: params.id,
+      courseEditionId: params.id,
       clientId: session.user.clientId,
       status: "INSERTED",
     },
@@ -81,7 +87,7 @@ export async function POST(
   await logAudit({
     userId: session.user.id,
     action: "REGISTRY_SUBMIT",
-    entityType: "CourseRegistration",
+    entityType: "CourseEdition",
     entityId: params.id,
     ipAddress: getClientIP(request),
   });
@@ -97,10 +103,10 @@ export async function POST(
     admins.map((admin) =>
       send({
         to: admin.email,
-        subject: `Anagrafiche ricevute: ${course.title}`,
+        subject: `Anagrafiche ricevute: ${edition.course.title} (Ed. #${edition.editionNumber})`,
         html: registrySubmittedTemplate(
           client?.ragioneSociale ?? "Cliente",
-          course.title,
+          `${edition.course.title} (Ed. #${edition.editionNumber})`,
           registrations.length
         ),
       })

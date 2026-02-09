@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type EmployeeRow = {
   id: string;
@@ -60,14 +61,33 @@ export default function EmployeeTable({
             </thead>
             <tbody>
               {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={showClient ? 7 : 6}
-                    className="px-4 py-6 text-center text-muted-foreground"
-                  >
-                    Caricamento dipendenti...
-                  </td>
-                </tr>
+                Array.from({ length: 6 }).map((_, row) => (
+                  <tr key={`emp-skel-${row}`} className="border-t">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-28" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-32" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-40" />
+                    </td>
+                    {showClient ? (
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-32" />
+                      </td>
+                    ) : null}
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-10" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-6 w-16" />
+                    </td>
+                  </tr>
+                ))
               ) : employees.length === 0 ? (
                 <tr>
                   <td
@@ -130,8 +150,21 @@ export default function EmployeeTable({
 
       <div className="space-y-3 md:hidden">
         {isLoading ? (
-          <div className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            Caricamento dipendenti...
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`emp-mobile-skel-${index}`}
+                className="rounded-lg border border-gray-200 bg-white p-4"
+              >
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="mt-2 h-3 w-40" />
+                <Skeleton className="mt-2 h-3 w-36" />
+                <div className="mt-3 flex items-center justify-between">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : employees.length === 0 ? (
           <div className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">

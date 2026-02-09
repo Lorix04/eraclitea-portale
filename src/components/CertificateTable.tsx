@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
@@ -9,11 +9,16 @@ import { useDataTableKeyboard } from "@/components/ui/data-table-keyboard";
 import { trackEvent } from "@/lib/analytics";
 import { useBranding } from "@/components/BrandingProvider";
 import { BrandedButton } from "@/components/BrandedButton";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type CertificateRow = {
   id: string;
   employee: { nome: string; cognome: string };
-  course?: { title: string } | null;
+  courseEdition?: {
+    id: string;
+    editionNumber: number;
+    course?: { title: string } | null;
+  } | null;
   achievedAt?: string | null;
   expiresAt?: string | null;
   uploadedAt?: string | null;
@@ -37,7 +42,6 @@ function formatDate(value?: string | null) {
   return formatItalianDate(value) || "-";
 }
 
-
 function getExpiryBadge(expiresAt?: string | null) {
   if (!expiresAt) {
     return { label: "Valido", className: "bg-emerald-100 text-emerald-700" };
@@ -52,6 +56,12 @@ function getExpiryBadge(expiresAt?: string | null) {
     return { label: "In scadenza", className: "bg-orange-100 text-orange-700" };
   }
   return { label: "Valido", className: "bg-emerald-100 text-emerald-700" };
+}
+
+function getCourseLabel(cert: CertificateRow) {
+  const title = cert.courseEdition?.course?.title ?? "Esterno";
+  const edition = cert.courseEdition?.editionNumber;
+  return edition ? `${title} (Ed. #${edition})` : title;
 }
 
 export default function CertificateTable({
@@ -202,14 +212,34 @@ export default function CertificateTable({
             </thead>
             <tbody>
               {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-6 text-center text-muted-foreground"
-                  >
-                    Caricamento attestati...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, row) => (
+                  <tr key={`cert-skel-${row}`} className="border-t">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-4" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-32" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-40" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-6 w-8" />
+                    </td>
+                  </tr>
+                ))
               ) : certificates.length === 0 ? (
                 <tr>
                   <td
@@ -252,9 +282,7 @@ export default function CertificateTable({
                       <td className="px-4 py-3">
                         {cert.employee.cognome} {cert.employee.nome}
                       </td>
-                      <td className="px-4 py-3">
-                        {cert.course?.title ?? "Esterno"}
-                      </td>
+                      <td className="px-4 py-3">{getCourseLabel(cert)}</td>
                       <td
                         className="px-4 py-3"
                         title={`${uploadedInfo}${uploaderInfo}`}
@@ -307,8 +335,21 @@ export default function CertificateTable({
         </div>
 
         {isLoading ? (
-          <div className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
-            Caricamento attestati...
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={`cert-mobile-skel-${index}`}
+                className="rounded-lg border border-gray-200 bg-white p-4"
+              >
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="mt-2 h-3 w-40" />
+                <div className="mt-3 flex gap-2">
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </div>
+                <Skeleton className="mt-3 h-4 w-28" />
+              </div>
+            ))}
           </div>
         ) : certificates.length === 0 ? (
           <div className="rounded-lg border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
@@ -334,7 +375,7 @@ export default function CertificateTable({
                       {cert.employee.cognome} {cert.employee.nome}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {cert.course?.title ?? "Esterno"}
+                      {getCourseLabel(cert)}
                     </p>
                   </div>
                   <input

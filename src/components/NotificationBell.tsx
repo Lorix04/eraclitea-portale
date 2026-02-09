@@ -9,6 +9,7 @@ import NotificationList, {
   type NotificationItem,
 } from "@/components/NotificationList";
 import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function NotificationBell() {
   const router = useRouter();
@@ -52,8 +53,12 @@ export default function NotificationBell() {
       markAsRead.mutate(item.id);
     }
     setOpen(false);
-    if (item.courseId) {
-      router.push(`/corsi/${item.courseId}`);
+    if (item.type === "CERT_UPLOADED") {
+      router.push("/attestati");
+      return;
+    }
+    if (item.courseEditionId) {
+      router.push(`/corsi/${item.courseEditionId}`);
       return;
     }
     router.push("/notifiche");
@@ -105,9 +110,17 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-[360px] overflow-auto p-2">
             {isLoading ? (
-              <p className="px-3 py-4 text-sm text-muted-foreground">
-                Caricamento...
-              </p>
+              <div className="space-y-2 px-2 py-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={`notification-skeleton-${index}`}
+                    className="rounded-md border border-gray-200 bg-white p-3"
+                  >
+                    <Skeleton className="h-3 w-3/4" />
+                    <Skeleton className="mt-2 h-3 w-1/2" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <NotificationList
                 items={items}

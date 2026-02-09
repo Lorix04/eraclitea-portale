@@ -14,20 +14,14 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
   const search = searchParams.get("search");
   const categoryId = searchParams.get("categoryId");
   const visibilityTypeParam = searchParams.get("visibilityType");
   const sortBy = searchParams.get("sortBy") || "createdAt";
   const sortOrder: Prisma.SortOrder =
     searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
-  const dateFrom = searchParams.get("dateFrom");
-  const dateTo = searchParams.get("dateTo");
 
   const where: Record<string, unknown> = {};
-  if (status) {
-    where.status = status;
-  }
   if (search) {
     where.title = { contains: search, mode: Prisma.QueryMode.insensitive };
   }
@@ -43,32 +37,12 @@ export async function GET(request: Request) {
           : visibilityTypeParam;
     where.visibilityType = normalized;
   }
-  if (dateFrom || dateTo) {
-    const range: { gte?: Date; lte?: Date } = {};
-    if (dateFrom) {
-      const parsed = new Date(dateFrom);
-      if (!Number.isNaN(parsed.getTime())) {
-        range.gte = parsed;
-      }
-    }
-    if (dateTo) {
-      const parsed = new Date(`${dateTo}T23:59:59.999Z`);
-      if (!Number.isNaN(parsed.getTime())) {
-        range.lte = parsed;
-      }
-    }
-    if (Object.keys(range).length) {
-      where.dateStart = range;
-    }
-  }
 
   let orderBy: Prisma.CourseOrderByWithRelationInput = {
     createdAt: "desc",
   };
   if (sortBy === "title") {
     orderBy = { title: sortOrder };
-  } else if (sortBy === "dateStart") {
-    orderBy = { dateStart: sortOrder };
   } else {
     orderBy = { createdAt: sortOrder };
   }
@@ -78,12 +52,23 @@ export async function GET(request: Request) {
     include: {
       visibility: true,
       categories: { include: { category: true } },
-      _count: { select: { registrations: true, lessons: true } },
+      _count: { select: { editions: true } },
+      editions: { select: { status: true } },
     },
     orderBy,
   });
 
-  return NextResponse.json({ data: courses });
+  const data = courses.map((course) => {
+    const activeEditions =
+      course.editions?.filter((edition) => edition.status === "PUBLISHED")
+        .length ?? 0;
+    return {
+      ...course,
+      activeEditions,
+    };
+  });
+
+  return NextResponse.json({ data });
 }
 
 export async function POST(request: Request) {
@@ -115,11 +100,6 @@ export async function POST(request: Request) {
       description: data.description || null,
       durationHours:
         typeof data.durationHours === "number" ? data.durationHours : null,
-      dateStart: data.dateStart instanceof Date ? data.dateStart : null,
-      dateEnd: data.dateEnd instanceof Date ? data.dateEnd : null,
-      deadlineRegistry:
-        data.deadlineRegistry instanceof Date ? data.deadlineRegistry : null,
-      status: data.status ?? "DRAFT",
       visibilityType,
       visibility: visibilityType === "SELECTED_CLIENTS" && visibilityClientIds.length
         ? {

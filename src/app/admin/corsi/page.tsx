@@ -1,26 +1,12 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { formatItalianDate } from "@/lib/date-utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { toast } from "sonner";
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Bozza",
-  PUBLISHED: "Pubblicato",
-  CLOSED: "Chiuso",
-  ARCHIVED: "Archiviato",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  PUBLISHED: "bg-emerald-100 text-emerald-700",
-  CLOSED: "bg-orange-100 text-orange-700",
-  ARCHIVED: "bg-red-100 text-red-700",
-};
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Course = {
   id: string;
@@ -32,13 +18,10 @@ type Course = {
     color?: string | null;
   }>;
   durationHours?: number | null;
-  dateStart?: string | null;
-  deadlineRegistry?: string | null;
-  status: string;
   visibilityType?: string;
+  activeEditions?: number;
   _count?: {
-    registrations?: number;
-    lessons?: number;
+    editions?: number;
   };
 };
 
@@ -55,25 +38,19 @@ const VISIBILITY_LABELS: Record<string, string> = {
 };
 
 export default function AdminCorsiPage() {
-  const [statusFilter, setStatusFilter] = useState("all");
   const [searchTitle, setSearchTitle] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [visibilityType, setVisibilityType] = useState("all");
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [categories, setCategories] = useState<
-    { id: string; name: string }[]
-  >([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<{
     id: string;
     title: string;
-    registrationsCount: number;
-    lessonsCount: number;
+    editionsCount: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -81,26 +58,14 @@ export default function AdminCorsiPage() {
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (categoryFilter !== "all") params.set("categoryId", categoryFilter);
     if (visibilityType !== "all") params.set("visibilityType", visibilityType);
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder) params.set("sortOrder", sortOrder);
-    if (dateFrom) params.set("dateFrom", dateFrom);
-    if (dateTo) params.set("dateTo", dateTo);
     const qs = params.toString();
     return qs ? `?${qs}` : "";
-  }, [
-    statusFilter,
-    debouncedSearch,
-    categoryFilter,
-    visibilityType,
-    sortBy,
-    sortOrder,
-    dateFrom,
-    dateTo,
-  ]);
+  }, [debouncedSearch, categoryFilter, visibilityType, sortBy, sortOrder]);
 
   const loadCourses = useCallback(async () => {
     setLoading(true);
@@ -119,10 +84,12 @@ export default function AdminCorsiPage() {
       const res = await fetch("/api/admin/categorie");
       const json = await res.json();
       const data = Array.isArray(json) ? json : json.data ?? [];
-      setCategories(data.map((cat: { id: string; name: string }) => ({
-        id: cat.id,
-        name: cat.name,
-      })));
+      setCategories(
+        data.map((cat: { id: string; name: string }) => ({
+          id: cat.id,
+          name: cat.name,
+        }))
+      );
     };
     loadCategories();
   }, []);
@@ -131,8 +98,7 @@ export default function AdminCorsiPage() {
     setCourseToDelete({
       id: course.id,
       title: course.title,
-      registrationsCount: course._count?.registrations ?? 0,
-      lessonsCount: course._count?.lessons ?? 0,
+      editionsCount: course._count?.editions ?? 0,
     });
     setDeleteModalOpen(true);
   };
@@ -167,28 +133,12 @@ export default function AdminCorsiPage() {
     setCourseToDelete(null);
   };
 
-  const handleStatusChange = async (id: string, status: string) => {
-    if (status === "PUBLISHED") {
-      await fetch(`/api/corsi/${id}/pubblica`, { method: "POST" });
-    } else {
-      await fetch(`/api/corsi/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-    }
-    loadCourses();
-  };
-
   const resetFilters = () => {
-    setStatusFilter("all");
     setSearchTitle("");
     setCategoryFilter("all");
     setVisibilityType("all");
     setSortBy("createdAt");
     setSortOrder("desc");
-    setDateFrom("");
-    setDateTo("");
   };
 
   return (
@@ -197,7 +147,7 @@ export default function AdminCorsiPage() {
         <div>
           <h1 className="text-xl font-semibold">Corsi</h1>
           <p className="text-sm text-muted-foreground">
-            Gestisci i corsi pubblicati dall&apos;ente di formazione.
+            Gestisci i corsi template e le edizioni associate.
           </p>
         </div>
         <Link
@@ -222,18 +172,6 @@ export default function AdminCorsiPage() {
           </div>
           <select
             className="rounded-md border bg-background px-3 py-2 text-sm"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            aria-label="Filtro stato corsi"
-          >
-            <option value="all">Tutti gli stati</option>
-            <option value="DRAFT">Bozza</option>
-            <option value="PUBLISHED">Pubblicato</option>
-            <option value="CLOSED">Chiuso</option>
-            <option value="ARCHIVED">Archiviato</option>
-          </select>
-          <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
             aria-label="Filtro categoria corsi"
@@ -252,13 +190,10 @@ export default function AdminCorsiPage() {
             aria-label="Filtro visibilita corsi"
           >
             <option value="all">Tutte le visibilita</option>
-            <option value="PUBLIC">Pubblico (tutti i clienti)</option>
-            <option value="PRIVATE">Privato (clienti selezionati)</option>
+            <option value="ALL">Tutti</option>
+            <option value="SELECTED_CLIENTS">Clienti selezionati</option>
             <option value="BY_CATEGORY">Per categoria</option>
           </select>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
           <select
             className="rounded-md border bg-background px-3 py-2 text-sm"
             value={`${sortBy}-${sortOrder}`}
@@ -273,27 +208,7 @@ export default function AdminCorsiPage() {
             <option value="createdAt-asc">Piu antichi</option>
             <option value="title-asc">Titolo A-Z</option>
             <option value="title-desc">Titolo Z-A</option>
-            <option value="dateStart-asc">Data inizio crescente</option>
-            <option value="dateStart-desc">Data inizio decrescente</option>
           </select>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>Inizio da:</span>
-            <input
-              type="date"
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-              aria-label="Data inizio da"
-            />
-            <span>a:</span>
-            <input
-              type="date"
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-              aria-label="Data inizio a"
-            />
-          </div>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">
               {courses.length} corsi
@@ -317,23 +232,26 @@ export default function AdminCorsiPage() {
               <th className="px-4 py-3">Titolo</th>
               <th className="px-4 py-3">Categorie</th>
               <th className="px-4 py-3">Ore</th>
-              <th className="px-4 py-3">Data Inizio</th>
-              <th className="px-4 py-3">Deadline Anagrafiche</th>
               <th className="px-4 py-3">Visibilita</th>
-              <th className="px-4 py-3">Stato</th>
+              <th className="px-4 py-3">Edizioni attive</th>
+              <th className="px-4 py-3">Totale edizioni</th>
               <th className="px-4 py-3">Azioni</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">
-                  Caricamento...
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, row) => (
+                <tr key={`course-skel-${row}`} className="border-t">
+                  {Array.from({ length: 7 }).map((__, col) => (
+                    <td key={col} className="px-4 py-3">
+                      <Skeleton className="h-4 w-full" />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : courses.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
                   Nessun corso trovato.
                 </td>
               </tr>
@@ -363,16 +281,6 @@ export default function AdminCorsiPage() {
                   </td>
                   <td className="px-4 py-3">{course.durationHours ?? "-"}</td>
                   <td className="px-4 py-3">
-                    {course.dateStart
-                      ? formatItalianDate(course.dateStart)
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {course.deadlineRegistry
-                      ? formatItalianDate(course.deadlineRegistry)
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3">
                     <span
                       className={`rounded-full px-2 py-1 text-xs ${
                         VISIBILITY_BADGE[course.visibilityType ?? ""] ??
@@ -382,36 +290,22 @@ export default function AdminCorsiPage() {
                       {VISIBILITY_LABELS[course.visibilityType ?? ""] ?? "-"}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        STATUS_BADGE[course.status] ?? "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {STATUS_LABELS[course.status] ?? course.status}
-                    </span>
-                  </td>
+                  <td className="px-4 py-3">{course.activeEditions ?? 0}</td>
+                  <td className="px-4 py-3">{course._count?.editions ?? 0}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/admin/corsi/${course.id}`}
+                        className="text-xs text-primary"
+                      >
+                        Dettaglio
+                      </Link>
                       <Link
                         href={`/admin/corsi/${course.id}/edit`}
                         className="text-xs text-primary"
                       >
                         Modifica
                       </Link>
-                      <select
-                        className="rounded-md border bg-background px-2 py-1 text-xs"
-                        value=""
-                        onChange={(event) => {
-                          if (!event.target.value) return;
-                          handleStatusChange(course.id, event.target.value);
-                        }}
-                      >
-                        <option value="">Cambia stato</option>
-                        <option value="DRAFT">Bozza</option>
-                        <option value="PUBLISHED">Pubblica</option>
-                        <option value="CLOSED">Chiudi</option>
-                      </select>
                       <button
                         type="button"
                         className="text-xs text-destructive"
@@ -437,11 +331,9 @@ export default function AdminCorsiPage() {
         itemName={courseToDelete?.title}
         isDeleting={isDeleting}
         warningMessage={
-          courseToDelete &&
-          (courseToDelete.registrationsCount > 0 ||
-            courseToDelete.lessonsCount > 0)
-            ? `Questo corso ha ${courseToDelete.registrationsCount} iscrizioni e ${courseToDelete.lessonsCount} lezioni. Tutti i dati associati verranno eliminati permanentemente.`
-            : "Questa azione non può essere annullata."
+          courseToDelete && courseToDelete.editionsCount > 0
+            ? `Questo corso ha ${courseToDelete.editionsCount} edizioni. Tutti i dati associati verranno eliminati permanentemente.`
+            : "Questa azione non puo essere annullata."
         }
       />
     </div>

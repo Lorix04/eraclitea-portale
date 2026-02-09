@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -7,6 +7,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type CertificateRow = {
   id: string;
@@ -16,7 +17,11 @@ type CertificateRow = {
   employeeId: string;
   employee?: { nome: string; cognome: string };
   client?: { ragioneSociale: string };
-  course?: { title: string } | null;
+  courseEdition?: {
+    id: string;
+    editionNumber?: number | null;
+    course?: { title: string } | null;
+  } | null;
 };
 
 type ClientOption = {
@@ -28,6 +33,13 @@ type EmployeeOption = {
   id: string;
   nome: string;
   cognome: string;
+};
+
+type EditionOption = {
+  id: string;
+  editionNumber?: number | null;
+  course?: { title?: string | null } | null;
+  client?: { ragioneSociale?: string | null } | null;
 };
 
 type ApiResponse = {
@@ -43,6 +55,17 @@ function getFileName(filePath: string) {
   return parts[parts.length - 1] || filePath;
 }
 
+function getEditionLabel(edition: EditionOption, includeClient: boolean) {
+  const title = edition.course?.title ?? "Corso";
+  const editionNumber = edition.editionNumber
+    ? `Ed. #${edition.editionNumber}`
+    : "Edizione";
+  const clientLabel = edition.client?.ragioneSociale
+    ? ` · ${edition.client.ragioneSociale}`
+    : "";
+  return `${title} (${editionNumber})${includeClient ? clientLabel : ""}`;
+}
+
 export default function AdminAttestatiPage() {
   const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +75,7 @@ export default function AdminAttestatiPage() {
 
   const [clientId, setClientId] = useState<string | null>(null);
   const [employeeId, setEmployeeId] = useState<string | null>(null);
-  const [courseId, setCourseId] = useState<string | null>(null);
+  const [courseEditionId, setCourseEditionId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -64,9 +87,7 @@ export default function AdminAttestatiPage() {
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>(
-    []
-  );
+  const [editions, setEditions] = useState<EditionOption[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [certificateToDelete, setCertificateToDelete] = useState<{
     id: string;
@@ -82,7 +103,7 @@ export default function AdminAttestatiPage() {
     params.set("limit", "20");
     if (clientId) params.set("clientId", clientId);
     if (employeeId) params.set("employeeId", employeeId);
-    if (courseId) params.set("courseId", courseId);
+    if (courseEditionId) params.set("courseEditionId", courseEditionId);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (debouncedSearchEmployee) {
       params.set("searchEmployee", debouncedSearchEmployee);
@@ -106,7 +127,7 @@ export default function AdminAttestatiPage() {
     page,
     clientId,
     employeeId,
-    courseId,
+    courseEditionId,
     debouncedSearch,
     debouncedSearchEmployee,
     sortOrder,
@@ -127,11 +148,14 @@ export default function AdminAttestatiPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/corsi")
+    const url = clientId
+      ? `/api/edizioni?clientId=${clientId}&limit=500`
+      : "/api/edizioni?limit=500";
+    fetch(url)
       .then((res) => res.json())
-      .then((data) => setCourses(data.data || data || []))
-      .catch(() => setCourses([]));
-  }, []);
+      .then((data) => setEditions(data.data || data || []))
+      .catch(() => setEditions([]));
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId) {
@@ -199,7 +223,7 @@ export default function AdminAttestatiPage() {
     const params = new URLSearchParams();
     if (clientId) params.set("clientId", clientId);
     if (employeeId) params.set("employeeId", employeeId);
-    if (courseId) params.set("courseId", courseId);
+    if (courseEditionId) params.set("courseEditionId", courseEditionId);
 
     const res = await fetch(`/api/attestati/download-all?${params.toString()}`);
     if (!res.ok) {
@@ -223,7 +247,7 @@ export default function AdminAttestatiPage() {
   const resetFilters = () => {
     setClientId(null);
     setEmployeeId(null);
-    setCourseId(null);
+    setCourseEditionId(null);
     setSearch("");
     setSearchEmployee("");
     setSortOrder("desc");
@@ -299,18 +323,18 @@ export default function AdminAttestatiPage() {
 
           <select
             className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
-            value={courseId ?? "all"}
+            value={courseEditionId ?? "all"}
             onChange={(event) => {
               const value = event.target.value;
-              setCourseId(value === "all" ? null : value);
+              setCourseEditionId(value === "all" ? null : value);
               setPage(1);
             }}
           >
-            <option value="all">Tutti i corsi</option>
+            <option value="all">Tutte le edizioni</option>
             <option value="external">Solo esterni</option>
-            {courses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.title}
+            {editions.map((edition) => (
+              <option key={edition.id} value={edition.id}>
+                {getEditionLabel(edition, !clientId)}
               </option>
             ))}
           </select>
@@ -427,11 +451,31 @@ export default function AdminAttestatiPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground">
-                  Caricamento...
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, index) => (
+                <tr key={`skeleton-${index}`} className="border-t">
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-40" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-32" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-28" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-36" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-24" />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </td>
+                </tr>
+              ))
             ) : certificates.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-muted-foreground">
@@ -459,8 +503,8 @@ export default function AdminAttestatiPage() {
                       {cert.client?.ragioneSociale || "-"}
                     </td>
                     <td className="px-4 py-3">
-                      {cert.course?.title ? (
-                        cert.course.title
+                      {cert.courseEdition ? (
+                        <span>{getEditionLabel(cert.courseEdition, true)}</span>
                       ) : (
                         <span className="italic text-muted-foreground">Esterno</span>
                       )}
@@ -539,3 +583,5 @@ export default function AdminAttestatiPage() {
     </div>
   );
 }
+
+

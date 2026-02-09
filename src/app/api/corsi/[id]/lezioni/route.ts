@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
@@ -40,25 +40,27 @@ export async function GET(
   const safeLimit = limit ?? 20;
   const skip = (safePage - 1) * safeLimit;
 
-  const course = await prisma.course.findUnique({
+  const edition = await prisma.courseEdition.findUnique({
     where: { id: context.params.id },
     select: { id: true },
   });
 
-  if (!course) {
-    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  if (!edition) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
   const [lessons, total, totalEmployees] = await prisma.$transaction([
     prisma.lesson.findMany({
-      where: { courseId: context.params.id },
+      where: { courseEditionId: context.params.id },
       orderBy: { date: "asc" },
       include: { _count: { select: { attendances: true } } },
       skip,
       take: safeLimit,
     }),
-    prisma.lesson.count({ where: { courseId: context.params.id } }),
-    prisma.courseRegistration.count({ where: { courseId: context.params.id } }),
+    prisma.lesson.count({ where: { courseEditionId: context.params.id } }),
+    prisma.courseRegistration.count({
+      where: { courseEditionId: context.params.id },
+    }),
   ]);
 
   const lessonIds = lessons.map((lesson) => lesson.id);
@@ -135,7 +137,7 @@ export async function POST(
   try {
     const lesson = await prisma.lesson.create({
       data: {
-        courseId: context.params.id,
+        courseEditionId: context.params.id,
         date: parsedDate,
         startTime: startTime || null,
         endTime: endTime || null,
@@ -159,3 +161,4 @@ export async function POST(
     return NextResponse.json({ error: "Errore creazione lezione" }, { status: 500 });
   }
 }
+

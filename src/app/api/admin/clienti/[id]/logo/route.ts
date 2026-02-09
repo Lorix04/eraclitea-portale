@@ -6,14 +6,21 @@ import { deleteClientLogo, saveClientLogo } from "@/lib/client-logo-storage";
 
 export const runtime = "nodejs";
 
-const MAX_SIZE = 2 * 1024 * 1024;
-const ALLOWED_TYPES = new Set([
+const MAX_LOGO_SIZE = 2 * 1024 * 1024;
+const MAX_FAVICON_SIZE = 1 * 1024 * 1024;
+const LOGO_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "image/jpg",
   "image/svg+xml",
   "image/webp",
   "image/gif",
+]);
+const FAVICON_TYPES = new Set([
+  "image/png",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
 ]);
 
 export async function POST(
@@ -28,29 +35,41 @@ export async function POST(
   const formData = await request.formData();
   const file = formData.get("logo");
   const typeRaw = String(formData.get("type") || "main");
-  const type = typeRaw === "light" ? "light" : "main";
+  const type =
+    typeRaw === "light" ? "light" : typeRaw === "favicon" ? "favicon" : "main";
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "File mancante" }, { status: 400 });
   }
 
-  if (!ALLOWED_TYPES.has(file.type)) {
+  const allowedTypes = type === "favicon" ? FAVICON_TYPES : LOGO_TYPES;
+  const maxSize = type === "favicon" ? MAX_FAVICON_SIZE : MAX_LOGO_SIZE;
+
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  const isIco = extension === "ico";
+
+  if (!allowedTypes.has(file.type) && !(type === "favicon" && isIco)) {
     return NextResponse.json(
       { error: "Formato non supportato" },
       { status: 400 }
     );
   }
 
-  if (file.size > MAX_SIZE) {
+  if (file.size > maxSize) {
     return NextResponse.json(
-      { error: "Il file supera la dimensione massima di 2MB" },
+      {
+        error:
+          type === "favicon"
+            ? "Il file supera la dimensione massima di 1MB"
+            : "Il file supera la dimensione massima di 2MB",
+      },
       { status: 400 }
     );
   }
 
   const client = await prisma.client.findUnique({
     where: { id: context.params.id },
-    select: { id: true, logoPath: true, logoLightPath: true },
+    select: { id: true, logoPath: true, logoLightPath: true, faviconPath: true },
   });
 
   if (!client) {
@@ -69,18 +88,30 @@ export async function POST(
       await deleteClientLogo(client.logoPath);
     }
   }
+  if (type === "favicon" && client.faviconPath) {
+    if (client.faviconPath !== saved.relativePath) {
+      await deleteClientLogo(client.faviconPath);
+    }
+  }
 
   const updated = await prisma.client.update({
     where: { id: client.id },
     data:
       type === "light"
         ? { logoLightPath: saved.relativePath, logoLightFileName: file.name }
-        : { logoPath: saved.relativePath, logoFileName: file.name },
+        : type === "favicon"
+          ? { faviconPath: saved.relativePath, faviconFileName: file.name }
+          : { logoPath: saved.relativePath, logoFileName: file.name },
   });
 
   return NextResponse.json({
     success: true,
-    path: type === "light" ? updated.logoLightPath : updated.logoPath,
+    path:
+      type === "light"
+        ? updated.logoLightPath
+        : type === "favicon"
+          ? updated.faviconPath
+          : updated.logoPath,
   });
 }
 
@@ -95,11 +126,12 @@ export async function DELETE(
 
   const { searchParams } = new URL(request.url);
   const typeRaw = searchParams.get("type") || "main";
-  const type = typeRaw === "light" ? "light" : "main";
+  const type =
+    typeRaw === "light" ? "light" : typeRaw === "favicon" ? "favicon" : "main";
 
   const client = await prisma.client.findUnique({
     where: { id: context.params.id },
-    select: { id: true, logoPath: true, logoLightPath: true },
+    select: { id: true, logoPath: true, logoLightPath: true, faviconPath: true },
   });
 
   if (!client) {
@@ -111,6 +143,12 @@ export async function DELETE(
     await prisma.client.update({
       where: { id: client.id },
       data: { logoLightPath: null, logoLightFileName: null },
+    });
+  } else if (type === "favicon") {
+    await deleteClientLogo(client.faviconPath);
+    await prisma.client.update({
+      where: { id: client.id },
+      data: { faviconPath: null, faviconFileName: null },
     });
   } else {
     await deleteClientLogo(client.logoPath);

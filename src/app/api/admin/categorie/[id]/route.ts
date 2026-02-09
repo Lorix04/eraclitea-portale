@@ -29,7 +29,7 @@ export async function GET(
   const category = await prisma.category.findUnique({
     where: { id: context.params.id },
     include: {
-      courses: { include: { course: { select: { id: true, title: true, status: true } } } },
+      courses: { include: { course: { select: { id: true, title: true } } } },
       clients: { include: { client: { select: { id: true, ragioneSociale: true, isActive: true } } } },
     },
   });

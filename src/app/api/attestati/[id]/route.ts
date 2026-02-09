@@ -20,7 +20,13 @@ export async function GET(
     where: { id: context.params.id },
     include: {
       employee: { select: { id: true, nome: true, cognome: true } },
-      course: { select: { id: true, title: true } },
+      courseEdition: {
+        select: {
+          id: true,
+          editionNumber: true,
+          course: { select: { id: true, title: true } },
+        },
+      },
       client: { select: { id: true, ragioneSociale: true } },
       uploader: { select: { email: true } },
     },

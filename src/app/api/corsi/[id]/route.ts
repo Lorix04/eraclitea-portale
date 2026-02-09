@@ -18,7 +18,11 @@ export async function GET(
   const course = await prisma.course.findUnique({
     where: { id: context.params.id },
     include: {
-      visibility: true,
+      visibility: {
+        include: {
+          client: { select: { id: true, ragioneSociale: true } },
+        },
+      },
       visibilityCategories: { include: { category: true } },
       categories: { include: { category: true } },
     },
@@ -56,11 +60,6 @@ export async function PUT(
     if (data.description !== undefined)
       updateData.description = data.description || null;
     if (data.durationHours !== undefined) updateData.durationHours = data.durationHours ?? null;
-    if (data.dateStart !== undefined) updateData.dateStart = data.dateStart;
-    if (data.dateEnd !== undefined) updateData.dateEnd = data.dateEnd;
-    if (data.deadlineRegistry !== undefined)
-      updateData.deadlineRegistry = data.deadlineRegistry;
-    if (data.status !== undefined) updateData.status = data.status;
     if (data.visibilityType !== undefined)
       updateData.visibilityType = data.visibilityType;
 
@@ -133,7 +132,11 @@ export async function PUT(
   const courseWithCategories = await prisma.course.findUnique({
     where: { id: context.params.id },
     include: {
-      visibility: true,
+      visibility: {
+        include: {
+          client: { select: { id: true, ragioneSociale: true } },
+        },
+      },
       visibilityCategories: { include: { category: true } },
       categories: { include: { category: true } },
     },
@@ -156,8 +159,7 @@ export async function DELETE(
     include: {
       _count: {
         select: {
-          registrations: true,
-          lessons: true,
+          editions: true,
         },
       },
     },
@@ -167,18 +169,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.notification.deleteMany({
-      where: { courseId: course.id },
-    });
-
-    await tx.courseRegistration.deleteMany({
-      where: { courseId: course.id },
-    });
-
-    await tx.course.delete({
-      where: { id: course.id },
-    });
+  await prisma.course.delete({
+    where: { id: course.id },
   });
 
   await logAudit({

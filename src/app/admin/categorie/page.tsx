@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type CategoryRow = {
   id: string;
@@ -136,11 +137,28 @@ export default function AdminCategoriePage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                  Caricamento...
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, index) => (
+                <tr key={`skeleton-${index}`} className="border-t">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-2 w-2 rounded-full" />
+                      <Skeleton className="h-4 w-40" />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-48" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-10" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-10" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-24" />
+                  </td>
+                </tr>
+              ))
             ) : categories.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">

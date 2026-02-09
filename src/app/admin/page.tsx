@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { Award, BookOpen, Building2, AlertTriangle, Users } from "lucide-react";
 import StatsCard from "@/components/admin/StatsCard";
 import ActivityItem from "@/components/admin/ActivityItem";
 import RegistrationItem from "@/components/admin/RegistrationItem";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type AdminStats = {
   totalClients: number;
@@ -27,7 +28,10 @@ type AdminStats = {
     id: string;
     updatedAt: string;
     client: { ragioneSociale: string };
-    course: { title: string };
+    courseEdition?: {
+      editionNumber?: number | null;
+      course?: { title: string } | null;
+    } | null;
     employee: { nome: string; cognome: string };
   }>;
 };
@@ -48,7 +52,50 @@ export default function AdminPage() {
   });
 
   if (isLoading || !stats) {
-    return <p className="text-sm text-muted-foreground">Caricamento dashboard...</p>;
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="mt-2 h-4 w-72" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-lg border border-gray-200 bg-white p-4"
+            >
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-3 h-8 w-16" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-lg border border-gray-200 bg-white p-6"
+            >
+              <Skeleton className="h-5 w-32" />
+              <div className="mt-4 space-y-3">
+                {Array.from({ length: 4 }).map((__, row) => (
+                  <Skeleton key={row} className="h-4 w-full" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div
+              key={index}
+              className="rounded-lg border border-gray-200 bg-white p-4"
+            >
+              <Skeleton className="h-4 w-40" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -69,9 +116,8 @@ export default function AdminPage() {
           href="/admin/clienti"
         />
         <StatsCard
-          title="Corsi pubblicati"
+          title="Edizioni attive"
           value={stats.publishedCourses}
-          total={stats.totalCourses}
           icon={<BookOpen className="h-5 w-5" />}
           href="/admin/corsi"
         />
@@ -136,7 +182,7 @@ export default function AdminPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          Corsi con deadline vicina: {stats.coursesNearDeadline}
+          Edizioni con deadline vicina: {stats.coursesNearDeadline}
         </div>
         <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
           Attestati in scadenza: {stats.expiringCertificates}

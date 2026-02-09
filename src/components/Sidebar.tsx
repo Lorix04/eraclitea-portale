@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { signOut } from "next-auth/react";
 import {
   Activity,
@@ -11,6 +10,7 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  Layers,
   LogOut,
   Tag,
   ShieldCheck,
@@ -32,6 +32,7 @@ const CLIENT_LINKS = [
 const ADMIN_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/corsi", label: "Corsi", icon: BookOpen },
+  { href: "/admin/edizioni", label: "Edizioni", icon: Layers },
   { href: "/admin/categorie", label: "Categorie", icon: Tag },
   { href: "/admin/clienti", label: "Clienti", icon: Users },
   { href: "/admin/dipendenti", label: "Dipendenti", icon: Users },
@@ -60,22 +61,10 @@ export default function Sidebar({
         className ?? ""
       }`}
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border bg-white shadow-sm">
-          <Image
-            src="/brand/eraclitea-logo.svg"
-            alt="Eraclitea"
-            width={28}
-            height={28}
-            className="h-7 w-7 object-contain"
-          />
-        </div>
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Portale
-          </p>
-          <p className="text-lg font-display font-semibold">Clienti</p>
-        </div>
+      <div className="text-center">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+          Menu Admin
+        </p>
       </div>
       <nav className="flex flex-col gap-2">
         {links.map((link) => {

@@ -14,23 +14,28 @@ export async function GET() {
 
   const registrations = await prisma.courseRegistration.findMany({
     where: { clientId: session.user.clientId, status: "TRAINED" },
-    include: { course: true },
+    include: { courseEdition: { include: { course: true } } },
     orderBy: { updatedAt: "desc" },
   });
 
-  const courseIds = Array.from(new Set(registrations.map((reg) => reg.courseId)));
+  const editionIds = Array.from(
+    new Set(registrations.map((reg) => reg.courseEditionId))
+  );
   const certificates = await prisma.certificate.findMany({
-    where: { clientId: session.user.clientId, courseId: { in: courseIds } },
-    select: { id: true, courseId: true },
+    where: {
+      clientId: session.user.clientId,
+      courseEditionId: { in: editionIds },
+    },
+    select: { id: true, courseEditionId: true },
   });
   const certMap = new Map<string, string[]>();
   certificates.forEach((cert) => {
-    if (!cert.courseId) {
+    if (!cert.courseEditionId) {
       return;
     }
-    const list = certMap.get(cert.courseId) ?? [];
+    const list = certMap.get(cert.courseEditionId) ?? [];
     list.push(cert.id);
-    certMap.set(cert.courseId, list);
+    certMap.set(cert.courseEditionId, list);
   });
 
   const grouped = new Map<
@@ -47,22 +52,23 @@ export async function GET() {
   const courseCounts = new Map<string, number>();
 
   registrations.forEach((reg) => {
+    const edition = reg.courseEdition;
     const year = reg.updatedAt.getFullYear();
     const current = grouped.get(year) ?? [];
-    const key = `${year}-${reg.courseId}`;
+    const key = `${year}-${reg.courseEditionId}`;
     const count = (courseCounts.get(key) ?? 0) + 1;
     courseCounts.set(key, count);
 
-    const existing = current.find((item) => item.id === reg.courseId);
+    const existing = current.find((item) => item.id === reg.courseEditionId);
     if (existing) {
       existing.totalTrained = count;
     } else {
       current.push({
-        id: reg.courseId,
-        title: reg.course.title,
+        id: reg.courseEditionId,
+        title: `${edition.course.title} (Ed. #${edition.editionNumber})`,
         completedAt: reg.updatedAt,
         totalTrained: count,
-        certificateIds: certMap.get(reg.courseId) ?? [],
+        certificateIds: certMap.get(reg.courseEditionId) ?? [],
       });
     }
 

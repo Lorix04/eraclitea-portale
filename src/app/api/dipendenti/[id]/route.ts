@@ -32,15 +32,27 @@ export async function GET(
       client: { select: { id: true, ragioneSociale: true } },
       registrations: {
         include: {
-          course: {
-            select: { id: true, title: true, dateStart: true, dateEnd: true },
+          courseEdition: {
+            select: {
+              id: true,
+              editionNumber: true,
+              startDate: true,
+              endDate: true,
+              course: { select: { id: true, title: true } },
+            },
           },
         },
         orderBy: { insertedAt: "desc" },
       },
       certificates: {
         include: {
-          course: { select: { id: true, title: true } },
+          courseEdition: {
+            select: {
+              id: true,
+              editionNumber: true,
+              course: { select: { id: true, title: true } },
+            },
+          },
         },
         orderBy: { uploadedAt: "desc" },
       },

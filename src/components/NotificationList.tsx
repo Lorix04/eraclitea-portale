@@ -1,13 +1,15 @@
 ﻿"use client";
 
-import { Bell, BookOpen, FileCheck } from "lucide-react";
+import { Bell, BookOpen, ClipboardCheck, FileCheck } from "lucide-react";
 
 export type NotificationItem = {
   id: string;
-  type: "COURSE_PUBLISHED" | "CERT_UPLOADED" | "REMINDER";
+  type: "COURSE_PUBLISHED" | "CERT_UPLOADED" | "REMINDER" | "ATTENDANCE_RECORDED";
   title: string;
   message?: string;
-  courseId?: string;
+  courseEditionId?: string;
+  courseTitle?: string;
+  editionNumber?: number;
   createdAt: string | Date;
   isRead: boolean;
 };
@@ -23,6 +25,7 @@ const ICONS = {
   COURSE_PUBLISHED: BookOpen,
   CERT_UPLOADED: FileCheck,
   REMINDER: Bell,
+  ATTENDANCE_RECORDED: ClipboardCheck,
 };
 
 function formatRelativeTime(value: string | Date) {

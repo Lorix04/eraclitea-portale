@@ -35,18 +35,27 @@ export async function GET(
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
-  const course = await prisma.course.findUnique({
+  const edition = await prisma.courseEdition.findUnique({
     where: { id: context.params.id },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      clientId: true,
+      editionNumber: true,
+      course: { select: { id: true, title: true } },
+    },
   });
 
-  if (!course) {
-    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  if (!edition) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+  }
+
+  if (!isAdmin && edition.clientId !== clientId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const registrationWhere = isAdmin
-    ? { courseId: course.id }
-    : { courseId: course.id, clientId: clientId ?? undefined };
+    ? { courseEditionId: edition.id }
+    : { courseEditionId: edition.id, clientId: clientId ?? undefined };
 
   const registrations = await prisma.courseRegistration.findMany({
     where: registrationWhere,
@@ -58,7 +67,7 @@ export async function GET(
   const employeeIds = employees.map((employee) => employee.id);
 
   const lessons = await prisma.lesson.findMany({
-    where: { courseId: course.id },
+    where: { courseEditionId: edition.id },
     orderBy: { date: "asc" },
   });
 
@@ -126,7 +135,11 @@ export async function GET(
   });
 
   return NextResponse.json({
-    course,
+    course: {
+      id: edition.course.id,
+      title: edition.course.title,
+      editionNumber: edition.editionNumber,
+    },
     lessons,
     employees: employees.map((employee) => ({
       id: employee.id,
@@ -165,22 +178,26 @@ export async function POST(
 
   const { attendances } = validation.data;
 
-  const course = await prisma.course.findUnique({
+  const edition = await prisma.courseEdition.findUnique({
     where: { id: context.params.id },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      editionNumber: true,
+      course: { select: { title: true } },
+    },
   });
 
-  if (!course) {
-    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  if (!edition) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
   const [lessons, registrations] = await prisma.$transaction([
     prisma.lesson.findMany({
-      where: { courseId: course.id },
+      where: { courseEditionId: edition.id },
       select: { id: true },
     }),
     prisma.courseRegistration.findMany({
-      where: { courseId: course.id },
+      where: { courseEditionId: edition.id },
       select: { employeeId: true },
     }),
   ]);
@@ -210,12 +227,14 @@ export async function POST(
         create: {
           lessonId: item.lessonId,
           employeeId: item.employeeId,
+          courseEditionId: context.params.id,
           status: item.status,
           notes: item.notes ?? null,
           recordedBy: session.user.id,
           recordedAt: new Date(),
         },
         update: {
+          courseEditionId: context.params.id,
           status: item.status,
           notes: item.notes ?? null,
           recordedBy: session.user.id,
@@ -224,15 +243,6 @@ export async function POST(
       });
     }
 
-    await tx.notification.create({
-      data: {
-        type: "ATTENDANCE_RECORDED",
-        title: "Presenze registrate",
-        message: `Aggiornate le presenze per il corso \"${course.title}\"`,
-        courseId: course.id,
-        isGlobal: false,
-      },
-    });
   });
 
   return NextResponse.json({ ok: true, updated: attendances.length });

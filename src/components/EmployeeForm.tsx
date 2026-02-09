@@ -5,6 +5,9 @@ import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { formatItalianDate } from "@/lib/date-utils";
 import { validateEmployee } from "@/lib/validators";
 import { BrandedButton } from "@/components/BrandedButton";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 export type EmployeeFormData = {
   nome: string;
@@ -70,6 +73,9 @@ export default function EmployeeForm({
 
   const updateField = (key: keyof EmployeeFormData, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -90,33 +96,36 @@ export default function EmployeeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <FormRequiredLegend />
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          Nome
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Nome</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.nome ? "border-red-500 focus-visible:outline-red-500" : ""
+            }`}
             value={form.nome}
             onChange={(event) => updateField("nome", event.target.value)}
           />
-          {errors.nome ? (
-            <span className="text-xs text-destructive">{errors.nome}</span>
-          ) : null}
-        </label>
-        <label className="flex flex-col gap-2 text-sm">
-          Cognome
+          <FormFieldError message={errors.nome} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Cognome</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.cognome
+                ? "border-red-500 focus-visible:outline-red-500"
+                : ""
+            }`}
             value={form.cognome}
             onChange={(event) => updateField("cognome", event.target.value)}
           />
-          {errors.cognome ? (
-            <span className="text-xs text-destructive">{errors.cognome}</span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.cognome} />
+        </div>
       </div>
 
       <label className="flex flex-col gap-2 text-sm">
-        Codice Fiscale
+        <FormLabel required>Codice Fiscale</FormLabel>
         <input
           className="rounded-md border bg-muted px-3 py-2 text-muted-foreground"
           value={form.codiceFiscale}
@@ -125,19 +134,19 @@ export default function EmployeeForm({
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          Email
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Email</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.email ? "border-red-500 focus-visible:outline-red-500" : ""
+            }`}
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
           />
-          {errors.email ? (
-            <span className="text-xs text-destructive">{errors.email}</span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.email} />
+        </div>
         <label className="flex flex-col gap-2 text-sm">
-          Mansione
+          <FormLabel>Mansione</FormLabel>
           <input
             className="rounded-md border bg-background px-3 py-2"
             value={form.mansione}
@@ -153,7 +162,7 @@ export default function EmployeeForm({
           onChange={(value) => updateField("dataNascita", value)}
         />
         <label className="flex flex-col gap-2 text-sm">
-          Luogo di nascita
+          <FormLabel>Luogo di nascita</FormLabel>
           <input
             className="rounded-md border bg-background px-3 py-2"
             value={form.luogoNascita}
@@ -163,7 +172,7 @@ export default function EmployeeForm({
       </div>
 
       <label className="flex flex-col gap-2 text-sm">
-        Note
+        <FormLabel>Note</FormLabel>
         <textarea
           className="min-h-[100px] rounded-md border bg-background px-3 py-2"
           value={form.note}

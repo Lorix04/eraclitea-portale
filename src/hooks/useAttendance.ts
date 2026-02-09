@@ -42,13 +42,13 @@ type AttendanceResponse = {
   totalHours: number;
 };
 
-export function useAttendance(courseId: string) {
+export function useAttendance(courseEditionId: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery<AttendanceResponse>({
-    queryKey: ["attendance", courseId],
+    queryKey: ["attendance", courseEditionId],
     queryFn: async () => {
-      const res = await fetch(`/api/corsi/${courseId}/presenze`);
+      const res = await fetch(`/api/corsi/${courseEditionId}/presenze`);
       if (!res.ok) {
         throw new Error("Failed to fetch attendance");
       }
@@ -58,7 +58,7 @@ export function useAttendance(courseId: string) {
 
   const saveAttendances = useMutation({
     mutationFn: async (updates: AttendanceUpdate[]) => {
-      const res = await fetch(`/api/corsi/${courseId}/presenze`, {
+      const res = await fetch(`/api/corsi/${courseEditionId}/presenze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ attendances: updates }),
@@ -69,7 +69,7 @@ export function useAttendance(courseId: string) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", courseEditionId] });
     },
   });
 

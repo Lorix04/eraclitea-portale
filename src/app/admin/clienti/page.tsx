@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type ClientRow = {
   id: string;
@@ -225,11 +226,15 @@ export default function AdminClientiPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
-                  Caricamento...
-                </td>
-              </tr>
+              Array.from({ length: 6 }).map((_, row) => (
+                <tr key={`client-skel-${row}`} className="border-t">
+                  {Array.from({ length: 7 }).map((__, col) => (
+                    <td key={col} className="px-4 py-3">
+                      <Skeleton className="h-4 w-full" />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">

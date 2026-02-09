@@ -4,6 +4,9 @@ import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { BrandedButton } from "@/components/BrandedButton";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 const passwordSchema = z
   .object({
@@ -34,6 +37,9 @@ export default function ChangePasswordForm() {
 
   const updateField = (key: keyof PasswordFormData, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -79,41 +85,48 @@ export default function ChangePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+      <FormRequiredLegend />
       <div>
-        <label className="text-sm">Password attuale</label>
+        <FormLabel required>Password attuale</FormLabel>
         <input
           type="password"
-          className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+          className={`mt-1 w-full rounded-md border bg-background px-3 py-2 ${
+            errors.currentPassword
+              ? "border-red-500 focus-visible:outline-red-500"
+              : ""
+          }`}
           value={form.currentPassword}
           onChange={(event) => updateField("currentPassword", event.target.value)}
         />
-        {errors.currentPassword ? (
-          <p className="text-sm text-destructive">{errors.currentPassword}</p>
-        ) : null}
+        <FormFieldError message={errors.currentPassword} />
       </div>
       <div>
-        <label className="text-sm">Nuova password</label>
+        <FormLabel required>Nuova password</FormLabel>
         <input
           type="password"
-          className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+          className={`mt-1 w-full rounded-md border bg-background px-3 py-2 ${
+            errors.newPassword
+              ? "border-red-500 focus-visible:outline-red-500"
+              : ""
+          }`}
           value={form.newPassword}
           onChange={(event) => updateField("newPassword", event.target.value)}
         />
-        {errors.newPassword ? (
-          <p className="text-sm text-destructive">{errors.newPassword}</p>
-        ) : null}
+        <FormFieldError message={errors.newPassword} />
       </div>
       <div>
-        <label className="text-sm">Conferma nuova password</label>
+        <FormLabel required>Conferma nuova password</FormLabel>
         <input
           type="password"
-          className="mt-1 w-full rounded-md border bg-background px-3 py-2"
+          className={`mt-1 w-full rounded-md border bg-background px-3 py-2 ${
+            errors.confirmPassword
+              ? "border-red-500 focus-visible:outline-red-500"
+              : ""
+          }`}
           value={form.confirmPassword}
           onChange={(event) => updateField("confirmPassword", event.target.value)}
         />
-        {errors.confirmPassword ? (
-          <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-        ) : null}
+        <FormFieldError message={errors.confirmPassword} />
       </div>
       <BrandedButton type="submit" disabled={loading}>
         {loading ? "Salvataggio..." : "Cambia password"}

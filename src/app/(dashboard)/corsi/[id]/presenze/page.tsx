@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AttendanceMatrix } from "@/components/AttendanceMatrix";
 import { AttendanceStats } from "@/components/AttendanceStats";
 import { useAttendance } from "@/hooks/useAttendance";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function CourseAttendanceClientPage({
   params,
@@ -50,11 +51,15 @@ export default function CourseAttendanceClientPage({
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Caricamento presenze...</p>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-4 h-48 w-full" />
+          <Skeleton className="mt-3 h-4 w-56" />
+        </div>
       ) : data ? (
         <div className="space-y-4">
           <AttendanceMatrix
-            courseId={params.id}
+            courseEditionId={params.id}
             lessons={data.lessons}
             employees={data.employees}
             attendances={data.attendances}

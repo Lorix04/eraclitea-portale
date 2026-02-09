@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import EmployeeCertificatesList from "@/components/EmployeeCertificatesList";
 import { useEmployee } from "@/hooks/useEmployee";
 import { BrandedLink } from "@/components/BrandedLink";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function ClientEmployeeDetailPage() {
   const params = useParams();
@@ -72,8 +73,10 @@ export default function ClientEmployeeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-        Caricamento dipendente...
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="mt-2 h-4 w-56" />
+        <Skeleton className="mt-6 h-32 w-full" />
       </div>
     );
   }
@@ -91,7 +94,7 @@ export default function ClientEmployeeDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <BrandedLink href="/dipendenti" className="text-sm">
-            ← Torna ai dipendenti
+            &larr; Torna ai dipendenti
           </BrandedLink>
           <h1 className="mt-2 text-xl font-semibold">
             {employee.cognome} {employee.nome}
@@ -128,7 +131,6 @@ export default function ClientEmployeeDetailPage() {
         <h2 className="text-lg font-semibold">Corsi</h2>
         <EmployeeCoursesList
           registrations={employee.registrations ?? []}
-          courseBasePath="/corsi"
           useBranding
         />
       </div>
@@ -149,9 +151,12 @@ export default function ClientEmployeeDetailPage() {
         warningMessage={
           employee.registrations?.length || employee.certificates?.length
             ? `Questo dipendente ha ${employee.registrations?.length ?? 0} iscrizioni a corsi e ${employee.certificates?.length ?? 0} attestati. Tutti i dati associati verranno eliminati permanentemente.`
-            : "Questa azione non può essere annullata."
+            : "Questa azione non puo' essere annullata."
         }
       />
     </div>
   );
 }
+
+
+

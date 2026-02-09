@@ -36,17 +36,47 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT") {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!session.user.clientId) {
+
+  const isAdmin = session.user.role === "ADMIN";
+  const body = await request.json();
+  const requestedClientId =
+    typeof body.clientId === "string" ? body.clientId : undefined;
+
+  const clientId = isAdmin ? requestedClientId : session.user.clientId;
+  if (!clientId) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
-  const clientId = session.user.clientId;
-  const body = await request.json();
+  if (!isAdmin && requestedClientId && requestedClientId !== clientId) {
+    return NextResponse.json(
+      { error: "ClientId non valido" },
+      { status: 403 }
+    );
+  }
   const rows: EmployeeRow[] = Array.isArray(body.employees) ? body.employees : [];
-  const courseId = typeof body.courseId === "string" ? body.courseId : undefined;
+  const courseEditionId =
+    typeof body.courseEditionId === "string" ? body.courseEditionId : undefined;
+  if (courseEditionId) {
+    const edition = await prisma.courseEdition.findUnique({
+      where: { id: courseEditionId },
+      select: { clientId: true },
+    });
+    if (!edition) {
+      return NextResponse.json(
+        { error: "Edizione non trovata" },
+        { status: 404 }
+      );
+    }
+    if (edition.clientId !== clientId) {
+      return NextResponse.json(
+        { error: "Edizione non associata al cliente" },
+        { status: 403 }
+      );
+    }
+  }
 
   const filtered = rows
     .map((row) => ({
@@ -117,11 +147,11 @@ export async function POST(request: Request) {
 
   const savedResults = results.filter(Boolean) as typeof results;
 
-  if (courseId) {
+  if (courseEditionId) {
     await prisma.courseRegistration.createMany({
       data: savedResults.map((employee) => ({
         clientId,
-        courseId,
+        courseEditionId,
         employeeId: employee!.id,
         status: "INSERTED",
       })),

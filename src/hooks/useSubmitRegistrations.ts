@@ -7,14 +7,17 @@ type SubmitResult = {
   submittedCount: number;
 };
 
-export function useSubmitRegistrations(courseId: string) {
+export function useSubmitRegistrations(courseEditionId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (): Promise<SubmitResult> => {
-      const res = await fetch(`/api/corsi/${courseId}/invia-anagrafiche`, {
+      const res = await fetch(
+        `/api/corsi/${courseEditionId}/invia-anagrafiche`,
+        {
         method: "POST",
-      });
+        }
+      );
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.error || "Errore durante l'invio");
@@ -23,10 +26,15 @@ export function useSubmitRegistrations(courseId: string) {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["courses"] });
-      await queryClient.cancelQueries({ queryKey: ["registrations", courseId] });
+      await queryClient.cancelQueries({
+        queryKey: ["registrations", courseEditionId],
+      });
 
-      const previousCourse = queryClient.getQueryData(["courses", courseId]);
-      queryClient.setQueryData(["courses", courseId], (old: any) => ({
+      const previousCourse = queryClient.getQueryData([
+        "courses",
+        courseEditionId,
+      ]);
+      queryClient.setQueryData(["courses", courseEditionId], (old: any) => ({
         ...(old || {}),
         registrationStatus: "SENT",
       }));
@@ -35,17 +43,22 @@ export function useSubmitRegistrations(courseId: string) {
     },
     onError: (err, _variables, context) => {
       if (context?.previousCourse) {
-        queryClient.setQueryData(["courses", courseId], context.previousCourse);
+        queryClient.setQueryData(
+          ["courses", courseEditionId],
+          context.previousCourse
+        );
       }
       toast.error(err instanceof Error ? err.message : "Errore durante l'invio");
     },
     onSuccess: (data) => {
       toast.success(`${data.submittedCount} anagrafiche inviate con successo`);
-      trackEvent.registrationSubmitted(courseId, data.submittedCount);
+      trackEvent.registrationSubmitted(courseEditionId, data.submittedCount);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
-      queryClient.invalidateQueries({ queryKey: ["registrations", courseId] });
+      queryClient.invalidateQueries({
+        queryKey: ["registrations", courseEditionId],
+      });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },

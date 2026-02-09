@@ -5,7 +5,6 @@ import {
   deadlineReminderTemplate,
   expiringCertificatesTemplate,
 } from "@/lib/email-templates";
-import { formatItalianDate } from "@/lib/date-utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -20,34 +19,27 @@ export async function GET(request: Request) {
   const from = new Date(now.getTime() + 3 * DAY_MS);
   const to = new Date(now.getTime() + 7 * DAY_MS);
 
-  const upcomingDeadlines = await prisma.course.findMany({
+  const upcomingDeadlines = await prisma.courseEdition.findMany({
     where: {
       status: "PUBLISHED",
       deadlineRegistry: { gte: from, lte: to },
     },
     include: {
-      visibility: { include: { client: true } },
+      client: true,
+      course: { select: { title: true } },
     },
   });
 
-  let remindersSent = 0;
   let reminderClients = 0;
 
-  for (const course of upcomingDeadlines) {
-    const visibleClients =
-      course.visibility.length > 0
-        ? course.visibility
-            .map((item) => item.client)
-            .filter((client) => client.isActive)
-        : await prisma.client.findMany({ where: { isActive: true } });
-
-    if (!visibleClients.length) {
+  for (const edition of upcomingDeadlines) {
+    if (!edition.client || !edition.client.isActive) {
       continue;
     }
 
     const submitted = await prisma.courseRegistration.findMany({
       where: {
-        courseId: course.id,
+        courseEditionId: edition.id,
         status: { in: ["CONFIRMED", "TRAINED"] },
       },
       select: { clientId: true },
@@ -55,45 +47,18 @@ export async function GET(request: Request) {
     });
 
     const submittedClientIds = new Set(submitted.map((item) => item.clientId));
-    const pendingClients = visibleClients.filter(
-      (client) => !submittedClientIds.has(client.id)
-    );
-
-    if (!pendingClients.length) {
-      continue;
-    }
-
-    for (const client of pendingClients) {
+    if (!submittedClientIds.has(edition.clientId)) {
       await send({
-        to: client.referenteEmail,
-        subject: `Promemoria: ${course.title}`,
-        html: deadlineReminderTemplate(course.title, course.deadlineRegistry!),
+        to: edition.client.referenteEmail,
+        subject: `Promemoria: ${edition.course.title} (Ed. #${edition.editionNumber})`,
+        html: deadlineReminderTemplate(
+          `${edition.course.title} (Ed. #${edition.editionNumber})`,
+          edition.deadlineRegistry!
+        ),
       });
       reminderClients += 1;
     }
 
-    const existingReminder = await prisma.notification.findFirst({
-      where: {
-        courseId: course.id,
-        type: "REMINDER",
-        createdAt: { gte: new Date(now.getTime() - DAY_MS) },
-      },
-    });
-
-    if (!existingReminder) {
-      await prisma.notification.create({
-        data: {
-          type: "REMINDER",
-          title: `Scadenza vicina: ${course.title}`,
-          message: `La deadline per l'invio anagrafiche e' ${
-            course.deadlineRegistry ? formatItalianDate(course.deadlineRegistry) : ""
-          }`,
-          courseId: course.id,
-          isGlobal: course.visibility.length === 0,
-        },
-      });
-      remindersSent += 1;
-    }
   }
 
   const expiringCerts = await prisma.certificate.findMany({
@@ -106,7 +71,7 @@ export async function GET(request: Request) {
     include: {
       client: true,
       employee: true,
-      course: true,
+      courseEdition: { include: { course: true } },
     },
   });
 
@@ -130,7 +95,7 @@ export async function GET(request: Request) {
       html: expiringCertificatesTemplate(
         certs.map((cert) => ({
           employee: `${cert.employee.cognome} ${cert.employee.nome}`,
-          course: cert.course?.title ?? "Attestato esterno",
+          course: cert.courseEdition?.course?.title ?? "Attestato esterno",
           expiresAt: cert.expiresAt!,
         }))
       ),
@@ -139,7 +104,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     success: true,
-    remindersSent,
     reminderClients,
     expiringClientsNotified: Object.keys(certsByClient).length,
   });

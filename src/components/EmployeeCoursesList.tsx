@@ -7,18 +7,19 @@ type RegistrationRow = {
   id: string;
   status: "INSERTED" | "CONFIRMED" | "TRAINED";
   insertedAt: string | Date;
-  course: {
+  courseEdition: {
     id: string;
-    title: string;
-    dateStart?: string | Date | null;
-    dateEnd?: string | Date | null;
+    editionNumber?: number | null;
+    course: {
+      id: string;
+      title: string;
+    };
   };
 };
 
 type EmployeeCoursesListProps = {
   registrations: RegistrationRow[];
-  courseBasePath: string;
-  detailSuffix?: string;
+  getEditionHref?: (registration: RegistrationRow) => string;
   useBranding?: boolean;
 };
 
@@ -35,8 +36,7 @@ function statusBadge(status: RegistrationRow["status"]) {
 
 export default function EmployeeCoursesList({
   registrations,
-  courseBasePath,
-  detailSuffix,
+  getEditionHref,
   useBranding = false,
 }: EmployeeCoursesListProps) {
   const linkClass = useBranding ? "link-brand" : "text-primary";
@@ -64,9 +64,17 @@ export default function EmployeeCoursesList({
           ) : (
             registrations.map((reg) => {
               const badge = statusBadge(reg.status);
+              const courseTitle = reg.courseEdition.course?.title ?? "Corso";
+              const editionLabel = reg.courseEdition.editionNumber
+                ? `Ed. #${reg.courseEdition.editionNumber}`
+                : "Edizione";
+              const href =
+                getEditionHref?.(reg) ?? `/corsi/${reg.courseEdition.id}`;
               return (
                 <tr key={reg.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{reg.course.title}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {courseTitle} ({editionLabel})
+                  </td>
                   <td className="px-4 py-3">
                     {formatItalianDate(reg.insertedAt) || "-"}
                   </td>
@@ -76,14 +84,7 @@ export default function EmployeeCoursesList({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={
-                        detailSuffix
-                          ? `${courseBasePath}/${reg.course.id}/${detailSuffix}`
-                          : `${courseBasePath}/${reg.course.id}`
-                      }
-                      className={linkClass}
-                    >
+                    <Link href={href} className={linkClass}>
                       Vai al corso
                     </Link>
                   </td>

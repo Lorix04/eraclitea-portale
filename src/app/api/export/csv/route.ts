@@ -18,6 +18,8 @@ export async function GET(request: Request) {
   const exportType = searchParams.get("type") || "registrations";
   const format = searchParams.get("format") === "xlsx" ? "xlsx" : "csv";
   const courseId = searchParams.get("courseId");
+  const courseEditionId =
+    searchParams.get("courseEditionId") ?? courseId ?? undefined;
   const clientId = searchParams.get("clientId");
   const statusParam = searchParams.get("status");
   const separator = searchParams.get("separator") || ";";
@@ -66,11 +68,8 @@ export async function GET(request: Request) {
 
     rows = courses.map((course) => ({
       Titolo: course.title,
-      Stato: course.status,
       Ore: course.durationHours ?? "",
-      "Data Inizio": formatItalianDate(course.dateStart),
-      "Data Fine": formatItalianDate(course.dateEnd),
-      "Deadline Anagrafiche": formatItalianDate(course.deadlineRegistry),
+      Visibilita: course.visibilityType,
       Categorie: course.categories
         .map((entry) => entry.category.name)
         .join(", "),
@@ -127,15 +126,19 @@ export async function GET(request: Request) {
       ...(dateRange ? { uploadedAt: dateRange } : {}),
     };
 
-    if (courseId === "external") {
-      where.courseId = null;
-    } else if (courseId) {
-      where.courseId = courseId;
+    if (courseEditionId === "external") {
+      where.courseEditionId = null;
+    } else if (courseEditionId) {
+      where.courseEditionId = courseEditionId;
     }
 
     const certificates = await prisma.certificate.findMany({
       where,
-      include: { employee: true, client: true, course: true },
+      include: {
+        employee: true,
+        client: true,
+        courseEdition: { include: { course: true } },
+      },
       orderBy: { uploadedAt: "desc" },
       take: preview ? limit : undefined,
     });
@@ -147,12 +150,15 @@ export async function GET(request: Request) {
         "",
       Dipendente: `${certificate.employee.nome} ${certificate.employee.cognome}`,
       Cliente: certificate.client?.ragioneSociale || "",
-      Corso: certificate.course?.title || "Esterno",
+      Corso: certificate.courseEdition?.course?.title || "Esterno",
+      Edizione: certificate.courseEdition
+        ? `#${certificate.courseEdition.editionNumber}`
+        : "",
       "Caricato Il": formatItalianDate(certificate.uploadedAt),
     }));
   } else {
     const where: Prisma.CourseRegistrationWhereInput = {
-      ...(courseId ? { courseId } : {}),
+      ...(courseEditionId ? { courseEditionId } : {}),
       ...(clientId ? { clientId } : {}),
       ...(status ? { status } : {}),
       ...(dateRange ? { insertedAt: dateRange } : {}),
@@ -163,17 +169,18 @@ export async function GET(request: Request) {
       include: {
         employee: true,
         client: true,
-        course: true,
+        courseEdition: { include: { course: true } },
       },
       orderBy: { insertedAt: "desc" },
       take: preview ? limit : undefined,
     })) as Prisma.CourseRegistrationGetPayload<{
-      include: { employee: true; client: true; course: true };
+      include: { employee: true; client: true; courseEdition: { include: { course: true } } };
     }>[];
 
     rows = registrations.map((reg) => ({
       "Ragione Sociale": reg.client.ragioneSociale,
-      Corso: reg.course.title,
+      Corso: reg.courseEdition.course.title,
+      Edizione: `#${reg.courseEdition.editionNumber}`,
       Nome: reg.employee.nome,
       Cognome: reg.employee.cognome,
       "Codice Fiscale": reg.employee.codiceFiscale,
@@ -202,7 +209,7 @@ export async function GET(request: Request) {
       userId: session.user.id,
       action: "CSV_EXPORT",
       entityType: exportType,
-      entityId: courseId || clientId || "all",
+      entityId: courseEditionId || clientId || "all",
       ipAddress: getClientIP(request),
     });
 
@@ -227,7 +234,7 @@ export async function GET(request: Request) {
     userId: session.user.id,
     action: "CSV_EXPORT",
     entityType: exportType,
-    entityId: courseId || clientId || "all",
+    entityId: courseEditionId || clientId || "all",
     ipAddress: getClientIP(request),
   });
 

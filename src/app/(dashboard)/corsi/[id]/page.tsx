@@ -9,16 +9,20 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { useSubmitRegistrations } from "@/hooks/useSubmitRegistrations";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type CourseDetail = {
   id: string;
+  editionNumber?: number | null;
   title: string;
   categories?: { id: string; name: string; color?: string | null }[];
   durationHours?: number | null;
   description?: string | null;
-  dateStart?: string | null;
-  dateEnd?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   deadlineRegistry?: string | null;
+  status?: string | null;
+  notes?: string | null;
   registrations: Array<{
     id: string;
     status: string;
@@ -67,7 +71,12 @@ const AnagraficheResponsive = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[420px] w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-[420px] w-full rounded-lg border border-gray-200 bg-white p-4">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="mt-3 h-8 w-full" />
+        <Skeleton className="mt-2 h-8 w-full" />
+        <Skeleton className="mt-2 h-8 w-full" />
+      </div>
     ),
   }
 );
@@ -211,7 +220,23 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   };
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Caricamento corso...</p>;
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="mt-2 h-4 w-40" />
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-3 h-4 w-56" />
+          <Skeleton className="mt-2 h-4 w-40" />
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="mt-3 h-32 w-full" />
+        </div>
+      </div>
+    );
   }
 
   if (!course) {
@@ -221,7 +246,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">{course.title}</h1>
+        <h1 className="text-xl font-semibold">
+          {course.title}{" "}
+          {course.editionNumber ? `· Edizione #${course.editionNumber}` : ""}
+        </h1>
         {course.categories && course.categories.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1">
             {course.categories.map((category) => (
@@ -237,12 +265,12 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         ) : null}
         <div className="mt-2 text-sm text-muted-foreground">
           <span>
-            {course.dateStart
-              ? formatItalianDate(course.dateStart)
+            {course.startDate
+              ? formatItalianDate(course.startDate)
               : ""}
           </span>
-          {course.dateEnd ? (
-            <span> - {formatItalianDate(course.dateEnd)}</span>
+          {course.endDate ? (
+            <span> - {formatItalianDate(course.endDate)}</span>
           ) : null}
         </div>
         {course.durationHours ? (
@@ -253,6 +281,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         {course.deadlineRegistry ? (
           <p className="text-sm text-muted-foreground">
             Deadline: {formatItalianDate(course.deadlineRegistry)}
+          </p>
+        ) : null}
+        {course.status ? (
+          <p className="text-sm text-muted-foreground">
+            Stato: {course.status}
           </p>
         ) : null}
       </div>
@@ -309,7 +342,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
           <AnagraficheResponsive
             initialData={rows}
-            courseId={course.id}
+            courseEditionId={course.id}
             readOnly={isSubmitted}
           />
 
@@ -391,9 +424,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           </div>
           <div className="rounded-lg border bg-card">
             {attendanceLoading ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                Caricamento presenze...
-              </p>
+              <div className="p-4">
+                <div className="space-y-2">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={`attendance-skeleton-${index}`} className="flex gap-4">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : !attendanceSummary || attendanceSummary.stats.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">
                 Nessuna presenza registrata.
@@ -441,6 +483,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               Durata: {course.durationHours} ore
             </p>
           ) : null}
+          {course.notes ? (
+            <p className="text-sm text-muted-foreground">
+              Note: {course.notes}
+            </p>
+          ) : null}
           <p className="text-sm text-muted-foreground">
             {course.description || "Nessuna descrizione disponibile."}
           </p>
@@ -453,7 +500,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
                 <h2 className="text-lg font-semibold">Conferma invio anagrafiche</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}.
+                  Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}
+                  {course.editionNumber ? ` (Ed. #${course.editionNumber})` : ""}.
                   Dopo l&apos;invio non sar&agrave; possibile modificare i dati.
                 </p>
                 <div className="mt-6 flex justify-end gap-2">

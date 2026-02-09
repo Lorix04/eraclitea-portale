@@ -14,7 +14,7 @@ type Employee = {
   note?: string;
 };
 
-export function useSaveRegistrations(courseId?: string) {
+export function useSaveRegistrations(courseEditionId?: string, clientId?: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -23,7 +23,7 @@ export function useSaveRegistrations(courseId?: string) {
       const res = await fetch("/api/anagrafiche", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseId, employees }),
+        body: JSON.stringify({ courseEditionId, clientId, employees }),
       });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
@@ -32,8 +32,10 @@ export function useSaveRegistrations(courseId?: string) {
       return res.json();
     },
     onSuccess: () => {
-      if (courseId) {
-        queryClient.invalidateQueries({ queryKey: ["registrations", courseId] });
+      if (courseEditionId) {
+        queryClient.invalidateQueries({
+          queryKey: ["registrations", courseEditionId],
+        });
       }
     },
     onError: (err) => {

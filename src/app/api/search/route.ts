@@ -30,14 +30,40 @@ export async function GET(request: Request) {
   const isAdmin = session.user.role === "ADMIN";
   const clientId = session.user.clientId ?? undefined;
 
-  const courses = await prisma.course.findMany({
-    where: {
-      title: { contains: query, mode: Prisma.QueryMode.insensitive },
-      ...(isAdmin ? {} : { status: "PUBLISHED" }),
-    },
-    take: 5,
-    select: { id: true, title: true, status: true },
-  });
+  let coursesPayload: Array<Record<string, unknown>> = [];
+  if (isAdmin) {
+    const courses = await prisma.course.findMany({
+      where: {
+        title: { contains: query, mode: Prisma.QueryMode.insensitive },
+      },
+      take: 5,
+      select: { id: true, title: true },
+    });
+    coursesPayload = courses.map((course) => ({
+      id: course.id,
+      title: course.title,
+      kind: "course",
+    }));
+  } else {
+    const editions = await prisma.courseEdition.findMany({
+      where: {
+        clientId,
+        course: { title: { contains: query, mode: Prisma.QueryMode.insensitive } },
+      },
+      take: 5,
+      select: {
+        id: true,
+        editionNumber: true,
+        course: { select: { id: true, title: true } },
+      },
+    });
+    coursesPayload = editions.map((edition) => ({
+      id: edition.id,
+      title: edition.course.title,
+      editionNumber: edition.editionNumber,
+      kind: "edition",
+    }));
+  }
 
   const employees = await prisma.employee.findMany({
     where: {
@@ -57,13 +83,22 @@ export async function GET(request: Request) {
       ...(isAdmin ? {} : { clientId }),
       OR: [
         { employee: { cognome: { contains: query, mode: Prisma.QueryMode.insensitive } } },
-        { course: { title: { contains: query, mode: Prisma.QueryMode.insensitive } } },
+        {
+          courseEdition: {
+            course: { title: { contains: query, mode: Prisma.QueryMode.insensitive } },
+          },
+        },
       ],
     },
     take: 5,
     include: {
       employee: { select: { nome: true, cognome: true } },
-      course: { select: { title: true } },
+      courseEdition: {
+        select: {
+          editionNumber: true,
+          course: { select: { title: true } },
+        },
+      },
     },
   });
 
@@ -80,5 +115,21 @@ export async function GET(request: Request) {
       })
     : [];
 
-  return NextResponse.json({ courses, employees, certificates, clients });
+  const certificatesPayload = certificates.map((cert) => ({
+    id: cert.id,
+    employee: cert.employee,
+    courseEdition: cert.courseEdition
+      ? {
+          editionNumber: cert.courseEdition.editionNumber,
+          course: cert.courseEdition.course,
+        }
+      : null,
+  }));
+
+  return NextResponse.json({
+    courses: coursesPayload,
+    employees,
+    certificates: certificatesPayload,
+    clients,
+  });
 }

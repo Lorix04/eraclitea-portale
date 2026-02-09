@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { clientSchema } from "@/lib/schemas";
@@ -9,6 +10,9 @@ import { BrandingPreview } from "@/components/BrandingPreview";
 import { ColorPicker } from "@/components/ColorPicker";
 import { LogoUpload } from "@/components/LogoUpload";
 import { toast } from "sonner";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 const COLOR_PALETTES = [
   {
@@ -74,6 +78,7 @@ type PaletteId = (typeof COLOR_PALETTES)[number]["id"];
 type BrandingInitialData = {
   logoPath?: string | null;
   logoLightPath?: string | null;
+  faviconPath?: string | null;
 };
 
 const ClientFormSchema = clientSchema.extend({
@@ -102,6 +107,24 @@ function normalizePath(pathValue?: string | null) {
 function buildLogoUrl(pathValue?: string | null) {
   const normalized = normalizePath(pathValue);
   return normalized ? `/api/storage/clients/${normalized}` : null;
+}
+
+const FAVICON_ALLOWED_TYPES = new Set([
+  "image/png",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+]);
+const FAVICON_MAX_SIZE = 1 * 1024 * 1024;
+
+function validateFaviconFile(file: File): string | null {
+  if (!FAVICON_ALLOWED_TYPES.has(file.type)) {
+    return "Formato non supportato. Usa .ico, .png o .svg";
+  }
+  if (file.size > FAVICON_MAX_SIZE) {
+    return "Il file supera la dimensione massima di 1MB";
+  }
+  return null;
 }
 
 export default function ClientForm({
@@ -134,10 +157,17 @@ export default function ClientForm({
   const [logoLightPath, setLogoLightPath] = useState<string | null>(
     initialBranding?.logoLightPath ?? null
   );
+  const [faviconPath, setFaviconPath] = useState<string | null>(
+    initialBranding?.faviconPath ?? null
+  );
   const [uploadingMain, setUploadingMain] = useState(false);
   const [uploadingLight, setUploadingLight] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
   const [pendingLogoLightFile, setPendingLogoLightFile] = useState<File | null>(
+    null
+  );
+  const [pendingFaviconFile, setPendingFaviconFile] = useState<File | null>(
     null
   );
   const [pendingLogoPreview, setPendingLogoPreview] = useState<string | null>(
@@ -146,6 +176,10 @@ export default function ClientForm({
   const [pendingLogoLightPreview, setPendingLogoLightPreview] = useState<
     string | null
   >(null);
+  const [pendingFaviconPreview, setPendingFaviconPreview] = useState<
+    string | null
+  >(null);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
 
   const isEdit = useMemo(() => Boolean(clientId), [clientId]);
 
@@ -175,6 +209,9 @@ export default function ClientForm({
     value: string | string[]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
   };
 
   const handleColorChange = (
@@ -257,6 +294,55 @@ export default function ClientForm({
     if (type === "light") setLogoLightPath(null);
   };
 
+  const handleFaviconUpload = async (file: File) => {
+    if (!clientId) return;
+    const validation = validateFaviconFile(file);
+    if (validation) {
+      setFaviconError(validation);
+      return;
+    }
+    setFaviconError(null);
+    setUploadingFavicon(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      formData.append("type", "favicon");
+
+      const res = await fetch(`/api/admin/clienti/${clientId}/logo`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setFaviconError(
+          payload?.error || "Errore durante il caricamento della favicon."
+        );
+        return;
+      }
+
+      const data = await res.json();
+      setFaviconPath(data.path ?? null);
+    } catch {
+      setFaviconError("Errore durante il caricamento della favicon.");
+    } finally {
+      setUploadingFavicon(false);
+    }
+  };
+
+  const handleFaviconRemove = async () => {
+    if (!clientId) return;
+    const res = await fetch(
+      `/api/admin/clienti/${clientId}/logo?type=favicon`,
+      { method: "DELETE" }
+    );
+    if (!res.ok) {
+      setFaviconError("Errore durante la rimozione della favicon.");
+      return;
+    }
+    setFaviconPath(null);
+  };
+
   const handlePendingLogoUpload = async (
     file: File,
     type: "main" | "light"
@@ -292,10 +378,32 @@ export default function ClientForm({
     });
   };
 
+  const handlePendingFaviconUpload = (file: File) => {
+    const validation = validateFaviconFile(file);
+    if (validation) {
+      setFaviconError(validation);
+      return;
+    }
+    setFaviconError(null);
+    setPendingFaviconFile(file);
+    setPendingFaviconPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const handlePendingFaviconRemove = () => {
+    setPendingFaviconFile(null);
+    setPendingFaviconPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  };
+
   const uploadLogoAfterCreate = async (
     targetClientId: string,
     file: File,
-    type: "main" | "light"
+    type: "main" | "light" | "favicon"
   ) => {
     const formData = new FormData();
     formData.append("logo", file);
@@ -372,13 +480,19 @@ export default function ClientForm({
 
     if (!isEdit) {
       const createdId = data?.data?.id as string | undefined;
-      if (createdId && (pendingLogoFile || pendingLogoLightFile)) {
+      if (
+        createdId &&
+        (pendingLogoFile || pendingLogoLightFile || pendingFaviconFile)
+      ) {
         try {
           if (pendingLogoFile) {
             await uploadLogoAfterCreate(createdId, pendingLogoFile, "main");
           }
           if (pendingLogoLightFile) {
             await uploadLogoAfterCreate(createdId, pendingLogoLightFile, "light");
+          }
+          if (pendingFaviconFile) {
+            await uploadLogoAfterCreate(createdId, pendingFaviconFile, "favicon");
           }
         } catch (error) {
           const message =
@@ -397,41 +511,46 @@ export default function ClientForm({
     return () => {
       if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
       if (pendingLogoLightPreview) URL.revokeObjectURL(pendingLogoLightPreview);
+      if (pendingFaviconPreview) URL.revokeObjectURL(pendingFaviconPreview);
     };
-  }, [pendingLogoPreview, pendingLogoLightPreview]);
+  }, [pendingLogoPreview, pendingLogoLightPreview, pendingFaviconPreview]);
 
   const logoUrl = buildLogoUrl(logoPath);
   const logoLightUrl = buildLogoUrl(logoLightPath);
+  const faviconUrl = buildLogoUrl(faviconPath);
 
   return (
     <div className="space-y-6">
+      <FormRequiredLegend />
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          Ragione sociale
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Ragione sociale</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.ragioneSociale
+                ? "border-red-500 focus-visible:outline-red-500"
+                : ""
+            }`}
             value={form.ragioneSociale}
             onChange={(event) => updateField("ragioneSociale", event.target.value)}
           />
-          {errors.ragioneSociale ? (
-            <span className="text-xs text-destructive">{errors.ragioneSociale}</span>
-          ) : null}
-        </label>
-        <label className="flex flex-col gap-2 text-sm">
-          Partita IVA
+          <FormFieldError message={errors.ragioneSociale} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Partita IVA</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.piva ? "border-red-500 focus-visible:outline-red-500" : ""
+            }`}
             value={form.piva}
             onChange={(event) => updateField("piva", event.target.value)}
           />
-          {errors.piva ? (
-            <span className="text-xs text-destructive">{errors.piva}</span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.piva} />
+        </div>
       </div>
 
       <label className="flex flex-col gap-2 text-sm">
-        Indirizzo
+        <FormLabel>Indirizzo</FormLabel>
         <input
           className="rounded-md border bg-background px-3 py-2"
           value={form.indirizzo}
@@ -440,32 +559,36 @@ export default function ClientForm({
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          Referente nome
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Referente nome</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.referenteNome
+                ? "border-red-500 focus-visible:outline-red-500"
+                : ""
+            }`}
             value={form.referenteNome}
             onChange={(event) => updateField("referenteNome", event.target.value)}
           />
-          {errors.referenteNome ? (
-            <span className="text-xs text-destructive">{errors.referenteNome}</span>
-          ) : null}
-        </label>
-        <label className="flex flex-col gap-2 text-sm">
-          Referente email
+          <FormFieldError message={errors.referenteNome} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Referente email</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.referenteEmail
+                ? "border-red-500 focus-visible:outline-red-500"
+                : ""
+            }`}
             value={form.referenteEmail}
             onChange={(event) => updateField("referenteEmail", event.target.value)}
           />
-          {errors.referenteEmail ? (
-            <span className="text-xs text-destructive">{errors.referenteEmail}</span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.referenteEmail} />
+        </div>
       </div>
 
       <label className="flex flex-col gap-2 text-sm">
-        Telefono
+        <FormLabel>Telefono</FormLabel>
         <input
           className="rounded-md border bg-background px-3 py-2"
           value={form.telefono}
@@ -486,30 +609,36 @@ export default function ClientForm({
       <div className="rounded-lg border bg-card p-4">
         <p className="text-sm font-medium">Utente di accesso</p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-2 text-sm">
-            Email
+          <div className="flex flex-col gap-2">
+            <FormLabel required>Email</FormLabel>
             <input
-              className="rounded-md border bg-background px-3 py-2"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                errors.userEmail
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
               value={form.userEmail}
               onChange={(event) => updateField("userEmail", event.target.value)}
             />
-            {errors.userEmail ? (
-              <span className="text-xs text-destructive">{errors.userEmail}</span>
-            ) : null}
-          </label>
-          <label className="flex flex-col gap-2 text-sm">
-            {isEdit ? "Nuova password (opzionale)" : "Password"}
+            <FormFieldError message={errors.userEmail} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <FormLabel required={!isEdit}>
+              {isEdit ? "Nuova password (opzionale)" : "Password"}
+            </FormLabel>
             <input
               type="password"
-              className="rounded-md border bg-background px-3 py-2"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                errors.password
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
               placeholder={isEdit ? "Lascia vuoto per non modificare" : undefined}
               value={form.password ?? ""}
               onChange={(event) => updateField("password", event.target.value)}
             />
-            {errors.password ? (
-              <span className="text-xs text-destructive">{errors.password}</span>
-            ) : null}
-          </label>
+            <FormFieldError message={errors.password} />
+          </div>
         </div>
         {isEdit ? (
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
@@ -645,8 +774,8 @@ export default function ClientForm({
             onUpload={(file) =>
               isEdit ? handleLogoUpload(file, "main") : handlePendingLogoUpload(file, "main")
             }
-            onRemove={() =>
-              isEdit ? handleLogoRemove("main") : handlePendingLogoRemove("main")
+            onRemove={async () =>
+              isEdit ? await handleLogoRemove("main") : handlePendingLogoRemove("main")
             }
             isUploading={isEdit ? uploadingMain : false}
           />
@@ -657,11 +786,70 @@ export default function ClientForm({
             onUpload={(file) =>
               isEdit ? handleLogoUpload(file, "light") : handlePendingLogoUpload(file, "light")
             }
-            onRemove={() =>
-              isEdit ? handleLogoRemove("light") : handlePendingLogoRemove("light")
+            onRemove={async () =>
+              isEdit ? await handleLogoRemove("light") : handlePendingLogoRemove("light")
             }
             isUploading={isEdit ? uploadingLight : false}
           />
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium">Favicon (icona tab browser)</p>
+            <p className="text-xs text-muted-foreground">
+              Carica l&apos;icona che apparir&agrave; nella tab del browser per questo cliente.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            {((isEdit && faviconUrl) || (!isEdit && pendingFaviconPreview)) ? (
+              <div className="flex items-center gap-3">
+                <Image
+                  src={isEdit ? (faviconUrl as string) : (pendingFaviconPreview as string)}
+                  alt="Anteprima favicon"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded border bg-background object-contain"
+                />
+                <button
+                  type="button"
+                  className="rounded-md border px-3 py-1 text-xs"
+                  onClick={() =>
+                    isEdit ? handleFaviconRemove() : handlePendingFaviconRemove()
+                  }
+                >
+                  Rimuovi
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Nessuna favicon caricata.
+              </span>
+            )}
+
+            <label className="flex flex-col gap-2 text-xs">
+              <span className="text-muted-foreground">
+                Formati supportati: .ico, .png, .svg (max 1MB)
+              </span>
+              <input
+                type="file"
+                accept=".ico,image/x-icon,image/png,image/svg+xml"
+                className="text-xs"
+                disabled={uploadingFavicon}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  if (isEdit) {
+                    handleFaviconUpload(file);
+                  } else {
+                    handlePendingFaviconUpload(file);
+                  }
+                }}
+              />
+            </label>
+          </div>
+          {faviconError ? (
+            <p className="text-xs text-destructive">{faviconError}</p>
+          ) : null}
         </div>
       </div>
 

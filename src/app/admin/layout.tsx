@@ -23,7 +23,7 @@ export default function AdminLayout({
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Pannello
               </p>
-              <h2 className="text-lg font-display font-semibold">Dashboard Admin</h2>
+              <h2 className="text-lg font-display font-semibold">Admin</h2>
             </div>
           </div>
           <div className="flex items-center gap-3">

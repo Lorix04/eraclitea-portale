@@ -112,31 +112,31 @@ async function main() {
       title: "Sicurezza sul Lavoro - Base",
       categories: ["Sicurezza"],
       durationHours: 8,
-      status: CourseStatus.PUBLISHED,
+      editionStatus: CourseStatus.PUBLISHED,
     },
     {
       title: "Antincendio Rischio Medio",
       categories: ["Sicurezza"],
       durationHours: 6,
-      status: CourseStatus.PUBLISHED,
+      editionStatus: CourseStatus.PUBLISHED,
     },
     {
       title: "Primo Soccorso Gruppo B",
       categories: ["Sicurezza"],
       durationHours: 12,
-      status: CourseStatus.DRAFT,
+      editionStatus: CourseStatus.DRAFT,
     },
     {
       title: "GDPR e Privacy",
       categories: ["Compliance"],
       durationHours: 4,
-      status: CourseStatus.PUBLISHED,
+      editionStatus: CourseStatus.PUBLISHED,
     },
     {
       title: "Leadership e Management",
       categories: ["Soft Skills"],
       durationHours: 16,
-      status: CourseStatus.CLOSED,
+      editionStatus: CourseStatus.CLOSED,
     },
   ];
 
@@ -159,7 +159,11 @@ async function main() {
     categoryMap.set(created.name, created.id);
   }
 
-  const courses = [] as Array<{ id: string; title: string; status: CourseStatus }>;
+  const courses = [] as Array<{
+    id: string;
+    title: string;
+    editionStatus?: CourseStatus;
+  }>;
 
   for (const corsoData of corsiData) {
     const existing = await prisma.course.findFirst({
@@ -171,18 +175,14 @@ async function main() {
           where: { id: existing.id },
           data: {
             durationHours: corsoData.durationHours,
-            status: corsoData.status,
+            description: `Corso di formazione ${corsoData.title}. Durata ${corsoData.durationHours ?? 8} ore.`,
           },
         })
       : await prisma.course.create({
           data: {
             title: corsoData.title,
             durationHours: corsoData.durationHours,
-            status: corsoData.status,
             description: `Corso di formazione ${corsoData.title}. Durata ${corsoData.durationHours ?? 8} ore.`,
-            dateStart: new Date(),
-            dateEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            deadlineRegistry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           },
         });
 
@@ -199,30 +199,46 @@ async function main() {
       });
     }
 
-    courses.push({ id: course.id, title: course.title, status: course.status });
+    courses.push({
+      id: course.id,
+      title: course.title,
+      editionStatus: corsoData.editionStatus,
+    });
     console.log("✅ Corso:", course.title);
-
-    if (course.status === CourseStatus.PUBLISHED) {
-      const existingNotification = await prisma.notification.findFirst({
-        where: { courseId: course.id, type: "COURSE_PUBLISHED" },
-      });
-      if (!existingNotification) {
-        await prisma.notification.create({
-          data: {
-            type: "COURSE_PUBLISHED",
-            title: `Nuovo corso: ${course.title}`,
-            message: course.description,
-            courseId: course.id,
-            isGlobal: true,
-          },
-        });
-      }
-    }
   }
 
-  const firstCourse = courses.find((course) => course.status === CourseStatus.PUBLISHED);
-  if (firstCourse) {
+  const publishedCourse = courses.find(
+    (course) => course.editionStatus === CourseStatus.PUBLISHED
+  );
+  const editionsByClient = new Map<string, { id: string }>();
+  if (publishedCourse) {
     for (const client of clients) {
+      const existingEdition = await prisma.courseEdition.findFirst({
+        where: {
+          courseId: publishedCourse.id,
+          clientId: client.id,
+          editionNumber: 1,
+        },
+        select: { id: true },
+      });
+
+      const edition =
+        existingEdition ??
+        (await prisma.courseEdition.create({
+          data: {
+            courseId: publishedCourse.id,
+            clientId: client.id,
+            editionNumber: 1,
+            startDate: new Date(),
+            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            deadlineRegistry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            status: CourseStatus.PUBLISHED,
+          },
+          select: { id: true },
+        }));
+
+      editionsByClient.set(client.id, edition);
+
       const employees = await prisma.employee.findMany({
         where: { clientId: client.id },
         take: 2,
@@ -230,11 +246,16 @@ async function main() {
 
       for (const employee of employees) {
         await prisma.courseRegistration.upsert({
-          where: { courseId_employeeId: { courseId: firstCourse.id, employeeId: employee.id } },
+          where: {
+            courseEditionId_employeeId: {
+              courseEditionId: edition.id,
+              employeeId: employee.id,
+            },
+          },
           update: { status: RegistrationStatus.CONFIRMED },
           create: {
             clientId: client.id,
-            courseId: firstCourse.id,
+            courseEditionId: edition.id,
             employeeId: employee.id,
             status: RegistrationStatus.CONFIRMED,
           },
@@ -243,30 +264,32 @@ async function main() {
     }
   }
 
-  const certCourse = courses.find((course) => course.status === CourseStatus.PUBLISHED);
-  if (certCourse) {
-    const client = clients[0];
-    if (client) {
-      const employee = await prisma.employee.findFirst({
-        where: { clientId: client.id },
+  const firstClient = clients[0];
+  const firstEdition = firstClient ? editionsByClient.get(firstClient.id) : null;
+  if (firstClient && firstEdition) {
+    const employee = await prisma.employee.findFirst({
+      where: { clientId: firstClient.id },
+    });
+    if (employee) {
+      const existingCert = await prisma.certificate.findFirst({
+        where: {
+          clientId: firstClient.id,
+          courseEditionId: firstEdition.id,
+          employeeId: employee.id,
+        },
       });
-      if (employee) {
-        const existingCert = await prisma.certificate.findFirst({
-          where: { clientId: client.id, courseId: certCourse.id, employeeId: employee.id },
+      if (!existingCert) {
+        await prisma.certificate.create({
+          data: {
+            clientId: firstClient.id,
+            courseEditionId: firstEdition.id,
+            employeeId: employee.id,
+            filePath: "./storage/certificates/demo/attestato_demo.pdf",
+            achievedAt: new Date(),
+            expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+            uploadedBy: admin.id,
+          },
         });
-        if (!existingCert) {
-          await prisma.certificate.create({
-            data: {
-              clientId: client.id,
-              courseId: certCourse.id,
-              employeeId: employee.id,
-              filePath: "./storage/certificates/demo/attestato_demo.pdf",
-              achievedAt: new Date(),
-              expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-              uploadedBy: admin.id,
-            },
-          });
-        }
       }
     }
   }

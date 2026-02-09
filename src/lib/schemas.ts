@@ -34,35 +34,24 @@ const courseBaseSchema = z.object({
   title: z.string().min(3, "Titolo minimo 3 caratteri").max(200),
   description: z.string().max(2000).optional().or(z.literal("")),
   durationHours: optionalInt,
-  dateStart: optionalDate,
-  dateEnd: optionalDate,
-  deadlineRegistry: optionalDate,
-  status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
   visibilityType: z.enum(["ALL", "SELECTED_CLIENTS", "BY_CATEGORY"]).optional(),
   visibilityClientIds: z.array(z.string().cuid()).optional(),
   visibilityCategoryIds: z.array(z.string().cuid()).optional(),
   categoryIds: z.array(z.string().cuid()).optional(),
 });
 
-export const courseSchema = courseBaseSchema.refine(
-  (data) => {
-    if (data.dateStart && data.dateEnd) {
-      return data.dateEnd >= data.dateStart;
-    }
-    return true;
-  },
-  { message: "Data fine deve essere successiva a data inizio" }
-);
+export const courseSchema = courseBaseSchema;
 
-export const courseUpdateSchema = courseBaseSchema.partial().refine(
-  (data) => {
-    if (data.dateStart && data.dateEnd) {
-      return data.dateEnd >= data.dateStart;
-    }
-    return true;
-  },
-  { message: "Data fine deve essere successiva a data inizio" }
-);
+export const courseUpdateSchema = courseBaseSchema.partial();
+
+export const courseEditionSchema = z.object({
+  clientId: z.string().cuid(),
+  startDate: optionalDate,
+  endDate: optionalDate,
+  deadlineRegistry: optionalDate,
+  status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
+  notes: z.string().max(2000).optional().or(z.literal("")),
+});
 
 export const employeeSchema = z.object({
   nome: z.string().min(1, "Nome obbligatorio").max(100),
@@ -74,6 +63,7 @@ export const employeeSchema = z.object({
   dataNascita: optionalDate,
   luogoNascita: z.string().max(100).optional().or(z.literal("")),
   email: z.string().email("Email non valida").optional().or(z.literal("")),
+  telefono: z.string().max(30).optional().or(z.literal("")),
   mansione: z.string().max(100).optional().or(z.literal("")),
   note: z.string().max(500).optional().or(z.literal("")),
 });
@@ -128,7 +118,7 @@ export const clientUpdateSchema = z.object({
 });
 
 export const certificateUploadSchema = z.object({
-  courseId: z.string().cuid().optional(),
+  courseEditionId: z.string().cuid().optional(),
   clientId: z.string().cuid(),
   associations: z.array(
     z.object({

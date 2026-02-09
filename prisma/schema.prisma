@@ -52,10 +52,13 @@ model Client {
   logoLightPath     String?
   logoFileName      String?
   logoLightFileName String?
+  faviconPath       String?
+  faviconFileName   String?
   isActive          Boolean            @default(true)
   createdAt         DateTime           @default(now())
   users             User[]
   employees         Employee[]
+  editions          CourseEdition[]
   registrations     CourseRegistration[]
   certificates      Certificate[]
   notificationReads NotificationRead[]
@@ -68,26 +71,45 @@ model Course {
   title            String
   description      String?
   durationHours    Int?
-  dateStart        DateTime?
-  dateEnd          DateTime?
-  deadlineRegistry DateTime?
-  status           CourseStatus       @default(DRAFT)
   visibilityType   VisibilityType     @default(ALL)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  registrations    CourseRegistration[]
-  certificates     Certificate[]
-  notifications    Notification[]
+  editions         CourseEdition[]
   visibility       CourseVisibility[]
   visibilityCategories CourseVisibilityCategory[]
   categories       CourseCategory[]
+}
+
+model CourseEdition {
+  id               String        @id @default(cuid())
+  courseId         String
+  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editionNumber    Int
+  startDate        DateTime?
+  endDate          DateTime?
+  deadlineRegistry DateTime?
+  status           CourseStatus  @default(DRAFT)
+  notes            String?
+  registrations    CourseRegistration[]
   lessons          Lesson[]
+  attendances      Attendance[]
+  certificates     Certificate[]
+  notifications    Notification[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([courseId, clientId, editionNumber])
+  @@index([courseId])
+  @@index([clientId])
+  @@index([status])
 }
 
 model Lesson {
   id            String    @id @default(cuid())
-  courseId      String
-  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseEditionId String
+  courseEdition  CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
   date          DateTime
   startTime     String?
   endTime       String?
@@ -98,9 +120,9 @@ model Lesson {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@index([courseId])
+  @@index([courseEditionId])
   @@index([date])
-  @@unique([courseId, date, startTime])
+  @@unique([courseEditionId, date, startTime])
 }
 
 model Category {
@@ -176,6 +198,7 @@ model Employee {
   dataNascita   DateTime?
   luogoNascita  String?
   email         String?
+  telefono      String?
   mansione      String?
   note          String?
   createdAt     DateTime  @default(now())
@@ -191,17 +214,17 @@ model CourseRegistration {
   id         String             @id @default(cuid())
   clientId   String
   client     Client             @relation(fields: [clientId], references: [id])
-  courseId   String
-  course     Course             @relation(fields: [courseId], references: [id])
+  courseEditionId String
+  courseEdition  CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee           @relation(fields: [employeeId], references: [id])
   status     RegistrationStatus @default(INSERTED)
   insertedAt DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
 
-  @@unique([courseId, employeeId])
   @@index([clientId, status])
-  @@index([courseId, status])
+  @@index([courseEditionId])
+  @@unique([courseEditionId, employeeId])
 }
 
 enum RegistrationStatus {
@@ -220,6 +243,8 @@ model Attendance {
   id         String           @id @default(cuid())
   lessonId   String
   lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseEditionId String
+  courseEdition  CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   status     AttendanceStatus @default(ABSENT)
@@ -232,14 +257,15 @@ model Attendance {
   @@unique([lessonId, employeeId])
   @@index([lessonId])
   @@index([employeeId])
+  @@index([courseEditionId])
 }
 
 model Certificate {
   id         String   @id @default(cuid())
   clientId   String
   client     Client   @relation(fields: [clientId], references: [id])
-  courseId   String?
-  course     Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseEditionId String?
+  courseEdition  CourseEdition? @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee @relation(fields: [employeeId], references: [id])
   filePath   String
@@ -251,6 +277,7 @@ model Certificate {
 
   @@index([clientId])
   @@index([expiresAt])
+  @@index([courseEditionId])
 }
 
 model Notification {
@@ -258,8 +285,8 @@ model Notification {
   type      NotificationType
   title     String
   message   String?
-  courseId  String?
-  course    Course?          @relation(fields: [courseId], references: [id])
+  courseEditionId String?
+  courseEdition  CourseEdition? @relation(fields: [courseEditionId], references: [id])
   isGlobal  Boolean          @default(false)
   createdAt DateTime         @default(now())
   reads     NotificationRead[]

@@ -39,51 +39,30 @@ export async function GET(request: Request) {
   const includeAll = validation.data.all === "true" || tab === "tutti";
   const categoryId = validation.data.categoryId;
 
-  const clientCategories = await prisma.clientCategory.findMany({
-    where: { clientId: session.user.clientId },
-    select: { categoryId: true },
-  });
-  const clientCategoryIds = clientCategories.map((entry) => entry.categoryId);
-
-  const courses = await prisma.course.findMany({
+  const editions = await prisma.courseEdition.findMany({
     where: {
-      status: "PUBLISHED",
-      OR: [
-        {
-          visibilityType: "ALL",
-          visibility: { none: {} },
-        },
-        {
-          visibilityType: "SELECTED_CLIENTS",
-          visibility: { some: { clientId: session.user.clientId } },
-        },
-        {
-          visibilityType: "BY_CATEGORY",
-          visibilityCategories: {
-            some: {
-              categoryId: { in: clientCategoryIds.length ? clientCategoryIds : [""] },
-            },
-          },
-        },
-        // Compatibilita per corsi creati prima del campo visibilityType
-        { visibility: { some: { clientId: session.user.clientId } } },
-      ],
-      ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+      clientId: session.user.clientId,
+      ...(categoryId
+        ? { course: { categories: { some: { categoryId } } } }
+        : {}),
     },
     include: {
+      course: {
+        include: {
+          categories: { include: { category: true } },
+        },
+      },
       registrations: {
-        where: { clientId: session.user.clientId },
         select: { status: true },
       },
-      categories: { include: { category: true } },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  let data = courses
-    .map((course) => {
-      const registrationsCount = course.registrations.length;
-      const completedCount = course.registrations.filter(
+  let data = editions
+    .map((edition) => {
+      const registrationsCount = edition.registrations.length;
+      const completedCount = edition.registrations.filter(
         (reg) => reg.status === "TRAINED"
       ).length;
 
@@ -95,33 +74,68 @@ export async function GET(request: Request) {
       }
 
       const isNew =
-        (Date.now() - course.createdAt.getTime()) / (1000 * 60 * 60 * 24) <= 7;
+        (Date.now() - edition.createdAt.getTime()) / (1000 * 60 * 60 * 24) <= 7;
 
       return {
-        id: course.id,
-        title: course.title,
-        categories: course.categories.map((entry) => ({
-          id: entry.category.id,
-          name: entry.category.name,
-          color: entry.category.color,
-        })),
-        durationHours: course.durationHours,
-        createdAt: course.createdAt,
-        dateStart: course.dateStart,
-        deadlineRegistry: course.deadlineRegistry,
+        id: edition.id,
+        courseId: edition.courseId,
+        editionNumber: edition.editionNumber,
+        startDate: edition.startDate,
+        endDate: edition.endDate,
+        deadlineRegistry: edition.deadlineRegistry,
         status,
         registrationsCount,
         completedCount,
         isNew,
+        course: {
+          id: edition.course.id,
+          title: edition.course.title,
+          durationHours: edition.course.durationHours,
+          categories: edition.course.categories.map((entry) => ({
+            id: entry.category.id,
+            name: entry.category.name,
+            color: entry.category.color,
+          })),
+        },
       };
     })
-    .filter((course) =>
-      includeAll ? true : requestedStatus ? course.status === requestedStatus : true
+    .filter((edition) =>
+      includeAll
+        ? true
+        : requestedStatus
+          ? edition.status === requestedStatus
+          : true
     );
 
   if (limit) {
     data = data.slice(0, limit);
   }
 
-  return NextResponse.json({ data });
+  const grouped = new Map<
+    string,
+    {
+      id: string;
+      title: string;
+      durationHours?: number | null;
+      categories: { id: string; name: string; color?: string | null }[];
+      editions: typeof data;
+    }
+  >();
+
+  data.forEach((edition) => {
+    const existing = grouped.get(edition.courseId);
+    if (existing) {
+      existing.editions.push(edition);
+      return;
+    }
+    grouped.set(edition.courseId, {
+      id: edition.course.id,
+      title: edition.course.title,
+      durationHours: edition.course.durationHours ?? null,
+      categories: edition.course.categories,
+      editions: [edition],
+    });
+  });
+
+  return NextResponse.json({ data: Array.from(grouped.values()) });
 }

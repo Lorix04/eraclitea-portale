@@ -8,6 +8,7 @@ import { AttendanceMatrix } from "@/components/AttendanceMatrix";
 import { AttendanceStats } from "@/components/AttendanceStats";
 import { useAttendance } from "@/hooks/useAttendance";
 import { AttendanceStatus } from "@/types";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type AttendanceEntry = {
   lessonId: string;
@@ -109,10 +110,14 @@ export default function AdminCourseAttendancePage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/admin/corsi/${params.id}/edit`}
+            href={
+              data?.course?.id
+                ? `/admin/corsi/${data.course.id}/edizioni/${params.id}`
+                : "/admin/corsi"
+            }
             className="rounded-md border px-3 py-2 text-sm"
           >
-            Torna al corso
+            Torna all&apos;edizione
           </Link>
           <button
             type="button"
@@ -143,11 +148,14 @@ export default function AdminCourseAttendancePage({
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Caricamento presenze...</p>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-3 h-32 w-full" />
+        </div>
       ) : data ? (
         <div className="space-y-4">
           <AttendanceMatrix
-            courseId={params.id}
+            courseEditionId={params.id}
             lessons={data.lessons}
             employees={data.employees}
             attendances={matrixAttendances}

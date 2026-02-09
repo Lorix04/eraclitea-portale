@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 
 const filterSchema = z.object({
-  courseId: z.string().cuid().optional(),
+  courseEditionId: z.string().cuid().optional(),
   employeeId: z.string().cuid().optional(),
   year: z.coerce.number().min(2000).max(2100).optional(),
   status: z.enum(["valid", "expiring", "expired"]).optional(),
@@ -28,14 +28,15 @@ export async function GET(request: Request) {
     return validation.error;
   }
 
-  const { courseId, employeeId, year, status, page, limit } = validation.data;
+  const { courseEditionId, employeeId, year, status, page, limit } =
+    validation.data;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 20;
   const clientId = session.user.clientId;
 
   const where: Record<string, unknown> = {
     clientId,
-    ...(courseId ? { courseId } : {}),
+    ...(courseEditionId ? { courseEditionId } : {}),
     ...(employeeId ? { employeeId } : {}),
   };
 
@@ -64,7 +65,13 @@ export async function GET(request: Request) {
       where,
       include: {
         employee: { select: { id: true, nome: true, cognome: true } },
-        course: { select: { id: true, title: true } },
+        courseEdition: {
+          select: {
+            id: true,
+            editionNumber: true,
+            course: { select: { id: true, title: true } },
+          },
+        },
         uploader: { select: { email: true } },
       },
       orderBy: { uploadedAt: "desc" },
@@ -83,7 +90,7 @@ export async function GET(request: Request) {
   const data = certificates.map((cert) => ({
     id: cert.id,
     employee: cert.employee,
-    course: cert.course ?? null,
+    courseEdition: cert.courseEdition ?? null,
     achievedAt: cert.achievedAt,
     expiresAt: cert.expiresAt,
     uploadedAt: cert.uploadedAt,

@@ -15,8 +15,7 @@ type FilterType =
   | "all"
   | "unread"
   | "COURSE_PUBLISHED"
-  | "CERT_UPLOADED"
-  | "REMINDER";
+  | "CERT_UPLOADED";
 
 type NotificationsResponse = {
   items: NotificationItem[];
@@ -31,7 +30,9 @@ async function fetchNotifications(filter: FilterType, page: number) {
   params.set("page", String(page));
   params.set("limit", "20");
   if (filter === "unread") params.set("unreadOnly", "true");
-  if (["COURSE_PUBLISHED", "CERT_UPLOADED", "REMINDER"].includes(filter)) {
+  if (
+    ["COURSE_PUBLISHED", "CERT_UPLOADED"].includes(filter)
+  ) {
     params.set("type", filter);
   }
 
@@ -74,8 +75,12 @@ export default function NotifichePage() {
       await fetch(`/api/notifiche/${item.id}/read`, { method: "POST" });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-    if (item.courseId) {
-      window.location.href = `/corsi/${item.courseId}`;
+    if (item.type === "CERT_UPLOADED") {
+      window.location.href = "/attestati";
+      return;
+    }
+    if (item.courseEditionId) {
+      window.location.href = `/corsi/${item.courseEditionId}`;
     }
   };
 
@@ -105,7 +110,6 @@ export default function NotifichePage() {
           { id: "unread", label: "Non lette" },
           { id: "COURSE_PUBLISHED", label: "Corsi" },
           { id: "CERT_UPLOADED", label: "Attestati" },
-          { id: "REMINDER", label: "Promemoria" },
         ]}
         activeTab={filter}
         onTabChange={(value) => {

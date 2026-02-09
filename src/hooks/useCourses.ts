@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 export function useCourses(tab?: string) {
   return useQuery({
@@ -14,23 +14,4 @@ export function useCourses(tab?: string) {
   });
 }
 
-export function usePublishCourse() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (courseId: string) => {
-      const res = await fetch(`/api/corsi/${courseId}/pubblica`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to publish");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["courses"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-  });
-}
+// publish handled at edition level in Phase 2

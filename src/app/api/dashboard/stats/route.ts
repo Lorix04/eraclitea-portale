@@ -35,8 +35,8 @@ export async function GET() {
     }),
     prisma.courseRegistration.findMany({
       where: { clientId: session.user.clientId, status: "TRAINED" },
-      distinct: ["courseId"],
-      select: { courseId: true },
+      distinct: ["courseEditionId"],
+      select: { courseEditionId: true },
     }),
   ]);
 

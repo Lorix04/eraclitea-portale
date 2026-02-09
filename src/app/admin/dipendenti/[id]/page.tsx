@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import EmployeeCoursesList from "@/components/EmployeeCoursesList";
 import EmployeeCertificatesList from "@/components/EmployeeCertificatesList";
 import { useEmployee } from "@/hooks/useEmployee";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function AdminEmployeeDetailPage() {
   const params = useParams();
@@ -72,8 +73,10 @@ export default function AdminEmployeeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-        Caricamento dipendente...
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="mt-2 h-4 w-64" />
+        <Skeleton className="mt-6 h-32 w-full" />
       </div>
     );
   }
@@ -91,13 +94,13 @@ export default function AdminEmployeeDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link href="/admin/dipendenti" className="text-sm text-primary">
-            ← Torna ai dipendenti
+            &larr; Torna ai dipendenti
           </Link>
           <h1 className="mt-2 text-xl font-semibold">
             {employee.cognome} {employee.nome}
           </h1>
           <p className="text-sm text-muted-foreground">
-            CF: {employee.codiceFiscale} · Cliente:{" "}
+            CF: {employee.codiceFiscale} - Cliente:{" "}
             {employee.client?.ragioneSociale ?? "-"}
           </p>
         </div>
@@ -124,8 +127,9 @@ export default function AdminEmployeeDetailPage() {
         <h2 className="text-lg font-semibold">Corsi</h2>
         <EmployeeCoursesList
           registrations={employee.registrations ?? []}
-          courseBasePath="/admin/corsi"
-          detailSuffix="edit"
+          getEditionHref={(reg) =>
+            `/admin/corsi/${reg.courseEdition.course.id}/edizioni/${reg.courseEdition.id}`
+          }
         />
       </div>
 
@@ -145,9 +149,12 @@ export default function AdminEmployeeDetailPage() {
         warningMessage={
           employee.registrations?.length || employee.certificates?.length
             ? `Questo dipendente ha ${employee.registrations?.length ?? 0} iscrizioni a corsi e ${employee.certificates?.length ?? 0} attestati. Tutti i dati associati verranno eliminati permanentemente.`
-            : "Questa azione non può essere annullata."
+            : "Questa azione non puo' essere annullata."
         }
       />
     </div>
   );
 }
+
+
+

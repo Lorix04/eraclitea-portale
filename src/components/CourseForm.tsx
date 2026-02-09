@@ -1,38 +1,28 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { toast } from "sonner";
-import { isValidItalianDate } from "@/lib/date-utils";
-import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import CategorySelect from "@/components/CategorySelect";
 import SearchableCheckboxList from "@/components/SearchableCheckboxList";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 const optionalInt = z.preprocess(
   (value) => {
     if (value === "" || value === null || value === undefined) return undefined;
     return value;
   },
-  z.coerce.number().int().min(1).max(200).optional()
+  z.coerce.number().int().min(1, "Ore obbligatorie").max(200)
 );
-
-const italianDateField = z
-  .string()
-  .optional()
-  .refine(
-    (val) => !val || val === "" || isValidItalianDate(val),
-    { message: "Data non valida. Usa il formato GG/MM/AAAA" }
-  );
 
 const CourseSchema = z.object({
   title: z.string().min(1, "Titolo obbligatorio"),
   description: z.string().optional(),
   durationHours: optionalInt,
-  dateStart: italianDateField,
-  dateEnd: italianDateField,
-  deadlineRegistry: italianDateField,
   visibilityType: z.enum(["ALL", "SELECTED_CLIENTS", "BY_CATEGORY"]),
   visibilityClientIds: z.array(z.string()).optional(),
   visibilityCategoryIds: z.array(z.string()).optional(),
@@ -59,12 +49,10 @@ type CategoryOption = {
 type CourseFormProps = {
   courseId?: string;
   initialData?: Partial<CourseFormData> & {
-    status?: string;
     visibilityType?: "ALL" | "SELECTED_CLIENTS" | "BY_CATEGORY";
   };
   deleteStats?: {
-    registrationsCount: number;
-    lessonsCount: number;
+    editionsCount: number;
   };
 };
 
@@ -88,9 +76,6 @@ export default function CourseForm({
       initialData?.durationHours !== undefined && initialData?.durationHours !== null
         ? String(initialData.durationHours)
         : "",
-    dateStart: initialData?.dateStart ?? "",
-    dateEnd: initialData?.dateEnd ?? "",
-    deadlineRegistry: initialData?.deadlineRegistry ?? "",
     visibilityType:
       initialData?.visibilityType ??
       (initialData?.visibilityCategoryIds &&
@@ -145,9 +130,12 @@ export default function CourseForm({
       ...prev,
       [key]: value,
     }));
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
   };
 
-  const saveCourse = async (status: "DRAFT" | "PUBLISHED") => {
+  const saveCourse = async () => {
     setErrors({});
     const parsed = CourseSchema.safeParse({
       ...form,
@@ -167,7 +155,6 @@ export default function CourseForm({
     setSaving(true);
     const payload = {
       ...parsed.data,
-      status,
       visibilityClientIds:
         parsed.data.visibilityType === "SELECTED_CLIENTS"
           ? parsed.data.visibilityClientIds
@@ -194,32 +181,9 @@ export default function CourseForm({
     return json.data as { id: string };
   };
 
-  const handleSaveDraft = async () => {
-    const saved = await saveCourse("DRAFT");
+  const handleSave = async () => {
+    const saved = await saveCourse();
     if (!saved?.id) return;
-    router.push("/admin/corsi");
-  };
-
-  const handlePublish = async () => {
-    if (courseId && initialData?.status === "PUBLISHED") {
-      await saveCourse("PUBLISHED");
-      router.push("/admin/corsi");
-      return;
-    }
-    const fallbackStatus: "DRAFT" | "PUBLISHED" =
-      initialData?.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
-    const saved = await saveCourse(fallbackStatus);
-    if (!saved?.id) return;
-
-    const res = await fetch(`/api/corsi/${saved.id}/pubblica`, {
-      method: "POST",
-    });
-
-    if (!res.ok) {
-      setErrors({ form: "Errore durante la pubblicazione." });
-      return;
-    }
-
     router.push("/admin/corsi");
   };
 
@@ -248,19 +212,20 @@ export default function CourseForm({
 
   return (
     <div className="space-y-6">
+      <FormRequiredLegend />
+
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm">
-          Titolo
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Titolo</FormLabel>
           <input
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.title ? "border-red-500 focus-visible:outline-red-500" : ""
+            }`}
             value={form.title}
             onChange={(event) => updateField("title", event.target.value)}
-            required
           />
-          {errors.title ? (
-            <span className="text-xs text-destructive">{errors.title}</span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.title} />
+        </div>
 
         <div className="flex flex-col gap-2 text-sm">
           <span className="font-medium">Categorie</span>
@@ -274,7 +239,7 @@ export default function CourseForm({
       </div>
 
       <label className="flex flex-col gap-2 text-sm">
-        Descrizione
+        <FormLabel>Descrizione</FormLabel>
         <textarea
           className="min-h-[120px] rounded-md border bg-background px-3 py-2"
           value={form.description}
@@ -282,44 +247,23 @@ export default function CourseForm({
         />
       </label>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <ItalianDateInput
-          id="dateStart"
-          label="Data Inizio"
-          value={form.dateStart ?? ""}
-          onChange={(value) => updateField("dateStart", value)}
-          error={errors.dateStart}
-        />
-        <ItalianDateInput
-          id="dateEnd"
-          label="Data Fine"
-          value={form.dateEnd ?? ""}
-          onChange={(value) => updateField("dateEnd", value)}
-          error={errors.dateEnd}
-        />
-        <ItalianDateInput
-          id="deadlineRegistry"
-          label="Deadline Anagrafiche"
-          value={form.deadlineRegistry ?? ""}
-          onChange={(value) => updateField("deadlineRegistry", value)}
-          error={errors.deadlineRegistry}
-        />
-        <label className="flex flex-col gap-2 text-sm">
-          Ore
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <FormLabel required>Ore</FormLabel>
           <input
             type="number"
             step="1"
             min="1"
-            className="rounded-md border bg-background px-3 py-2"
+            className={`rounded-md border bg-background px-3 py-2 ${
+              errors.durationHours
+                ? "border-red-500 focus-visible:outline-red-500"
+                : ""
+            }`}
             value={form.durationHours ?? ""}
             onChange={(event) => updateField("durationHours", event.target.value)}
           />
-          {errors.durationHours ? (
-            <span className="text-xs text-destructive">
-              {errors.durationHours}
-            </span>
-          ) : null}
-        </label>
+          <FormFieldError message={errors.durationHours} />
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -415,18 +359,10 @@ export default function CourseForm({
         <button
           type="button"
           className="rounded-md border bg-background px-4 py-2"
-          onClick={handleSaveDraft}
+          onClick={handleSave}
           disabled={saving}
         >
-          Salva come bozza
-        </button>
-        <button
-          type="button"
-          className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
-          onClick={handlePublish}
-          disabled={saving}
-        >
-          Pubblica
+          Salva
         </button>
       </div>
 
@@ -442,11 +378,9 @@ export default function CourseForm({
           itemName={initialData?.title}
           isDeleting={isDeleting}
           warningMessage={
-            deleteStats &&
-            (deleteStats.registrationsCount > 0 ||
-              deleteStats.lessonsCount > 0)
-              ? `Questo corso ha ${deleteStats.registrationsCount} iscrizioni e ${deleteStats.lessonsCount} lezioni. Tutti i dati associati verranno eliminati permanentemente.`
-              : "Questa azione non può essere annullata."
+            deleteStats && deleteStats.editionsCount > 0
+              ? `Questo corso ha ${deleteStats.editionsCount} edizioni. Tutti i dati associati verranno eliminati permanentemente.`
+              : "Questa azione non puo essere annullata."
           }
         />
       ) : null}

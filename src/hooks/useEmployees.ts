@@ -9,6 +9,7 @@ type UseEmployeesParams = {
   hasCourses?: "all" | "with" | "without";
   page?: number;
   limit?: number;
+  includeRegistrations?: boolean;
 };
 
 type EmployeeRow = {
@@ -20,11 +21,15 @@ type EmployeeRow = {
   dataNascita?: string | Date | null;
   luogoNascita?: string | null;
   email?: string | null;
+  telefono?: string | null;
   mansione?: string | null;
   note?: string | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   client?: { id: string; ragioneSociale: string };
   _count?: { registrations?: number; certificates?: number };
   coursesCompleted?: number;
+  registrations?: { courseEditionId: string }[];
 };
 
 type EmployeesResponse = {
@@ -46,6 +51,9 @@ export function useEmployees(params: UseEmployeesParams) {
       if (params.sortBy) searchParams.set("sortBy", params.sortBy);
       if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
       if (params.hasCourses) searchParams.set("hasCourses", params.hasCourses);
+      if (params.includeRegistrations) {
+        searchParams.set("includeRegistrations", "true");
+      }
       if (params.page) searchParams.set("page", String(params.page));
       if (params.limit) searchParams.set("limit", String(params.limit));
       const res = await fetch(`/api/dipendenti?${searchParams.toString()}`);

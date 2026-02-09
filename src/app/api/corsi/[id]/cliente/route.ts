@@ -15,55 +15,29 @@ export async function GET(
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
-  const course = await prisma.course.findUnique({
+  const edition = await prisma.courseEdition.findUnique({
     where: { id: context.params.id },
     include: {
-      visibility: true,
-      visibilityCategories: true,
-      categories: { include: { category: true } },
+      course: {
+        include: { categories: { include: { category: true } } },
+      },
       registrations: {
-        where: { clientId: session.user.clientId },
         include: { employee: true },
       },
     },
   });
 
-  if (!course) {
+  if (!edition) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (course.status !== "PUBLISHED") {
-    return NextResponse.json({ error: "Not available" }, { status: 404 });
-  }
-
-  const clientCategories = await prisma.clientCategory.findMany({
-    where: { clientId: session.user.clientId },
-    select: { categoryId: true },
-  });
-  const clientCategoryIds = new Set(
-    clientCategories.map((entry) => entry.categoryId)
-  );
-
-  const isVisible =
-    (course.visibilityType === "ALL" && course.visibility.length === 0) ||
-    (course.visibilityType === "SELECTED_CLIENTS" &&
-      course.visibility.some(
-        (entry) => entry.clientId === session.user.clientId
-      )) ||
-    (course.visibilityType === "BY_CATEGORY" &&
-      course.visibilityCategories.some((entry) =>
-        clientCategoryIds.has(entry.categoryId)
-      )) ||
-    // Compatibilita per corsi creati prima del campo visibilityType
-    course.visibility.some((entry) => entry.clientId === session.user.clientId);
-
-  if (!isVisible) {
+  if (edition.clientId !== session.user.clientId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const certificates = await prisma.certificate.findMany({
     where: {
-      courseId: course.id,
+      courseEditionId: edition.id,
       clientId: session.user.clientId,
     },
     include: {
@@ -72,26 +46,30 @@ export async function GET(
     orderBy: { uploadedAt: "desc" },
   });
 
-  const total = course.registrations.length;
-  const completed = course.registrations.filter(
+  const total = edition.registrations.length;
+  const completed = edition.registrations.filter(
     (reg) => reg.status === "TRAINED"
   ).length;
 
   return NextResponse.json({
     data: {
-      id: course.id,
-      title: course.title,
-      categories: course.categories.map((entry) => ({
+      id: edition.id,
+      editionNumber: edition.editionNumber,
+      clientId: edition.clientId,
+      status: edition.status,
+      startDate: edition.startDate,
+      endDate: edition.endDate,
+      deadlineRegistry: edition.deadlineRegistry,
+      notes: edition.notes,
+      title: edition.course.title,
+      categories: edition.course.categories.map((entry) => ({
         id: entry.category.id,
         name: entry.category.name,
         color: entry.category.color,
       })),
-      durationHours: course.durationHours,
-      description: course.description,
-      dateStart: course.dateStart,
-      dateEnd: course.dateEnd,
-      deadlineRegistry: course.deadlineRegistry,
-      registrations: course.registrations.map((reg) => ({
+      durationHours: edition.course.durationHours,
+      description: edition.course.description,
+      registrations: edition.registrations.map((reg) => ({
         id: reg.id,
         status: reg.status,
         employee: {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -9,6 +9,7 @@ import { LessonList } from "@/components/LessonList";
 import { LessonForm } from "@/components/LessonForm";
 import { useLessons } from "@/hooks/useLessons";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function AdminCourseLessonsPage({
   params,
@@ -22,7 +23,7 @@ export default function AdminCourseLessonsPage({
   const { data, isLoading, createLesson, updateLesson, deleteLesson } =
     useLessons(params.id, 1, 50);
 
-  const lessons = useMemo(() => data?.data ?? [], [data?.data]);
+  const lessons = useMemo(() => data?.data ?? [], [data]);
   const totalEmployees = data?.totalEmployees ?? 0;
   const totalHours = useMemo(
     () =>
@@ -101,10 +102,10 @@ export default function AdminCourseLessonsPage({
         </div>
         <div className="flex gap-2">
           <Link
-            href={`/admin/corsi/${params.id}/edit`}
+            href="/admin/corsi"
             className="rounded-md border px-3 py-2 text-sm"
           >
-            Torna al corso
+            Torna ai corsi
           </Link>
           <button
             type="button"
@@ -121,7 +122,11 @@ export default function AdminCourseLessonsPage({
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Caricamento lezioni...</p>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-3 h-8 w-full" />
+          <Skeleton className="mt-2 h-8 w-full" />
+        </div>
       ) : (
         <LessonList
           lessons={lessons}
@@ -172,3 +177,4 @@ export default function AdminCourseLessonsPage({
     </div>
   );
 }
+

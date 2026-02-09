@@ -6,6 +6,9 @@ import { isValidCodiceFiscale } from "@/lib/validators";
 import EmployeeCard from "@/components/EmployeeCard";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { BrandedButton } from "@/components/BrandedButton";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 type EmployeeRow = {
   nome: string;
@@ -46,18 +49,30 @@ export default function EmployeeCardForm({
 }: EmployeeCardFormProps) {
   const [form, setForm] = useState<EmployeeRow>(emptyRow);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLDivElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
+  const updateField = (key: keyof EmployeeRow, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    }
+  };
+
   const handleSubmit = () => {
-    setError(null);
-    if (!form.nome || !form.cognome || !form.codiceFiscale) {
-      setError("Nome, cognome e codice fiscale sono obbligatori.");
+    setErrors({});
+    const fieldErrors: Record<string, string> = {};
+    if (!form.nome.trim()) fieldErrors.nome = "Questo campo è obbligatorio";
+    if (!form.cognome.trim()) fieldErrors.cognome = "Questo campo è obbligatorio";
+    if (!form.codiceFiscale.trim())
+      fieldErrors.codiceFiscale = "Questo campo è obbligatorio";
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
       return;
     }
     if (!isValidCodiceFiscale(form.codiceFiscale)) {
-      setError("Codice fiscale non valido.");
+      setErrors({ codiceFiscale: "Codice fiscale non valido." });
       return;
     }
 
@@ -85,7 +100,7 @@ export default function EmployeeCardForm({
   const handleFabAdd = () => {
     setEditingIndex(null);
     setForm(emptyRow);
-    setError(null);
+    setErrors({});
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTimeout(() => nameInputRef.current?.focus(), 200);
   };
@@ -94,72 +109,87 @@ export default function EmployeeCardForm({
     <div className="space-y-4">
       <div ref={formRef} className="rounded-lg border bg-card p-4">
         <p className="text-sm font-medium">Scheda dipendente</p>
+        <FormRequiredLegend />
         <div className="mt-4 grid gap-3">
-          <input
-            className="rounded-md border bg-background px-3 py-2 text-sm"
-            placeholder="Nome"
-            value={form.nome}
-            onChange={(event) => setForm({ ...form, nome: event.target.value })}
-            disabled={readOnly}
-            ref={nameInputRef}
-          />
-          <input
-            className="rounded-md border bg-background px-3 py-2 text-sm"
-            placeholder="Cognome"
-            value={form.cognome}
-            onChange={(event) => setForm({ ...form, cognome: event.target.value })}
-            disabled={readOnly}
-          />
-          <input
-            className="rounded-md border bg-background px-3 py-2 text-sm"
-            placeholder="Codice fiscale"
-            value={form.codiceFiscale}
-            onChange={(event) =>
-              setForm({ ...form, codiceFiscale: event.target.value.toUpperCase() })
-            }
-            disabled={readOnly}
-          />
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Nome</FormLabel>
+            <input
+              className={`rounded-md border bg-background px-3 py-2 text-sm ${
+                errors.nome ? "border-red-500 focus-visible:outline-red-500" : ""
+              }`}
+              value={form.nome}
+              onChange={(event) => updateField("nome", event.target.value)}
+              disabled={readOnly}
+              ref={nameInputRef}
+            />
+            <FormFieldError message={errors.nome} />
+          </div>
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Cognome</FormLabel>
+            <input
+              className={`rounded-md border bg-background px-3 py-2 text-sm ${
+                errors.cognome
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
+              value={form.cognome}
+              onChange={(event) => updateField("cognome", event.target.value)}
+              disabled={readOnly}
+            />
+            <FormFieldError message={errors.cognome} />
+          </div>
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Codice fiscale</FormLabel>
+            <input
+              className={`rounded-md border bg-background px-3 py-2 text-sm ${
+                errors.codiceFiscale
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
+              value={form.codiceFiscale}
+              onChange={(event) =>
+                updateField("codiceFiscale", event.target.value.toUpperCase())
+              }
+              disabled={readOnly}
+            />
+            <FormFieldError message={errors.codiceFiscale} />
+          </div>
           <ItalianDateInput
             id="dataNascita"
             label="Data di Nascita"
             value={form.dataNascita || ""}
-            onChange={(value) => setForm({ ...form, dataNascita: value })}
+            onChange={(value) => updateField("dataNascita", value)}
             disabled={readOnly}
           />
           <input
             className="rounded-md border bg-background px-3 py-2 text-sm"
             placeholder="Luogo nascita"
             value={form.luogoNascita}
-            onChange={(event) =>
-              setForm({ ...form, luogoNascita: event.target.value })
-            }
+            onChange={(event) => updateField("luogoNascita", event.target.value)}
             disabled={readOnly}
           />
           <input
             className="rounded-md border bg-background px-3 py-2 text-sm"
             placeholder="Email"
             value={form.email}
-            onChange={(event) => setForm({ ...form, email: event.target.value })}
+            onChange={(event) => updateField("email", event.target.value)}
             disabled={readOnly}
           />
           <input
             className="rounded-md border bg-background px-3 py-2 text-sm"
             placeholder="Mansione"
             value={form.mansione}
-            onChange={(event) =>
-              setForm({ ...form, mansione: event.target.value })
-            }
+            onChange={(event) => updateField("mansione", event.target.value)}
             disabled={readOnly}
           />
           <textarea
             className="min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm"
             placeholder="Note"
             value={form.note}
-            onChange={(event) => setForm({ ...form, note: event.target.value })}
+            onChange={(event) => updateField("note", event.target.value)}
             disabled={readOnly}
           />
         </div>
-        {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
         <div className="mt-3 flex gap-2">
           <BrandedButton
             size="sm"

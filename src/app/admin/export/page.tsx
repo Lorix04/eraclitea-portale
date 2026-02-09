@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
-type Course = {
+type Edition = {
   id: string;
-  title: string;
+  editionNumber?: number | null;
+  course?: { title?: string | null } | null;
+  client?: { id: string; ragioneSociale?: string | null } | null;
 };
 
 type Client = {
@@ -14,10 +17,10 @@ type Client = {
 };
 
 export default function AdminExportPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [editions, setEditions] = useState<Edition[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [exportType, setExportType] = useState("courses");
-  const [courseId, setCourseId] = useState("");
+  const [courseEditionId, setCourseEditionId] = useState("");
   const [clientId, setClientId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -28,13 +31,13 @@ export default function AdminExportPage() {
 
   useEffect(() => {
     const loadBase = async () => {
-      const [coursesRes, clientsRes] = await Promise.all([
-        fetch("/api/corsi"),
+      const [editionsRes, clientsRes] = await Promise.all([
+        fetch("/api/edizioni?limit=500"),
         fetch("/api/clienti"),
       ]);
-      const coursesJson = await coursesRes.json();
+      const editionsJson = await editionsRes.json();
       const clientsJson = await clientsRes.json();
-      setCourses(coursesJson.data ?? []);
+      setEditions(editionsJson.data ?? []);
       setClients(clientsJson.data ?? []);
     };
     loadBase();
@@ -45,31 +48,31 @@ export default function AdminExportPage() {
     params.set("type", exportType);
     params.set("format", format);
     if (clientId) params.set("clientId", clientId);
-    if (courseId) params.set("courseId", courseId);
+    if (courseEditionId) params.set("courseEditionId", courseEditionId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     params.set("preview", "1");
     params.set("limit", "10");
     return `/api/export/csv?${params.toString()}`;
-  }, [exportType, format, clientId, courseId, dateFrom, dateTo]);
+  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo]);
 
   const downloadUrl = useMemo(() => {
     const params = new URLSearchParams();
     params.set("type", exportType);
     params.set("format", format);
     if (clientId) params.set("clientId", clientId);
-    if (courseId) params.set("courseId", courseId);
+    if (courseEditionId) params.set("courseEditionId", courseEditionId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     return `/api/export/csv?${params.toString()}`;
-  }, [exportType, format, clientId, courseId, dateFrom, dateTo]);
+  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo]);
 
   useEffect(() => {
     if (!["employees", "certificates", "registrations"].includes(exportType)) {
       setClientId("");
     }
     if (!["registrations", "certificates"].includes(exportType)) {
-      setCourseId("");
+      setCourseEditionId("");
     }
   }, [exportType]);
 
@@ -101,7 +104,7 @@ export default function AdminExportPage() {
   const showClientFilter = ["employees", "certificates", "registrations"].includes(
     exportType
   );
-  const showCourseFilter = ["registrations", "certificates"].includes(exportType);
+  const showEditionFilter = ["registrations", "certificates"].includes(exportType);
 
   return (
     <div className="space-y-6">
@@ -146,20 +149,23 @@ export default function AdminExportPage() {
           </label>
         ) : null}
 
-        {showCourseFilter ? (
+        {showEditionFilter ? (
           <label className="flex flex-col gap-2 text-sm">
-            Corso
+            Edizione
             <select
               className="rounded-md border bg-background px-3 py-2"
-              value={courseId}
-              onChange={(event) => setCourseId(event.target.value)}
+              value={courseEditionId}
+              onChange={(event) => setCourseEditionId(event.target.value)}
             >
-              <option value="">Tutti i corsi</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
-              ))}
+              <option value="">Tutte le edizioni</option>
+              {editions
+                .filter((edition) => !clientId || edition.client?.id === clientId)
+                .map((edition) => (
+                  <option key={edition.id} value={edition.id}>
+                    {(edition.course?.title ?? "Corso").trim()}{" "}
+                    {edition.editionNumber ? `- Ed. #${edition.editionNumber}` : ""}
+                  </option>
+                ))}
             </select>
           </label>
         ) : null}
@@ -215,11 +221,15 @@ export default function AdminExportPage() {
             </thead>
             <tbody>
               {loadingPreview ? (
-                <tr>
-                  <td className="px-2 py-3 text-muted-foreground" colSpan={6}>
-                    Caricamento...
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={`preview-skeleton-${index}`} className="border-t">
+                    {Array.from({ length: 6 }).map((__, col) => (
+                      <td key={col} className="px-2 py-2">
+                        <Skeleton className="h-3 w-full" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-2 py-3 text-muted-foreground" colSpan={6}>

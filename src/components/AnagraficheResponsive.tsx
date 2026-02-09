@@ -20,19 +20,24 @@ type EmployeeRow = {
 
 type AnagraficheResponsiveProps = {
   initialData: EmployeeRow[];
-  courseId?: string;
+  courseEditionId?: string;
+  clientId?: string;
   readOnly?: boolean;
 };
 
 export default function AnagraficheResponsive({
   initialData,
-  courseId,
+  courseEditionId,
+  clientId,
   readOnly,
 }: AnagraficheResponsiveProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [rows, setRows] = useState<EmployeeRow[]>(initialData);
   const [status, setStatus] = useState<string | null>(null);
-  const { debouncedSave, saveNow, isSaving } = useSaveRegistrations(courseId);
+  const { debouncedSave, saveNow, isSaving } = useSaveRegistrations(
+    courseEditionId,
+    clientId
+  );
 
   useEffect(() => {
     setRows(initialData);

@@ -20,23 +20,32 @@ type AttendanceEntry = {
 };
 
 async function getAttendanceMatrix(
-  courseId: string,
+  courseEditionId: string,
   role: "ADMIN" | "CLIENT",
   clientId?: string | null
 ) {
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { id: true, title: true },
+  const edition = await prisma.courseEdition.findUnique({
+    where: { id: courseEditionId },
+    select: {
+      id: true,
+      clientId: true,
+      editionNumber: true,
+      course: { select: { id: true, title: true } },
+    },
   });
 
-  if (!course) {
+  if (!edition) {
     return null;
+  }
+
+  if (role === "CLIENT" && edition.clientId !== clientId) {
+    return { edition, lessons: [], employees: [], attendances: [], stats: [] };
   }
 
   const registrationWhere =
     role === "ADMIN"
-      ? { courseId: course.id }
-      : { courseId: course.id, clientId: clientId ?? undefined };
+      ? { courseEditionId: edition.id }
+      : { courseEditionId: edition.id, clientId: clientId ?? undefined };
 
   const registrations = await prisma.courseRegistration.findMany({
     where: registrationWhere,
@@ -45,14 +54,22 @@ async function getAttendanceMatrix(
   });
 
   if (role === "CLIENT" && registrations.length === 0) {
-    return { course, lessons: [], employees: [], attendances: [], stats: [] };
+    return {
+      edition,
+      lessons: [],
+      employees: [],
+      attendances: [],
+      stats: [],
+      totalLessons: 0,
+      totalHours: 0,
+    };
   }
 
   const employees = registrations.map((reg) => reg.employee);
   const employeeIds = employees.map((employee) => employee.id);
 
   const lessons = await prisma.lesson.findMany({
-    where: { courseId: course.id },
+    where: { courseEditionId: edition.id },
     orderBy: { date: "asc" },
   });
 
@@ -119,7 +136,7 @@ async function getAttendanceMatrix(
   });
 
   return {
-    course,
+    edition,
     lessons,
     employees,
     attendances,
@@ -129,7 +146,9 @@ async function getAttendanceMatrix(
   };
 }
 
-function buildCsv(matrix: NonNullable<Awaited<ReturnType<typeof getAttendanceMatrix>>>) {
+function buildCsv(
+  matrix: NonNullable<Awaited<ReturnType<typeof getAttendanceMatrix>>>
+) {
   const lessonLabels = matrix.lessons.map((lesson) =>
     formatItalianDate(lesson.date)
   );
@@ -192,7 +211,11 @@ async function buildPdf(
 
   doc.fontSize(16).text("Registro Presenze", { align: "center" });
   doc.moveDown(0.5);
-  doc.fontSize(12).text(`Corso: ${matrix.course.title}`);
+  doc
+    .fontSize(12)
+    .text(
+      `Corso: ${matrix.edition.course.title} (Ed. #${matrix.edition.editionNumber})`
+    );
   if (matrix.lessons.length) {
     const first = formatItalianDate(matrix.lessons[0].date);
     const last = formatItalianDate(matrix.lessons[matrix.lessons.length - 1].date);
@@ -267,7 +290,7 @@ export async function GET(
   );
 
   if (!matrix) {
-    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
   if (matrix.employees.length === 0) {

@@ -16,6 +16,7 @@ export const runtime = "nodejs";
 const querySchema = z.object({
   clientId: z.string().optional(),
   employeeId: z.string().optional(),
+  courseEditionId: z.string().optional(),
 });
 
 function safeSegment(value: string) {
@@ -33,7 +34,13 @@ export async function GET(request: Request) {
     return validation.error;
   }
 
-  const { clientId, employeeId } = validation.data;
+  const { clientId, employeeId, courseEditionId: validatedCourseEditionId } =
+    validation.data;
+  const courseEditionId =
+    validatedCourseEditionId ??
+    new URL(request.url).searchParams.get("courseEditionId") ??
+    new URL(request.url).searchParams.get("courseId") ??
+    undefined;
   const isAdmin = session.user.role === "ADMIN";
   const scopedClientId = isAdmin ? clientId : session.user.clientId;
 
@@ -45,6 +52,12 @@ export async function GET(request: Request) {
     ...(scopedClientId ? { clientId: scopedClientId } : {}),
     ...(employeeId ? { employeeId } : {}),
   };
+
+  if (courseEditionId === "external") {
+    where.courseEditionId = null;
+  } else if (courseEditionId) {
+    where.courseEditionId = courseEditionId;
+  }
 
   const certificates = await prisma.certificate.findMany({
     where,

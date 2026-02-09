@@ -37,11 +37,11 @@ export default function ExcelSheet({ data, onChange, readOnly }: ExcelSheetProps
 
   const columns = useMemo(
     () => [
-      { data: "nome", title: "Nome", type: "text" },
-      { data: "cognome", title: "Cognome", type: "text" },
+      { data: "nome", title: "Nome *", type: "text" },
+      { data: "cognome", title: "Cognome *", type: "text" },
       {
         data: "codiceFiscale",
-        title: "Codice Fiscale",
+        title: "Codice Fiscale *",
         type: "text",
         validator: (value: string, callback: (valid: boolean) => void) => {
           callback(!value || isValidCodiceFiscale(value));

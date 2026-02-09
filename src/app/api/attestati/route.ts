@@ -13,7 +13,7 @@ const querySchema = z.object({
   searchEmployee: z.string().optional(),
   clientId: z.string().optional(),
   employeeId: z.string().optional(),
-  courseId: z.string().optional(),
+  courseEditionId: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   period: z.enum(["all", "today", "week", "month", "year"]).default("all"),
   dateFrom: z.string().optional(),
@@ -38,12 +38,16 @@ export async function GET(request: Request) {
     searchEmployee,
     clientId,
     employeeId,
-    courseId,
+    courseEditionId: validatedCourseEditionId,
     sortOrder,
     period,
     dateFrom,
     dateTo,
   } = validation.data;
+  const courseEditionId =
+    validatedCourseEditionId ??
+    new URL(request.url).searchParams.get("courseId") ??
+    undefined;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 20;
   const skip = (safePage - 1) * safeLimit;
@@ -60,10 +64,10 @@ export async function GET(request: Request) {
     ...(employeeId ? { employeeId } : {}),
   };
 
-  if (courseId === "external") {
-    where.courseId = null;
-  } else if (courseId) {
-    where.courseId = courseId;
+  if (courseEditionId === "external") {
+    where.courseEditionId = null;
+  } else if (courseEditionId) {
+    where.courseEditionId = courseEditionId;
   }
 
   const andFilters: Prisma.CertificateWhereInput[] = [];
@@ -72,7 +76,16 @@ export async function GET(request: Request) {
     andFilters.push({
       OR: [
         { filePath: { contains: search, mode: Prisma.QueryMode.insensitive } },
-        { course: { title: { contains: search, mode: Prisma.QueryMode.insensitive } } },
+        {
+          courseEdition: {
+            course: {
+              title: {
+                contains: search,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          },
+        },
       ],
     });
   }
@@ -137,7 +150,13 @@ export async function GET(request: Request) {
       where,
       include: {
         employee: { select: { id: true, nome: true, cognome: true } },
-        course: { select: { id: true, title: true } },
+        courseEdition: {
+          select: {
+            id: true,
+            editionNumber: true,
+            course: { select: { id: true, title: true } },
+          },
+        },
         client: { select: { id: true, ragioneSociale: true } },
         uploader: { select: { email: true } },
       },

@@ -1,14 +1,14 @@
-"use client";
+﻿"use client";
 
 type Filters = {
-  courseId?: string;
+  courseEditionId?: string;
   employeeId?: string;
   year?: number;
   status?: "valid" | "expiring" | "expired";
 };
 
 type FilterOptions = {
-  courses?: Array<{ id: string; title: string }>;
+  editions?: Array<{ id: string; label: string }>;
   employees?: Array<{ id: string; nome: string; cognome: string }>;
 };
 
@@ -27,15 +27,18 @@ export default function CertificateFilters({
     <div className="grid gap-4 md:grid-cols-4">
       <select
         className="rounded-md border bg-background px-3 py-2 text-sm"
-        value={filters.courseId ?? ""}
+        value={filters.courseEditionId ?? ""}
         onChange={(event) =>
-          onChange({ ...filters, courseId: event.target.value || undefined })
+          onChange({
+            ...filters,
+            courseEditionId: event.target.value || undefined,
+          })
         }
       >
-        <option value="">Tutti i corsi</option>
-        {options?.courses?.map((course) => (
-          <option key={course.id} value={course.id}>
-            {course.title}
+        <option value="">Tutte le edizioni</option>
+        {options?.editions?.map((edition) => (
+          <option key={edition.id} value={edition.id}>
+            {edition.label}
           </option>
         ))}
       </select>

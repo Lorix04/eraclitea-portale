@@ -33,7 +33,7 @@ export async function PUT(
     where: { id: context.params.lessonId },
   });
 
-  if (!existing || existing.courseId !== context.params.id) {
+  if (!existing || existing.courseEditionId !== context.params.id) {
     return NextResponse.json({ error: "Lezione non trovata" }, { status: 404 });
   }
 
@@ -74,7 +74,7 @@ export async function DELETE(
     where: { id: context.params.lessonId },
   });
 
-  if (!existing || existing.courseId !== context.params.id) {
+  if (!existing || existing.courseEditionId !== context.params.id) {
     return NextResponse.json({ error: "Lezione non trovata" }, { status: 404 });
   }
 

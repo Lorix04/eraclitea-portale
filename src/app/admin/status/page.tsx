@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Activity, Database, HardDrive, Mail } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type StatusResponse = {
   database: { ok: boolean; latency: number };
@@ -35,7 +36,36 @@ export default function StatusPage() {
   });
 
   if (isLoading || !status) {
-    return <p className="text-sm text-muted-foreground">Caricamento stato...</p>;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-6 w-48" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={`status-skeleton-${index}`} className="rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </div>
+              <div className="mt-3 space-y-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <Skeleton className="h-5 w-40" />
+          <div className="mt-4 grid grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div key={`metric-skeleton-${index}`} className="text-center space-y-2">
+                <Skeleton className="mx-auto h-8 w-16" />
+                <Skeleton className="mx-auto h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

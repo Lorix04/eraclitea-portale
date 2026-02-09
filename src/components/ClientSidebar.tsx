@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/BrandingProvider";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const CLIENT_LINKS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -52,22 +53,35 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
     sidebarBgColor,
     sidebarTextColor,
     primaryColor,
+    isLoading,
   } = useBranding();
 
-  const isDark = isColorDark(sidebarBgColor);
-  const displayLogo = isDark
+  const isDark = isLoading ? false : isColorDark(sidebarBgColor);
+  const displayLogo = isLoading
+    ? null
+    : isDark
     ? logoLightUrl || logoUrl
     : logoUrl || logoLightUrl;
 
-  const hoverBg = `${sidebarTextColor}10`;
+  const baseBg = isLoading ? "#F3F4F6" : sidebarBgColor;
+  const baseText = isLoading ? "#4B5563" : sidebarTextColor;
+  const activeBg = isLoading ? "#E5E7EB" : primaryColor;
+  const activeText = isLoading ? "#111827" : "#FFFFFF";
+  const hoverBg = isLoading ? "#E5E7EB" : `${sidebarTextColor}10`;
+  const dividerColor = isLoading ? "#E5E7EB" : `${sidebarTextColor}20`;
 
   return (
     <aside
       className={cn("flex h-full w-64 flex-col gap-6 border-r p-6", className)}
-      style={{ backgroundColor: sidebarBgColor, color: sidebarTextColor }}
+      style={{ backgroundColor: baseBg, color: baseText }}
     >
       <div className="flex flex-col items-center gap-3">
-        {displayLogo ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        ) : displayLogo ? (
           <Image
             src={displayLogo}
             alt={clientName}
@@ -87,12 +101,13 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
           </div>
         )}
         <div className="text-center">
-          <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">
-            Portale
-          </p>
-          <p className="text-lg font-display font-semibold truncate">
-            {clientName}
-          </p>
+          {isLoading ? (
+            <Skeleton className="h-3 w-12" />
+          ) : (
+            <p className="text-[11px] uppercase tracking-[0.2em] opacity-70">
+              MENÙ
+            </p>
+          )}
         </div>
       </div>
 
@@ -111,8 +126,8 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
                 "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition"
               )}
               style={{
-                color: isActive ? "#ffffff" : sidebarTextColor,
-                backgroundColor: isActive ? primaryColor : "transparent",
+                color: isActive ? activeText : baseText,
+                backgroundColor: isActive ? activeBg : "transparent",
               }}
               onMouseEnter={(event) => {
                 if (!isActive) {
@@ -132,12 +147,12 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
         })}
       </nav>
 
-      <div className="mt-auto border-t pt-4" style={{ borderColor: `${sidebarTextColor}20` }}>
+      <div className="mt-auto border-t pt-4" style={{ borderColor: dividerColor }}>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition"
-          style={{ color: sidebarTextColor }}
+          style={{ color: baseText }}
           onMouseEnter={(event) => {
             event.currentTarget.style.backgroundColor = hoverBg;
           }}

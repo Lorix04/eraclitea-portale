@@ -8,7 +8,11 @@ type CertificateRow = {
   achievedAt?: string | Date | null;
   expiresAt?: string | Date | null;
   uploadedAt?: string | Date | null;
-  course?: { id: string; title: string } | null;
+  courseEdition?: {
+    id: string;
+    editionNumber?: number | null;
+    course?: { id: string; title: string } | null;
+  } | null;
 };
 
 type EmployeeCertificatesListProps = {
@@ -43,7 +47,9 @@ export default function EmployeeCertificatesList({
             certificates.map((cert) => (
               <tr key={cert.id} className="border-t">
                 <td className="px-4 py-3 font-medium">
-                  {cert.course?.title ?? "Esterno"}
+                  {cert.courseEdition?.course?.title
+                    ? `${cert.courseEdition.course.title} (Ed. #${cert.courseEdition.editionNumber ?? "-"})`
+                    : "Esterno"}
                 </td>
                 <td className="px-4 py-3">
                   {formatItalianDate(cert.achievedAt) || "-"}

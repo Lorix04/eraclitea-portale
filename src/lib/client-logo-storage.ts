@@ -20,6 +20,8 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/svg+xml": ".svg",
   "image/webp": ".webp",
   "image/gif": ".gif",
+  "image/x-icon": ".ico",
+  "image/vnd.microsoft.icon": ".ico",
 };
 
 function getExtension(file: File): string {
@@ -35,13 +37,19 @@ export function getClientsBaseDir() {
 export async function saveClientLogo(
   file: File,
   clientId: string,
-  type: "main" | "light"
+  type: "main" | "light" | "favicon"
 ) {
   const dir = path.resolve(BASE_DIR, clientId);
   await fs.mkdir(dir, { recursive: true });
 
   const ext = getExtension(file);
-  const fileName = type === "light" ? `logo-light${ext}` : `logo${ext}`;
+  let fileName = `logo${ext}`;
+  if (type === "light") {
+    fileName = `logo-light${ext}`;
+  }
+  if (type === "favicon") {
+    fileName = `favicon${ext}`;
+  }
   const filePath = path.join(dir, fileName);
 
   const buffer = Buffer.from(await file.arrayBuffer());

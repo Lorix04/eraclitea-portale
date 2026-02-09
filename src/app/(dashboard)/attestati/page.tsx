@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import CertificateTable from "@/components/CertificateTable";
 import { useDebounce } from "@/hooks/useDebounce";
 
 type Filters = {
-  courseId?: string;
+  courseEditionId?: string;
   employeeId?: string;
   year?: number;
   status?: "valid" | "expiring" | "expired";
@@ -17,7 +17,11 @@ type CertificateResponse = {
   data: Array<{
     id: string;
     employee: { nome: string; cognome: string };
-    course?: { title: string } | null;
+    courseEdition?: {
+      id: string;
+      editionNumber: number;
+      course?: { title: string } | null;
+    } | null;
     achievedAt?: string | null;
     expiresAt?: string | null;
     uploadedAt?: string | null;
@@ -43,9 +47,12 @@ export default function ClientAttestatiPage() {
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (debouncedFilters.courseId) params.set("courseId", debouncedFilters.courseId);
-    if (debouncedFilters.employeeId)
+    if (debouncedFilters.courseEditionId) {
+      params.set("courseEditionId", debouncedFilters.courseEditionId);
+    }
+    if (debouncedFilters.employeeId) {
       params.set("employeeId", debouncedFilters.employeeId);
+    }
     if (debouncedFilters.year) params.set("year", String(debouncedFilters.year));
     if (debouncedFilters.status) params.set("status", debouncedFilters.status);
     params.set("page", String(page));
@@ -59,13 +66,13 @@ export default function ClientAttestatiPage() {
   });
 
   const { data: filterOptions } = useQuery<{
-    courses: { data: Array<{ id: string; title: string }> };
+    courses: { data: Array<{ id: string; title: string; editions: Array<{ id: string; editionNumber: number }> }> };
     employees: { data: Array<{ id: string; nome: string; cognome: string }> };
   }>({
     queryKey: ["certificates", "filterOptions"],
     queryFn: async () => {
       const [coursesRes, employeesRes] = await Promise.all([
-        fetch("/api/corsi/cliente?all=true"),
+        fetch("/api/corsi/cliente?tab=tutti&all=true"),
         fetch("/api/anagrafiche"),
       ]);
       if (!coursesRes.ok || !employeesRes.ok) {
@@ -83,6 +90,16 @@ export default function ClientAttestatiPage() {
     setFilters(newFilters);
     setPage(1);
   };
+
+  const editionsOptions = useMemo(() => {
+    const courses = filterOptions?.courses?.data ?? [];
+    return courses.flatMap((course) =>
+      (course.editions ?? []).map((edition) => ({
+        id: edition.id,
+        label: `${course.title} · Ed. #${edition.editionNumber}`,
+      }))
+    );
+  }, [filterOptions?.courses?.data]);
 
   const totalPages =
     data?.totalPages ?? Math.max(1, Math.ceil((data?.total ?? 0) / (data?.limit || 20)));
@@ -106,7 +123,7 @@ export default function ClientAttestatiPage() {
       <CertificateFilters
         filters={filters}
         options={{
-          courses: filterOptions?.courses.data,
+          editions: editionsOptions,
           employees: filterOptions?.employees.data,
         }}
         onChange={handleFilterChange}

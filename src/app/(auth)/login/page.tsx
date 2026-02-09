@@ -3,15 +3,24 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { LogIn } from "lucide-react";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const fieldErrors: Record<string, string> = {};
+    if (!email.trim()) fieldErrors.email = "Questo campo e obbligatorio";
+    if (!password.trim()) fieldErrors.password = "Questo campo e obbligatorio";
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+
     setError(null);
     setLoading(true);
 
@@ -48,26 +57,44 @@ export default function LoginPage() {
         </p>
 
         <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          <label className="flex flex-col gap-2 text-sm text-gray-700">
-            Email
+          <div className="flex flex-col gap-2 text-sm text-gray-700">
+            <FormLabel>Email</FormLabel>
             <input
               type="email"
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+              className={`rounded-md border bg-white px-3 py-2 focus:outline-none focus:ring-1 ${
+                errors.email
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-gray-500 focus:ring-gray-500"
+              }`}
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (errors.email) {
+                  setErrors((prev) => ({ ...prev, email: "" }));
+                }
+              }}
             />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-gray-700">
-            Password
+            <FormFieldError message={errors.email} />
+          </div>
+          <div className="flex flex-col gap-2 text-sm text-gray-700">
+            <FormLabel>Password</FormLabel>
             <input
               type="password"
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
+              className={`rounded-md border bg-white px-3 py-2 focus:outline-none focus:ring-1 ${
+                errors.password
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:border-gray-500 focus:ring-gray-500"
+              }`}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (errors.password) {
+                  setErrors((prev) => ({ ...prev, password: "" }));
+                }
+              }}
             />
-          </label>
+            <FormFieldError message={errors.password} />
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

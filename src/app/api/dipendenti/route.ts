@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { validateQuery } from "@/lib/api-utils";
+import { validateBody, validateQuery } from "@/lib/api-utils";
+import { employeeSchema } from "@/lib/schemas";
+import { getClientIP, logAudit } from "@/lib/audit";
+import { normalizeCodiceFiscale } from "@/lib/validators";
 import { Prisma } from "@prisma/client";
 
 const querySchema = z.object({
@@ -13,8 +16,13 @@ const querySchema = z.object({
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
   hasCourses: z.enum(["all", "with", "without"]).optional(),
+  includeRegistrations: z.enum(["true", "false"]).optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(1000).default(20),
+});
+
+const createSchema = employeeSchema.extend({
+  clientId: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -35,6 +43,7 @@ export async function GET(request: Request) {
     sortBy = "createdAt",
     sortOrder = "desc",
     hasCourses = "all",
+    includeRegistrations,
     page,
     limit,
   } = validation.data;
@@ -83,6 +92,9 @@ export async function GET(request: Request) {
     _count: { select: { registrations: true, certificates: true } },
     client: { select: { id: true, ragioneSociale: true } },
   };
+  if (includeRegistrations === "true") {
+    include.registrations = { select: { courseEditionId: true } };
+  }
 
   const orderBySortOrder = sortOrder as Prisma.SortOrder;
   let orderBy: Prisma.EmployeeOrderByWithRelationInput = {
@@ -131,6 +143,7 @@ export async function GET(request: Request) {
     dataNascita: employee.dataNascita,
     luogoNascita: employee.luogoNascita,
     email: employee.email,
+    telefono: employee.telefono,
     mansione: employee.mansione,
     note: employee.note,
     createdAt: employee.createdAt,
@@ -138,6 +151,12 @@ export async function GET(request: Request) {
     client: employee.client ?? undefined,
     _count: employee._count,
     coursesCompleted: completedMap.get(employee.id) ?? 0,
+    registrations:
+      includeRegistrations === "true"
+        ? employee.registrations?.map((reg) => ({
+            courseEditionId: reg.courseEditionId,
+          }))
+        : undefined,
   }));
 
   return NextResponse.json({
@@ -147,4 +166,68 @@ export async function GET(request: Request) {
     limit: safeLimit,
     totalPages: Math.max(1, Math.ceil(total / safeLimit)),
   });
+}
+
+export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const validation = await validateBody(request, createSchema);
+  if ("error" in validation) {
+    return validation.error;
+  }
+
+  const data = validation.data;
+  const isAdmin = session.user.role === "ADMIN";
+  const clientId = isAdmin ? data.clientId : session.user.clientId;
+
+  if (!clientId) {
+    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
+  }
+
+  const normalizedCF = normalizeCodiceFiscale(data.codiceFiscale);
+  const existing = await prisma.employee.findFirst({
+    where: { clientId, codiceFiscale: normalizedCF },
+    select: { id: true },
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: "Dipendente con questo codice fiscale gia presente" },
+      { status: 409 }
+    );
+  }
+
+  const parsedDataNascita =
+    data.dataNascita instanceof Date
+      ? data.dataNascita
+      : typeof data.dataNascita === "string" && data.dataNascita
+        ? new Date(data.dataNascita)
+        : null;
+
+  const created = await prisma.employee.create({
+    data: {
+      clientId,
+      nome: data.nome,
+      cognome: data.cognome,
+      codiceFiscale: normalizedCF,
+      dataNascita: parsedDataNascita,
+      luogoNascita: data.luogoNascita || null,
+      email: data.email || null,
+      telefono: data.telefono || null,
+      mansione: data.mansione || null,
+      note: data.note || null,
+    },
+  });
+
+  await logAudit({
+    userId: session.user.id,
+    action: "EMPLOYEE_CREATE",
+    entityType: "Employee",
+    entityId: created.id,
+    ipAddress: getClientIP(request),
+  });
+
+  return NextResponse.json({ data: created }, { status: 201 });
 }

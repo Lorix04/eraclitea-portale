@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const courseId = String(formData.get("courseId") || "");
+  const courseEditionId = String(formData.get("courseEditionId") || "");
   const clientId = String(formData.get("clientId") || "");
   const associationsRaw = formData.get("associations");
 
@@ -53,22 +53,34 @@ export async function POST(request: Request) {
     associationList.map((item) => [item.filename, item.employeeId])
   );
 
-  const hasCourse = Boolean(courseId);
-  const course = hasCourse
-    ? await prisma.course.findUnique({
-        where: { id: courseId },
-        select: { title: true },
+  const hasCourseEdition = Boolean(courseEditionId);
+  const edition = hasCourseEdition
+    ? await prisma.courseEdition.findUnique({
+        where: { id: courseEditionId },
+        select: {
+          id: true,
+          clientId: true,
+          editionNumber: true,
+          course: { select: { title: true } },
+        },
       })
     : null;
 
-  if (hasCourse && !course) {
-    return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  if (hasCourseEdition && !edition) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
-  const employees = hasCourse
+  if (hasCourseEdition && edition?.clientId !== clientId) {
+    return NextResponse.json(
+      { error: "Edizione non associata al cliente" },
+      { status: 400 }
+    );
+  }
+
+  const employees = hasCourseEdition
     ? (
         await prisma.courseRegistration.findMany({
-          where: { courseId, clientId },
+          where: { courseEditionId, clientId },
           include: { employee: true },
         })
       ).map((entry) => entry.employee)
@@ -126,31 +138,24 @@ export async function POST(request: Request) {
     await tx.certificate.createMany({
       data: savedFiles.map((item) => ({
         clientId,
-        courseId: courseId || null,
+        courseEditionId: courseEditionId || null,
         employeeId: item.employeeId,
         filePath: item.filePath,
         uploadedBy: session.user.id,
       })),
     });
 
-    const notificationTitle = hasCourse
-      ? "Nuovi attestati disponibili"
-      : "Nuovi attestati esterni disponibili";
-    const notificationMessage = hasCourse
-      ? `Caricati ${savedFiles.length} attestati per il corso "${
-          course?.title ?? ""
-        }"`
-      : `Caricati ${savedFiles.length} attestati esterni.`;
-
-    await tx.notification.create({
-      data: {
-        type: "CERT_UPLOADED",
-        title: notificationTitle,
-        message: notificationMessage,
-        ...(hasCourse ? { courseId } : {}),
-        isGlobal: false,
-      },
-    });
+    if (hasCourseEdition) {
+      await tx.notification.create({
+        data: {
+          type: "CERT_UPLOADED",
+          title: "Nuovi attestati disponibili",
+          message: `Sono stati caricati ${savedFiles.length} attestati per il corso ${edition?.course.title ?? ""} - Edizione #${edition?.editionNumber ?? "-"}`,
+          courseEditionId,
+          isGlobal: false,
+        },
+      });
+    }
   });
 
   const client = await prisma.client.findUnique({ where: { id: clientId } });
@@ -159,7 +164,7 @@ export async function POST(request: Request) {
       to: client.referenteEmail,
       subject: "Nuovi attestati disponibili",
       html: certificatesUploadedTemplate(
-        course?.title ?? "Attestato esterno",
+        edition?.course.title ?? "Attestato esterno",
         savedFiles.length
       ),
     });
@@ -169,7 +174,7 @@ export async function POST(request: Request) {
     userId: session.user.id,
     action: "CERT_UPLOAD",
     entityType: "Certificate",
-    entityId: courseId || savedFiles[0]?.employeeId || "external",
+    entityId: courseEditionId || savedFiles[0]?.employeeId || "external",
     ipAddress: getClientIP(request),
   });
 

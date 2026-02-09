@@ -27,7 +27,7 @@ type AttendanceStat = {
 };
 
 interface AttendanceMatrixProps {
-  courseId: string;
+  courseEditionId: string;
   lessons: Array<{
     id: string;
     date: string | Date;

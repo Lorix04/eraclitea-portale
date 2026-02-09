@@ -16,14 +16,24 @@ type EmployeeDetail = {
     id: string;
     status: "INSERTED" | "CONFIRMED" | "TRAINED";
     insertedAt: string | Date;
-    course: { id: string; title: string; dateStart?: string | Date | null; dateEnd?: string | Date | null };
+    courseEdition: {
+      id: string;
+      editionNumber?: number | null;
+      startDate?: string | Date | null;
+      endDate?: string | Date | null;
+      course: { id: string; title: string };
+    };
   }>;
   certificates?: Array<{
     id: string;
     achievedAt?: string | Date | null;
     expiresAt?: string | Date | null;
     uploadedAt?: string | Date | null;
-    course?: { id: string; title: string } | null;
+    courseEdition?: {
+      id: string;
+      editionNumber?: number | null;
+      course?: { id: string; title: string } | null;
+    } | null;
   }>;
 };
 

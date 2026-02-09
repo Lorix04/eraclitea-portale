@@ -47,6 +47,7 @@ export default async function AdminEditClientePage({
           initialBranding={{
             logoPath: client.logoPath ?? null,
             logoLightPath: client.logoLightPath ?? null,
+            faviconPath: client.faviconPath ?? null,
           }}
         />
       </div>

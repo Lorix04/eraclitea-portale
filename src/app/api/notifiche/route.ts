@@ -6,32 +6,17 @@ import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
 
+const CLIENT_NOTIFICATION_TYPES = ["COURSE_PUBLISHED", "CERT_UPLOADED"] as const;
+const CLIENT_NOTIFICATION_TYPES_ARRAY = [...CLIENT_NOTIFICATION_TYPES];
+
 function visibilityFilter(
   clientId: string,
-  categoryIds: string[]
+  _categoryIds: string[]
 ): Prisma.NotificationWhereInput {
   return {
     OR: [
       { isGlobal: true },
-      { course: { visibilityType: "ALL", visibility: { none: {} } } },
-      {
-        course: {
-          visibilityType: "SELECTED_CLIENTS",
-          visibility: { some: { clientId } },
-        },
-      },
-      {
-        course: {
-          visibilityType: "BY_CATEGORY",
-          visibilityCategories: {
-            some: {
-              categoryId: { in: categoryIds.length ? categoryIds : [""] },
-            },
-          },
-        },
-      },
-      // Compatibilita per corsi creati prima del campo visibilityType
-      { course: { visibility: { some: { clientId } } } },
+      { courseEdition: { clientId } },
     ],
   };
 }
@@ -52,7 +37,7 @@ export async function GET(request: Request) {
       limit: z.coerce.number().min(1).max(50).default(20),
       unreadOnly: z.coerce.boolean().optional(),
       type: z
-        .enum(["COURSE_PUBLISHED", "CERT_UPLOADED", "REMINDER", "ATTENDANCE_RECORDED"])
+        .enum(CLIENT_NOTIFICATION_TYPES)
         .optional(),
     })
   );
@@ -74,6 +59,7 @@ export async function GET(request: Request) {
 
   const baseWhere: Prisma.NotificationWhereInput = {
     ...visibilityFilter(clientId, clientCategoryIds),
+    type: { in: CLIENT_NOTIFICATION_TYPES_ARRAY },
   };
 
   if (type) {
@@ -90,7 +76,13 @@ export async function GET(request: Request) {
       where: listWhere,
       include: {
         reads: { where: { clientId } },
-        course: { select: { id: true, title: true } },
+        courseEdition: {
+          select: {
+            id: true,
+            editionNumber: true,
+            course: { select: { id: true, title: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -110,8 +102,9 @@ export async function GET(request: Request) {
     type: notification.type,
     title: notification.title,
     message: notification.message ?? undefined,
-    courseId: notification.courseId ?? undefined,
-    courseTitle: notification.course?.title,
+    courseEditionId: notification.courseEditionId ?? undefined,
+    courseTitle: notification.courseEdition?.course?.title,
+    editionNumber: notification.courseEdition?.editionNumber,
     createdAt: notification.createdAt,
     isRead: notification.reads.length > 0,
   }));

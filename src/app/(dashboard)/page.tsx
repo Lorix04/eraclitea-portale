@@ -4,20 +4,34 @@ import { useQuery } from "@tanstack/react-query";
 import DashboardCards from "@/components/DashboardCards";
 import { SkeletonCard } from "@/components/ui/skeleton-card";
 
-type CourseListItem = {
+type EditionItem = {
   id: string;
-  title: string;
+  editionNumber?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
   deadlineRegistry?: string | null;
   status: "AVAILABLE" | "IN_PROGRESS" | "COMPLETED";
   registrationsCount: number;
   completedCount: number;
   isNew: boolean;
+  courseId: string;
+};
+
+type CourseGroup = {
+  id: string;
+  title: string;
+  durationHours?: number | null;
+  categories: Array<{ id: string; name: string; color?: string | null }>;
+  editions: EditionItem[];
 };
 
 type CertificateItem = {
   id: string;
   employee: { nome: string; cognome: string };
-  course?: { title: string } | null;
+  courseEdition?: {
+    editionNumber?: number | null;
+    course?: { title: string } | null;
+  } | null;
 };
 
 type Stats = {
@@ -42,7 +56,7 @@ export default function DashboardPage() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: coursesResponse } = useQuery<{ data: CourseListItem[] }>({
+  const { data: coursesResponse } = useQuery<{ data: CourseGroup[] }>({
     queryKey: ["courses", "dashboard"],
     queryFn: () => fetchJson("/api/corsi/cliente?all=true&limit=20"),
   });
@@ -71,31 +85,40 @@ export default function DashboardPage() {
   }
 
   const courses = coursesResponse?.data ?? [];
+  const editions = courses.flatMap((course) =>
+    course.editions.map((edition) => ({
+      ...edition,
+      courseTitle: course.title,
+    }))
+  );
   const latestCertificates = (certificatesResponse?.data ?? []).map((cert) => ({
     id: cert.id,
     employeeName: `${cert.employee.cognome} ${cert.employee.nome}`,
-    courseTitle: cert.course?.title ?? "Esterno",
+    courseTitle: cert.courseEdition?.course?.title
+      ? `${cert.courseEdition.course.title} (Ed. #${cert.courseEdition.editionNumber ?? "-"})`
+      : "Esterno",
   }));
 
-  const availableCourses = courses
-    .filter((course) => course.status === "AVAILABLE")
+  const availableCourses = editions
+    .filter((edition) => edition.status === "AVAILABLE")
     .slice(0, 5)
-    .map((course) => ({
-      id: course.id,
-      title: course.title,
-      deadlineRegistry: course.deadlineRegistry ?? null,
-      isNew: course.isNew,
+    .map((edition) => ({
+      id: edition.id,
+      title: `${edition.courseTitle} (Ed. #${edition.editionNumber ?? "-"})`,
+      deadlineRegistry: edition.deadlineRegistry ?? null,
+      isNew: edition.isNew,
     }));
 
-  const pendingCourses = courses
-    .filter((course) => course.status !== "COMPLETED")
+  const pendingCourses = editions
+    .filter((edition) => edition.status !== "COMPLETED")
     .slice(0, 5)
-    .map((course) => ({
-      id: course.id,
-      title: course.title,
-      total: course.registrationsCount,
-      completed: course.completedCount,
-      statusLabel: course.registrationsCount === 0 ? "Da compilare" : "In compilazione",
+    .map((edition) => ({
+      id: edition.id,
+      title: `${edition.courseTitle} (Ed. #${edition.editionNumber ?? "-"})`,
+      total: edition.registrationsCount,
+      completed: edition.completedCount,
+      statusLabel:
+        edition.registrationsCount === 0 ? "Da compilare" : "In compilazione",
     }));
 
   return (

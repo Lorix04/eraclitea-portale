@@ -26,10 +26,13 @@ export async function PUT(
 
   const attendance = await prisma.attendance.findUnique({
     where: { id: context.params.attendanceId },
-    include: { lesson: { select: { courseId: true } } },
+    include: { lesson: { select: { courseEditionId: true } } },
   });
 
-  if (!attendance || attendance.lesson.courseId !== context.params.id) {
+  if (
+    !attendance ||
+    attendance.lesson.courseEditionId !== context.params.id
+  ) {
     return NextResponse.json({ error: "Presenza non trovata" }, { status: 404 });
   }
 

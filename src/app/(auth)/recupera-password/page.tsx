@@ -2,17 +2,28 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { FormLabel } from "@/components/ui/FormLabel";
+import { FormFieldError } from "@/components/ui/FormFieldError";
+import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 
 export default function RecuperaPasswordPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setIsLoading(true);
     setError("");
+    setFieldErrors({});
+
+    if (!email.trim()) {
+      setFieldErrors({ email: "Questo campo è obbligatorio" });
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -71,17 +82,27 @@ export default function RecuperaPasswordPage() {
             </div>
           ) : null}
 
-          <label className="flex flex-col gap-2 text-sm">
-            Email
+          <FormRequiredLegend />
+          <div className="flex flex-col gap-2 text-sm">
+            <FormLabel required>Email</FormLabel>
             <input
               type="email"
-              className="rounded-md border bg-background px-3 py-2"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                fieldErrors.email
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
               placeholder="tuaemail@esempio.it"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (fieldErrors.email) {
+                  setFieldErrors((prev) => ({ ...prev, email: "" }));
+                }
+              }}
             />
-          </label>
+            <FormFieldError message={fieldErrors.email} />
+          </div>
 
           <button
             type="submit"

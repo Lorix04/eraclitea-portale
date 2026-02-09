@@ -2,16 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search, BookOpen, Users, Award, Building2 } from "lucide-react";
 
 type SearchResults = {
-  courses: Array<{ id: string; title: string }>;
+  courses: Array<{
+    id: string;
+    title: string;
+    kind: "course" | "edition";
+    editionNumber?: number;
+  }>;
   employees: Array<{ id: string; nome: string; cognome: string; codiceFiscale: string }>;
   certificates: Array<{
     id: string;
     employee: { nome: string; cognome: string };
-    course?: { title: string } | null;
+    courseEdition?: { editionNumber?: number; course?: { title: string } } | null;
   }>;
   clients: Array<{ id: string; ragioneSociale: string; piva: string }>;
 };
@@ -22,6 +27,8 @@ export default function SearchCommand() {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const isAdmin = pathname.startsWith("/admin");
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -61,20 +68,24 @@ export default function SearchCommand() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const handleSelect = (type: string, id: string) => {
+  const handleSelect = (type: string, id: string, kind?: "course" | "edition") => {
     setOpen(false);
     switch (type) {
       case "course":
-        router.push(`/corsi/${id}`);
+        if (kind === "course") {
+          router.push(isAdmin ? `/admin/corsi/${id}` : `/corsi/${id}`);
+        } else {
+          router.push(`/corsi/${id}`);
+        }
         break;
       case "employee":
-        router.push(`/attestati?employeeId=${id}`);
+        router.push(isAdmin ? `/admin/attestati?employeeId=${id}` : `/attestati?employeeId=${id}`);
         break;
       case "client":
         router.push(`/admin/clienti/${id}/edit`);
         break;
       case "certificate":
-        router.push(`/attestati`);
+        router.push(isAdmin ? `/admin/attestati` : `/attestati`);
         break;
       default:
         break;
@@ -145,10 +156,15 @@ export default function SearchCommand() {
                             key={course.id}
                             type="button"
                             className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
-                            onClick={() => handleSelect("course", course.id)}
+                            onClick={() => handleSelect("course", course.id, course.kind)}
                           >
                             <BookOpen className="h-4 w-4 text-muted-foreground" />
-                            {course.title}
+                            <span>
+                              {course.title}
+                              {course.kind === "edition" && course.editionNumber
+                                ? ` (Ed. #${course.editionNumber})`
+                                : ""}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -186,7 +202,13 @@ export default function SearchCommand() {
                             onClick={() => handleSelect("certificate", cert.id)}
                           >
                             <Award className="h-4 w-4 text-muted-foreground" />
-                            {cert.employee.cognome} - {cert.course?.title ?? "Esterno"}
+                            <span>
+                              {cert.employee.cognome} -{" "}
+                              {cert.courseEdition?.course?.title ?? "Esterno"}
+                              {cert.courseEdition?.editionNumber
+                                ? ` (Ed. #${cert.courseEdition.editionNumber})`
+                                : ""}
+                            </span>
                           </button>
                         ))}
                       </div>

@@ -48,6 +48,8 @@ export async function GET(
       logoLightPath: client.logoLightPath,
       logoFileName: client.logoFileName,
       logoLightFileName: client.logoLightFileName,
+      faviconPath: client.faviconPath,
+      faviconFileName: client.faviconFileName,
       isActive: client.isActive,
       user: client.users[0] ?? null,
       categories: client.categories.map((entry) => ({

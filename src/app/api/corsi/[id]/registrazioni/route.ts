@@ -19,7 +19,7 @@ export async function GET(
   }
 
   const registrations = await prisma.courseRegistration.findMany({
-    where: { courseId: context.params.id, clientId },
+    where: { courseEditionId: context.params.id, clientId },
     include: { employee: true },
     orderBy: { insertedAt: "asc" },
   });
