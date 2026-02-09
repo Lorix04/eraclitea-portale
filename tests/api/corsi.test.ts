@@ -18,8 +18,8 @@ describe("/api/corsi", () => {
   describe("GET", () => {
     it("should return courses list", async () => {
       const mockCourses = [
-        { id: "1", title: "Corso 1", status: "PUBLISHED" },
-        { id: "2", title: "Corso 2", status: "DRAFT" },
+        { id: "1", title: "Corso 1", activeEditions: 0, editions: [] },
+        { id: "2", title: "Corso 2", activeEditions: 0, editions: [] },
       ];
 
       (prisma.course.findMany as jest.Mock).mockResolvedValue(mockCourses);
@@ -32,15 +32,17 @@ describe("/api/corsi", () => {
       expect(data.data).toEqual(mockCourses);
     });
 
-    it("should filter by status", async () => {
+    it("should filter by visibilityType", async () => {
       (prisma.course.findMany as jest.Mock).mockResolvedValue([]);
 
-      const request = new Request("http://localhost/api/corsi?status=PUBLISHED");
+      const request = new Request(
+        "http://localhost/api/corsi?visibilityType=PUBLIC"
+      );
       await GET(request);
 
       expect(prisma.course.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ status: "PUBLISHED" }),
+          where: expect.objectContaining({ visibilityType: "ALL" }),
         })
       );
     });
