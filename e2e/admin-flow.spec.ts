@@ -3,8 +3,13 @@ import { test, expect } from "@playwright/test";
 test.describe("Admin Flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill("admin@enteformazione.it");
-    await page.getByLabel(/password/i).fill("admin123");
+  await page.waitForSelector('input[type="email"], input[name="email"]');
+  await page
+    .locator('input[type="email"], input[name="email"]')
+    .fill("admin@enteformazione.it");
+  await page
+    .locator('input[type="password"], input[name="password"]')
+    .fill("admin123");
     await page.getByRole("button", { name: /accedi/i }).click();
     await expect(page).toHaveURL("/admin");
   });

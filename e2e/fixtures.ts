@@ -9,8 +9,13 @@ export const test = base.extend<{
     const page = await context.newPage();
 
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill("mario@acme.it");
-    await page.getByLabel(/password/i).fill("cliente123");
+    await page.waitForSelector('input[type="email"], input[name="email"]');
+    await page
+      .locator('input[type="email"], input[name="email"]')
+      .fill("mario@acme.it");
+    await page
+      .locator('input[type="password"], input[name="password"]')
+      .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
     await page.waitForURL("/");
 
@@ -22,8 +27,13 @@ export const test = base.extend<{
     const page = await context.newPage();
 
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill("admin@enteformazione.it");
-    await page.getByLabel(/password/i).fill("admin123");
+    await page.waitForSelector('input[type="email"], input[name="email"]');
+    await page
+      .locator('input[type="email"], input[name="email"]')
+      .fill("admin@enteformazione.it");
+    await page
+      .locator('input[type="password"], input[name="password"]')
+      .fill("admin123");
     await page.getByRole("button", { name: /accedi/i }).click();
     await page.waitForURL("/admin");
 

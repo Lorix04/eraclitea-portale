@@ -10,8 +10,13 @@ test.describe("Authentication", () => {
   test("should login successfully with valid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    await page.getByLabel(/email/i).fill("mario@acme.it");
-    await page.getByLabel(/password/i).fill("cliente123");
+  await page.waitForSelector('input[type="email"], input[name="email"]');
+  await page
+    .locator('input[type="email"], input[name="email"]')
+    .fill("mario@acme.it");
+  await page
+    .locator('input[type="password"], input[name="password"]')
+    .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
 
     await expect(page).toHaveURL("/");
@@ -21,8 +26,13 @@ test.describe("Authentication", () => {
   test("should show error for invalid credentials", async ({ page }) => {
     await page.goto("/login");
 
-    await page.getByLabel(/email/i).fill("mario@acme.it");
-    await page.getByLabel(/password/i).fill("wrongpassword");
+  await page.waitForSelector('input[type="email"], input[name="email"]');
+  await page
+    .locator('input[type="email"], input[name="email"]')
+    .fill("mario@acme.it");
+  await page
+    .locator('input[type="password"], input[name="password"]')
+    .fill("wrongpassword");
     await page.getByRole("button", { name: /accedi/i }).click();
 
     await expect(page.getByText(/credenziali non valide/i)).toBeVisible();
@@ -30,8 +40,13 @@ test.describe("Authentication", () => {
 
   test("should logout successfully", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel(/email/i).fill("mario@acme.it");
-    await page.getByLabel(/password/i).fill("cliente123");
+  await page.waitForSelector('input[type="email"], input[name="email"]');
+  await page
+    .locator('input[type="email"], input[name="email"]')
+    .fill("mario@acme.it");
+  await page
+    .locator('input[type="password"], input[name="password"]')
+    .fill("cliente123");
     await page.getByRole("button", { name: /accedi/i }).click();
     await expect(page).toHaveURL("/");
 
