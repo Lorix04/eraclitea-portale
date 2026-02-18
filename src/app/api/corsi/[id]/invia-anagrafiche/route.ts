@@ -2,9 +2,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { send } from "@/lib/email";
-import { registrySubmittedTemplate } from "@/lib/email-templates";
 import { getClientIP, logAudit } from "@/lib/audit";
+import {
+  sendAdminRegistrySubmittedEmail,
+  sendRegistryReceivedEmail,
+} from "@/lib/email-notifications";
 
 export async function POST(
   request: Request,
@@ -15,27 +17,49 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const edition = await prisma.courseEdition.findFirst({
-    where: {
-      id: params.id,
-      clientId: session.user.clientId,
-      status: "PUBLISHED",
-      OR: [
-        { deadlineRegistry: null },
-        { deadlineRegistry: { gte: new Date() } },
-      ],
-    },
+  const edition = await prisma.courseEdition.findUnique({
+    where: { id: params.id },
     select: {
       id: true,
+      clientId: true,
+      status: true,
+      deadlineRegistry: true,
       editionNumber: true,
       course: { select: { title: true } },
     },
   });
 
-  if (!edition) {
+  if (!edition || edition.clientId !== session.user.clientId) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+  }
+
+  if (edition.status === "CLOSED" || edition.status === "ARCHIVED") {
     return NextResponse.json(
-      { error: "Edizione non disponibile o deadline superata" },
-      { status: 400 }
+      {
+        error:
+          "Le anagrafiche non possono essere inviate: l'edizione e chiusa.",
+      },
+      { status: 403 }
+    );
+  }
+
+  if (edition.status !== "PUBLISHED") {
+    return NextResponse.json(
+      {
+        error:
+          "Le anagrafiche non possono essere inviate: l'edizione non e aperta.",
+      },
+      { status: 403 }
+    );
+  }
+
+  if (edition.deadlineRegistry && new Date() > edition.deadlineRegistry) {
+    return NextResponse.json(
+      {
+        error:
+          "Le anagrafiche non possono essere inviate: la deadline e scaduta.",
+      },
+      { status: 403 }
     );
   }
 
@@ -99,16 +123,43 @@ export async function POST(
     where: { role: "ADMIN", isActive: true },
   });
 
+  try {
+    await prisma.notification.create({
+      data: {
+        type: "REGISTRY_RECEIVED",
+        title: `Anagrafiche ricevute da ${client?.ragioneSociale ?? "Cliente"}`,
+        message: `${client?.ragioneSociale ?? "Cliente"} ha inviato le anagrafiche per ${edition.course.title} (Ed. #${edition.editionNumber}).`,
+        courseEditionId: edition.id,
+        isGlobal: false,
+      },
+    });
+  } catch (error) {
+    console.error("Errore creazione notifica REGISTRY_RECEIVED:", error);
+  }
+
+  if (client?.referenteEmail) {
+    void sendRegistryReceivedEmail({
+      clientEmail: client.referenteEmail,
+      clientName: client.referenteNome || client.ragioneSociale,
+      clientId: client.id,
+      courseName: edition.course.title,
+      editionNumber: edition.editionNumber,
+      employeeCount: registrations.length,
+      courseEditionId: edition.id,
+    });
+  }
+
   await Promise.all(
     admins.map((admin) =>
-      send({
-        to: admin.email,
-        subject: `Anagrafiche ricevute: ${edition.course.title} (Ed. #${edition.editionNumber})`,
-        html: registrySubmittedTemplate(
-          client?.ragioneSociale ?? "Cliente",
-          `${edition.course.title} (Ed. #${edition.editionNumber})`,
-          registrations.length
-        ),
+      sendAdminRegistrySubmittedEmail({
+        adminEmail: admin.email,
+        adminName: admin.email,
+        adminId: admin.id,
+        clientName: client?.ragioneSociale ?? "Cliente",
+        courseName: edition.course.title,
+        editionNumber: edition.editionNumber,
+        employeeCount: registrations.length,
+        courseEditionId: edition.id,
       })
     )
   );

@@ -3,11 +3,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Search, Trash2, X } from "lucide-react";
+import { ArrowUpDown, Plus, Search, Trash2, X } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
+import CreateEditionModal from "@/components/admin/CreateEditionModal";
 
 type EditionRow = {
   id: string;
@@ -111,6 +112,7 @@ function AdminEdizioniContent() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<EditionRow | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -231,6 +233,14 @@ function AdminEdizioniContent() {
             Tutte le edizioni attive e archiviate per ogni corso.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Nuova Edizione
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -444,6 +454,14 @@ function AdminEdizioniContent() {
           }}
         />
       ) : null}
+
+      <CreateEditionModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={async () => {
+          await fetchEditions();
+        }}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Calendar, Plus, Users } from "lucide-react";
 import { AttendanceStatus } from "@/types";
 import { formatItalianDate } from "@/lib/date-utils";
 import { AttendanceCell } from "@/components/AttendanceCell";
@@ -51,15 +53,18 @@ interface AttendanceMatrixProps {
     notes?: string
   ) => void;
   readonly?: boolean;
+  isAdmin?: boolean;
 }
 
 export function AttendanceMatrix({
+  courseEditionId,
   lessons,
   employees,
   attendances,
   stats,
   onUpdate,
   readonly = false,
+  isAdmin = false,
 }: AttendanceMatrixProps) {
   const [noteState, setNoteState] = useState<{
     lessonId: string;
@@ -78,10 +83,36 @@ export function AttendanceMatrix({
     return map;
   }, [attendances]);
 
-  if (!lessons.length || !employees.length) {
+  if (!lessons.length) {
     return (
-      <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-        Nessun dato presenze disponibile.
+      <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+        <Calendar className="mx-auto mb-3 h-8 w-8 opacity-50" />
+        <p className="font-medium text-foreground">Nessuna lezione disponibile</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Crea le lezioni per poter registrare le presenze.
+        </p>
+        {isAdmin ? (
+          <Link
+            href={`/admin/corsi/${courseEditionId}/lezioni`}
+            className="mt-3 inline-flex min-h-[44px] items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <Plus className="h-4 w-4" />
+            Crea lezione
+          </Link>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (!employees.length) {
+    return (
+      <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+        <Users className="mx-auto mb-3 h-8 w-8 opacity-50" />
+        <p className="font-medium text-foreground">Nessun dipendente registrato</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          I dipendenti devono essere inseriti nelle anagrafiche prima di poter registrare le
+          presenze.
+        </p>
       </div>
     );
   }
@@ -118,13 +149,14 @@ export function AttendanceMatrix({
                   {lessons.map((lesson) => {
                     const key = `${lesson.id}:${employee.id}`;
                     const entry = attendanceMap.get(key);
-                    const status = entry?.status ?? "ABSENT";
+                    const cellStatus = entry?.status ?? (readonly ? null : "ABSENT");
+                    const noteStatus: AttendanceStatus = entry?.status ?? "ABSENT";
                     const notes = entry?.notes ?? undefined;
 
                     return (
                       <td key={key} className="px-2 py-2">
                         <AttendanceCell
-                          status={status}
+                          status={cellStatus}
                           notes={notes}
                           readonly={readonly}
                           onChange={(nextStatus) =>
@@ -134,7 +166,7 @@ export function AttendanceMatrix({
                             setNoteState({
                               lessonId: lesson.id,
                               employeeId: employee.id,
-                              status,
+                              status: noteStatus,
                               notes,
                               employeeName: `${employee.cognome} ${employee.nome}`,
                               lessonDate: formatItalianDate(lesson.date),

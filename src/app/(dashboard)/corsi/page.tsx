@@ -10,6 +10,7 @@ import { LoadingTable } from "@/components/ui/loading-table";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { useDebounce } from "@/hooks/useDebounce";
+import EditionStatusBadge from "@/components/EditionStatusBadge";
 
 type Tab = "tutti" | "disponibili" | "in_progress" | "completati";
 
@@ -20,12 +21,6 @@ const TABS: Array<{ value: Tab; label: string }> = [
   { value: "completati", label: "Completati" },
 ];
 
-const STATUS_BADGE: Record<string, string> = {
-  AVAILABLE: "bg-blue-100 text-blue-700",
-  IN_PROGRESS: "bg-orange-100 text-orange-700",
-  COMPLETED: "bg-emerald-100 text-emerald-700",
-};
-
 type EditionItem = {
   id: string;
   editionNumber?: number | null;
@@ -33,6 +28,9 @@ type EditionItem = {
   endDate?: string | null;
   deadlineRegistry?: string | null;
   status: "AVAILABLE" | "IN_PROGRESS" | "COMPLETED";
+  editionStatus: "DRAFT" | "OPEN" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+  isSubmitted: boolean;
+  submittedAt?: string | null;
   registrationsCount: number;
   completedCount: number;
   isNew: boolean;
@@ -62,7 +60,7 @@ function ClientCorsiContent() {
   const tabParam = searchParams.get("tab");
   const initialTab: Tab = TABS.some((tab) => tab.value === tabParam)
     ? (tabParam as Tab)
-    : "disponibili";
+    : "tutti";
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [categoryFilter, setCategoryFilter] = useState(
@@ -76,7 +74,7 @@ function ClientCorsiContent() {
   const queryClient = useQueryClient();
   const debouncedSearch = useDebounce(search, 250);
 
-  const { data, isLoading, isFetching } = useQuery<{ data: CourseGroup[] }>({
+  const { data, isLoading, isFetching, isError } = useQuery<{ data: CourseGroup[] }>({
     queryKey: ["courses", "cliente", activeTab, categoryFilter],
     queryFn: () =>
       fetchCourses(
@@ -191,7 +189,7 @@ function ClientCorsiContent() {
           className="flex-1"
         />
         <select
-          className="rounded-full border bg-background px-4 py-2 text-sm"
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
           value={categoryFilter}
           onChange={(event) => setCategoryFilter(event.target.value)}
         >
@@ -211,12 +209,12 @@ function ClientCorsiContent() {
             placeholder="Cerca corso o edizione..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-[240px] rounded-full border bg-background py-2 pl-9 pr-3 text-sm"
+            className="w-full sm:w-[240px] rounded-full border bg-background py-2 pl-9 pr-3 text-sm"
             aria-label="Cerca corso o edizione"
           />
         </div>
         <select
-          className="rounded-full border bg-background px-4 py-2 text-sm"
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
           value={yearFilter}
           onChange={(event) => setYearFilter(event.target.value)}
         >
@@ -238,7 +236,11 @@ function ClientCorsiContent() {
           />
         ) : null}
 
-        {isLoading ? (
+        {isError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Si e verificato un errore nel caricamento dei corsi. Riprova piu tardi.
+          </div>
+        ) : isLoading ? (
           <LoadingTable rows={3} cols={1} />
         ) : filteredCourses.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nessun corso trovato.</p>
@@ -278,6 +280,17 @@ function ClientCorsiContent() {
                     const isNearDeadline = deadline
                       ? (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24) <= 7
                       : false;
+                    const deadlineExpired = deadline
+                      ? deadline.getTime() < now.getTime()
+                      : false;
+                    const isPublishedEdition =
+                      edition.editionStatus === "PUBLISHED" ||
+                      edition.editionStatus === "OPEN";
+                    const isReadOnlyEdition =
+                      edition.editionStatus === "CLOSED" ||
+                      edition.editionStatus === "ARCHIVED";
+                    const canManageAnagrafiche =
+                      isPublishedEdition && !deadlineExpired;
                     const progress = edition.registrationsCount
                       ? Math.round(
                           (edition.completedCount / edition.registrationsCount) * 100
@@ -303,17 +316,7 @@ function ClientCorsiContent() {
                                 : ""}
                             </p>
                           </div>
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs ${
-                              STATUS_BADGE[edition.status]
-                            }`}
-                          >
-                            {edition.status === "AVAILABLE"
-                              ? "Disponibile"
-                              : edition.status === "IN_PROGRESS"
-                              ? "In compilazione"
-                              : "Completato"}
-                          </span>
+                          <EditionStatusBadge status={edition.editionStatus} />
                         </div>
 
                         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -330,6 +333,24 @@ function ClientCorsiContent() {
                           {edition.isNew ? (
                             <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">
                               NUOVO
+                            </span>
+                          ) : null}
+                          {isPublishedEdition && deadlineExpired ? (
+                            <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">
+                              Deadline scaduta il {deadline ? formatItalianDate(deadline) : "-"}
+                            </span>
+                          ) : null}
+                          {isReadOnlyEdition ? (
+                            <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                              Edizione chiusa
+                            </span>
+                          ) : null}
+                          {edition.isSubmitted && canManageAnagrafiche ? (
+                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
+                              Anagrafiche inviate
+                              {edition.submittedAt
+                                ? ` il ${formatItalianDate(edition.submittedAt)}`
+                                : ""}
                             </span>
                           ) : null}
                         </div>
@@ -354,14 +375,31 @@ function ClientCorsiContent() {
                         ) : null}
 
                         <div className="mt-4">
-                          <Link
-                            href={`/corsi/${edition.id}`}
-                            className="btn-brand-primary inline-flex rounded-md px-3 py-2 text-xs"
-                          >
-                            {edition.status === "COMPLETED"
-                              ? "Visualizza"
-                              : "Compila anagrafiche"}
-                          </Link>
+                          {canManageAnagrafiche ? (
+                            <Link
+                              href={`/corsi/${edition.id}`}
+                              className="inline-flex min-h-[44px] items-center rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+                            >
+                              {edition.isSubmitted
+                                ? "Modifica Anagrafiche"
+                                : "Gestisci Anagrafiche"}
+                            </Link>
+                          ) : isPublishedEdition && deadlineExpired ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="inline-flex min-h-[44px] items-center rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 disabled:cursor-not-allowed"
+                            >
+                              Deadline scaduta
+                            </button>
+                          ) : (
+                            <Link
+                              href={`/corsi/${edition.id}`}
+                              className="btn-brand-outline inline-flex min-h-[44px] items-center rounded-md px-3 py-2 text-xs"
+                            >
+                              Vedi Anagrafiche
+                            </Link>
+                          )}
                         </div>
                       </div>
                     );

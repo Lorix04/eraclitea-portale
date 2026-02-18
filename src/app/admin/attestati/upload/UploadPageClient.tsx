@@ -51,6 +51,8 @@ export default function AdminUploadAttestatiPageClient() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [courseEditionId, setCourseEditionId] = useState("");
   const [clientId, setClientId] = useState("");
+  const [achievedAt, setAchievedAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,6 +74,12 @@ export default function AdminUploadAttestatiPageClient() {
     };
     loadBase();
   }, []);
+
+  useEffect(() => {
+    if (!achievedAt) {
+      setAchievedAt(new Date().toISOString().slice(0, 10));
+    }
+  }, [achievedAt]);
 
   useEffect(() => {
     if (!searchParams) return;
@@ -217,6 +225,10 @@ export default function AdminUploadAttestatiPageClient() {
     const formData = new FormData();
     formData.append("courseEditionId", courseEditionId);
     formData.append("clientId", clientId);
+    formData.append("achievedAt", achievedAt);
+    if (expiresAt) {
+      formData.append("expiresAt", expiresAt);
+    }
     formData.append("associations", JSON.stringify(associations));
     uploads.forEach((item) => formData.append("files", item.file, item.file.name));
 
@@ -291,6 +303,30 @@ export default function AdminUploadAttestatiPageClient() {
           </select>
           <FormFieldError message={errors.clientId} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Data rilascio</FormLabel>
+          <input
+            type="date"
+            className="rounded-md border bg-background px-3 py-2"
+            value={achievedAt}
+            onChange={(event) => setAchievedAt(event.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">Default: oggi</span>
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Data scadenza</FormLabel>
+          <input
+            type="date"
+            className="rounded-md border bg-background px-3 py-2"
+            value={expiresAt}
+            onChange={(event) => setExpiresAt(event.target.value)}
+          />
+          <span className="text-xs text-muted-foreground">Opzionale</span>
+        </label>
       </div>
 
       <div className="rounded-lg border bg-card p-4">
@@ -371,7 +407,7 @@ export default function AdminUploadAttestatiPageClient() {
 
       <button
         type="button"
-        className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+        className="min-h-[44px] rounded-md bg-primary px-4 py-2 text-primary-foreground"
         onClick={handleUpload}
         disabled={loading}
       >

@@ -2,6 +2,7 @@
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
 
   const validation = validateQuery(
     request,
@@ -27,8 +29,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ courses: [], employees: [], certificates: [], clients: [] });
   }
 
-  const isAdmin = session.user.role === "ADMIN";
-  const clientId = session.user.clientId ?? undefined;
+  const isAdmin = session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+  const clientId = isAdmin
+    ? session.user.clientId ?? undefined
+    : effectiveClient?.clientId ?? session.user.clientId ?? undefined;
+
+  if (!isAdmin && !clientId) {
+    return NextResponse.json({ courses: [], employees: [], certificates: [], clients: [] });
+  }
 
   let coursesPayload: Array<Record<string, unknown>> = [];
   if (isAdmin) {

@@ -2,19 +2,48 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { parseItalianDate } from "@/lib/date-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { validateBody } from "@/lib/api-utils";
 
+const optionalString = (max: number) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().max(max).optional().nullable()
+  );
+
+const toNullableField = (value: string | null | undefined) => {
+  if (value === undefined) return undefined;
+  return value || null;
+};
+
 const updateSchema = z.object({
-  nome: z.string().min(1).max(100),
-  cognome: z.string().min(1).max(100),
-  email: z.string().email().optional().or(z.literal("")),
-  mansione: z.string().max(100).optional().or(z.literal("")),
-  luogoNascita: z.string().max(100).optional().or(z.literal("")),
-  note: z.string().max(500).optional().or(z.literal("")),
-  dataNascita: z.string().optional().or(z.literal("")),
+  nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
+  cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
+  sesso: z.enum(["M", "F"], { required_error: "Sesso obbligatorio" }),
+  dataNascita: z.union([
+    z.string().trim().min(1, "Data di nascita obbligatoria"),
+    z.date(),
+  ]),
+  luogoNascita: z
+    .string()
+    .trim()
+    .min(1, "Comune di nascita obbligatorio")
+    .max(100),
+  email: z.string().trim().min(1, "Email obbligatoria").email("Email non valida"),
+  telefono: optionalString(30),
+  cellulare: optionalString(30),
+  indirizzo: optionalString(255),
+  comuneResidenza: z
+    .string()
+    .trim()
+    .min(1, "Comune di residenza obbligatorio")
+    .max(100),
+  cap: z.string().trim().min(1, "CAP obbligatorio").max(5),
+  mansione: optionalString(100),
+  note: optionalString(500),
 });
 
 export async function GET(
@@ -25,6 +54,9 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdminView =
+    session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
   const employee = await prisma.employee.findUnique({
     where: { id: params.id },
@@ -63,8 +95,10 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (session.user.role === "CLIENT" && employee.clientId !== session.user.clientId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdminView) {
+    if (!effectiveClient || employee.clientId !== effectiveClient.clientId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   return NextResponse.json({ data: employee });
@@ -97,8 +131,10 @@ export async function PUT(
   }
 
   const payload = validation.data;
-  let parsedDate: Date | null | undefined = null;
-  if (payload.dataNascita) {
+  let parsedDate: Date | null | undefined = undefined;
+  if (payload.dataNascita instanceof Date) {
+    parsedDate = payload.dataNascita;
+  } else if (typeof payload.dataNascita === "string") {
     parsedDate = parseItalianDate(payload.dataNascita);
     if (!parsedDate) {
       return NextResponse.json(
@@ -106,8 +142,6 @@ export async function PUT(
         { status: 400 }
       );
     }
-  } else {
-    parsedDate = null;
   }
 
   const updated = await prisma.employee.update({
@@ -115,10 +149,16 @@ export async function PUT(
     data: {
       nome: payload.nome,
       cognome: payload.cognome,
-      email: payload.email || null,
-      mansione: payload.mansione || null,
-      luogoNascita: payload.luogoNascita || null,
-      note: payload.note || null,
+      sesso: payload.sesso,
+      email: payload.email,
+      telefono: toNullableField(payload.telefono as string | null | undefined),
+      cellulare: toNullableField(payload.cellulare as string | null | undefined),
+      indirizzo: toNullableField(payload.indirizzo as string | null | undefined),
+      comuneResidenza: payload.comuneResidenza,
+      cap: payload.cap,
+      mansione: toNullableField(payload.mansione as string | null | undefined),
+      luogoNascita: payload.luogoNascita,
+      note: toNullableField(payload.note as string | null | undefined),
       dataNascita: parsedDate,
     },
   });

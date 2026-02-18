@@ -1,7 +1,6 @@
 ﻿import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 
@@ -15,12 +14,9 @@ const filterSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT") {
+  const context = await getEffectiveClientContext();
+  if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!session.user.clientId) {
-    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
   const validation = validateQuery(request, filterSchema);
@@ -32,7 +28,7 @@ export async function GET(request: Request) {
     validation.data;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 20;
-  const clientId = session.user.clientId;
+  const clientId = context.clientId;
 
   const where: Record<string, unknown> = {
     clientId,
@@ -54,10 +50,7 @@ export async function GET(request: Request) {
   } else if (status === "expiring") {
     where.expiresAt = { gte: now, lte: expiringDate };
   } else if (status === "valid") {
-    where.OR = [
-      { expiresAt: null },
-      { expiresAt: { gt: expiringDate } },
-    ];
+    where.OR = [{ expiresAt: null }, { expiresAt: { gt: expiringDate } }];
   }
 
   const [certificates, total, expiringCount] = await prisma.$transaction([

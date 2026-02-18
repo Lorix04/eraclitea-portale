@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { stringify } from "csv-stringify/sync";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { formatItalianDate } from "@/lib/date-utils";
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
 
   const validation = validateQuery(request, querySchema);
   if ("error" in validation) {
@@ -36,8 +38,10 @@ export async function GET(request: Request) {
     sortOrder = "asc",
     hasCourses = "all",
   } = validation.data;
-  const isAdmin = session.user.role === "ADMIN";
-  const scopedClientId = isAdmin ? clientId : session.user.clientId;
+  const isAdmin = session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+  const scopedClientId = isAdmin
+    ? clientId
+    : effectiveClient?.clientId ?? session.user.clientId;
 
   if (!isAdmin && !scopedClientId) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });

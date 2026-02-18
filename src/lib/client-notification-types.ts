@@ -1,0 +1,24 @@
+export const CLIENT_NOTIFICATION_TYPES = [
+  "NEW_EDITION",
+  "DEADLINE_REMINDER_7D",
+  "DEADLINE_REMINDER_2D",
+  "CERTIFICATES_AVAILABLE",
+  "CERTIFICATE_EXPIRING_60D",
+  "CERTIFICATE_EXPIRING_30D",
+  "REGISTRY_RECEIVED",
+  "EDITION_DATES_CHANGED",
+  "EDITION_CANCELLED",
+  "TICKET_REPLY",
+  "TICKET_STATUS_CHANGED",
+  // Legacy values kept for backward compatibility with existing rows.
+  "COURSE_PUBLISHED",
+  "CERT_UPLOADED",
+  "REMINDER",
+  "ATTENDANCE_RECORDED",
+] as const;
+
+export type ClientNotificationType = (typeof CLIENT_NOTIFICATION_TYPES)[number];
+
+export const CLIENT_NOTIFICATION_TYPES_ARRAY: ClientNotificationType[] = [
+  ...CLIENT_NOTIFICATION_TYPES,
+];

@@ -5,13 +5,18 @@ import { checkRateLimit } from "@/lib/rate-limit";
 
 const AUTH_ROUTES = ["/login", "/recupera-password"];
 const AUTH_ROUTE_PREFIXES = ["/reset-password"];
+const PUBLIC_EXACT_ROUTES = ["/come-funziona"];
+const IMPERSONATE_ADMIN_COOKIE = "impersonate_admin_id";
+const IMPERSONATE_CLIENT_COOKIE = "impersonate_client_id";
 
 function isClientRoute(pathname: string) {
   return (
-    pathname === "/" ||
+    pathname.startsWith("/dashboard") ||
     pathname.startsWith("/corsi") ||
+    pathname.startsWith("/dipendenti") ||
     pathname.startsWith("/notifiche") ||
     pathname.startsWith("/attestati") ||
+    pathname.startsWith("/supporto") ||
     pathname.startsWith("/storico") ||
     pathname.startsWith("/profilo")
   );
@@ -19,6 +24,15 @@ function isClientRoute(pathname: string) {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const impersonateAdminId = req.cookies.get(IMPERSONATE_ADMIN_COOKIE)?.value;
+  const impersonateClientId = req.cookies.get(IMPERSONATE_CLIENT_COOKIE)?.value;
+  const isImpersonatingClient =
+    token?.role === "ADMIN" &&
+    typeof token?.id === "string" &&
+    !!impersonateClientId &&
+    impersonateAdminId === token.id;
+
   if (pathname.startsWith("/api/")) {
     const ip =
       req.ip ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -42,26 +56,97 @@ export async function middleware(req: NextRequest) {
       );
     }
 
+    const isReadOnlyMethod = !["GET", "HEAD", "OPTIONS"].includes(req.method);
+    const isImpersonateStopRoute = pathname === "/api/admin/impersonate/stop";
+    const isAuthApiRoute = pathname.startsWith("/api/auth/");
+    const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
+      req.method
+    );
+
+    if (isMutationMethod && !isAuthApiRoute) {
+      const host = req.headers.get("host");
+      const origin = req.headers.get("origin");
+      const referer = req.headers.get("referer");
+      const source = origin ?? referer;
+
+      if (host && source) {
+        try {
+          const sourceHost = new URL(source).host;
+          if (sourceHost !== host) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          }
+        } catch {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      }
+    }
+
+    if (
+      isImpersonatingClient &&
+      isReadOnlyMethod &&
+      !isImpersonateStopRoute &&
+      !isAuthApiRoute
+    ) {
+      return NextResponse.json(
+        { error: "Impersonazione attiva in sola lettura" },
+        { status: 403 }
+      );
+    }
+
+    if (
+      isImpersonatingClient &&
+      pathname.startsWith("/api/admin/") &&
+      pathname !== "/api/admin/impersonate/status" &&
+      pathname !== "/api/admin/impersonate/stop"
+    ) {
+      return NextResponse.json(
+        { error: "Area admin non disponibile durante l'impersonazione" },
+        { status: 403 }
+      );
+    }
+
     const response = NextResponse.next();
     response.headers.set("X-RateLimit-Remaining", String(remaining));
     return response;
   }
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+
+  if (pathname === "/") {
+    if (isImpersonatingClient) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    if (token?.role === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", req.url));
+    }
+    if (token?.role === "CLIENT") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (PUBLIC_EXACT_ROUTES.includes(pathname)) {
+    return NextResponse.next();
+  }
 
   if (
     AUTH_ROUTES.includes(pathname) ||
     AUTH_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   ) {
+    if (isImpersonatingClient) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
     if (token?.role === "ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
     if (token?.role === "CLIENT") {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
   }
 
   if (pathname.startsWith("/admin")) {
+    if (isImpersonatingClient) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
@@ -74,7 +159,7 @@ export async function middleware(req: NextRequest) {
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
-    if (token.role !== "CLIENT") {
+    if (token.role !== "CLIENT" && !isImpersonatingClient) {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
   }
@@ -86,14 +171,19 @@ export const config = {
   matcher: [
     "/api/:path*",
     "/",
+    "/come-funziona",
     "/login",
     "/recupera-password",
     "/reset-password/:path*",
+    "/dashboard/:path*",
     "/corsi/:path*",
+    "/dipendenti/:path*",
     "/notifiche/:path*",
     "/attestati/:path*",
+    "/supporto/:path*",
     "/storico/:path*",
     "/profilo/:path*",
+    "/admin/ticket/:path*",
     "/admin/:path*",
   ],
 };

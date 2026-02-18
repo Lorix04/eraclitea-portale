@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FormLabel } from "@/components/ui/FormLabel";
-import { FormFieldError } from "@/components/ui/FormFieldError";
-import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
+import AuthLayout from "../AuthLayout";
 
 export default function RecuperaPasswordPage() {
   const [email, setEmail] = useState("");
@@ -19,7 +17,7 @@ export default function RecuperaPasswordPage() {
     setFieldErrors({});
 
     if (!email.trim()) {
-      setFieldErrors({ email: "Questo campo è obbligatorio" });
+      setFieldErrors({ email: "Questo campo e obbligatorio" });
       return;
     }
 
@@ -38,87 +36,130 @@ export default function RecuperaPasswordPage() {
 
       setIsSubmitted(true);
     } catch {
-      setError("Si &egrave; verificato un errore. Riprova pi&ugrave; tardi.");
+      setError("Si e verificato un errore. Riprova piu tardi.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isSubmitted) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-        <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-            &#10003;
+  return (
+    <AuthLayout>
+      <div className="mb-6 text-center">
+        <h2
+          className="mb-1 text-xl font-semibold text-white"
+          style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
+        >
+          Recupera Password
+        </h2>
+        <p className="text-sm text-white/40">Inserisci la tua email per ricevere il link di reset</p>
+      </div>
+
+      {isSubmitted ? (
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-green-500/20 bg-green-500/10">
+            <svg
+              className="h-8 w-8 text-green-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
           </div>
-          <h1 className="text-2xl font-semibold">Controlla la tua email</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Se l&apos;indirizzo &egrave; registrato, riceverai le istruzioni per
-            reimpostare la password.
-          </p>
+          <div>
+            <p className="mb-1 font-medium text-white">Email inviata!</p>
+            <p className="text-sm text-white/40">
+              Se l&apos;indirizzo e registrato, riceverai un link per reimpostare la password.
+              Controlla anche la cartella spam.
+            </p>
+          </div>
           <Link
             href="/login"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-md border px-4 py-2 text-sm"
+            className="inline-flex items-center gap-1 text-sm text-[#EAB308] transition-colors hover:text-[#FACC15]"
           >
-            Torna al login
+            &larr; Torna al login
           </Link>
         </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Recupera password</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Inserisci la tua email per ricevere il link di reset.
-        </p>
-
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+      ) : (
+        <>
           {error ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-400">
               {error}
             </div>
           ) : null}
 
-          <FormRequiredLegend />
-          <div className="flex flex-col gap-2 text-sm">
-            <FormLabel required>Email</FormLabel>
-            <input
-              type="email"
-              className={`rounded-md border bg-background px-3 py-2 ${
-                fieldErrors.email
-                  ? "border-red-500 focus-visible:outline-red-500"
-                  : ""
-              }`}
-              placeholder="tuaemail@esempio.it"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                if (fieldErrors.email) {
-                  setFieldErrors((prev) => ({ ...prev, email: "" }));
-                }
-              }}
-            />
-            <FormFieldError message={fieldErrors.email} />
-          </div>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white/60">
+                Email <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="email"
+                className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+                  fieldErrors.email
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
+                    : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                }`}
+                placeholder="nome@azienda.it"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (fieldErrors.email) {
+                    setFieldErrors((prev) => ({ ...prev, email: "" }));
+                  }
+                }}
+              />
+              {fieldErrors.email ? (
+                <p className="mt-1 text-sm text-red-400">{fieldErrors.email}</p>
+              ) : null}
+            </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground"
-            disabled={isLoading}
-          >
-            {isLoading ? "Invio in corso..." : "Invia link di reset"}
-          </button>
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-[#EAB308] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#FACC15] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                  Invio in corso...
+                </span>
+              ) : (
+                "Invia link di recupero"
+              )}
+            </button>
+          </form>
 
-          <div className="text-center">
-            <Link href="/login" className="text-sm text-primary">
-              Torna al login
+          <div className="mt-4 text-center">
+            <Link
+              href="/login"
+              className="text-xs text-white/40 transition-colors hover:text-[#EAB308]"
+            >
+              &larr; Torna al login
             </Link>
           </div>
-        </form>
-      </div>
-    </main>
+        </>
+      )}
+    </AuthLayout>
   );
 }

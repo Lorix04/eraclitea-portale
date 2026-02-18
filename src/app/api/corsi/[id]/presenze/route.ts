@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 
@@ -27,11 +28,15 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdminView =
+    session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
-  const isAdmin = session.user.role === "ADMIN";
-  const clientId = session.user.clientId ?? null;
+  const clientId = isAdminView
+    ? session.user.clientId ?? null
+    : effectiveClient?.clientId ?? null;
 
-  if (!isAdmin && !clientId) {
+  if (!isAdminView && !clientId) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
@@ -49,11 +54,11 @@ export async function GET(
     return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
-  if (!isAdmin && edition.clientId !== clientId) {
+  if (!isAdminView && edition.clientId !== clientId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const registrationWhere = isAdmin
+  const registrationWhere = isAdminView
     ? { courseEditionId: edition.id }
     : { courseEditionId: edition.id, clientId: clientId ?? undefined };
 
@@ -182,6 +187,7 @@ export async function POST(
     where: { id: context.params.id },
     select: {
       id: true,
+      status: true,
       editionNumber: true,
       course: { select: { title: true } },
     },
@@ -189,6 +195,13 @@ export async function POST(
 
   if (!edition) {
     return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+  }
+
+  if (edition.status === "ARCHIVED") {
+    return NextResponse.json(
+      { error: "L'edizione e archiviata. Nessuna modifica consentita." },
+      { status: 403 }
+    );
   }
 
   const [lessons, registrations] = await prisma.$transaction([

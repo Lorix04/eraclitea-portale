@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 type UseEmployeesParams = {
   search?: string;
   clientId?: string;
+  excludeEditionId?: string;
   searchEmail?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -10,6 +11,7 @@ type UseEmployeesParams = {
   page?: number;
   limit?: number;
   includeRegistrations?: boolean;
+  enabled?: boolean;
 };
 
 type EmployeeRow = {
@@ -18,10 +20,15 @@ type EmployeeRow = {
   nome: string;
   cognome: string;
   codiceFiscale: string;
+  sesso?: string | null;
   dataNascita?: string | Date | null;
   luogoNascita?: string | null;
   email?: string | null;
   telefono?: string | null;
+  cellulare?: string | null;
+  indirizzo?: string | null;
+  comuneResidenza?: string | null;
+  cap?: string | null;
   mansione?: string | null;
   note?: string | null;
   createdAt?: string | Date;
@@ -47,6 +54,9 @@ export function useEmployees(params: UseEmployeesParams) {
       const searchParams = new URLSearchParams();
       if (params.search) searchParams.set("search", params.search);
       if (params.clientId) searchParams.set("clientId", params.clientId);
+      if (params.excludeEditionId) {
+        searchParams.set("excludeEditionId", params.excludeEditionId);
+      }
       if (params.searchEmail) searchParams.set("searchEmail", params.searchEmail);
       if (params.sortBy) searchParams.set("sortBy", params.sortBy);
       if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
@@ -62,6 +72,7 @@ export function useEmployees(params: UseEmployeesParams) {
       }
       return res.json();
     },
+    enabled: params.enabled ?? true,
     placeholderData: (prev) => prev,
   });
 }

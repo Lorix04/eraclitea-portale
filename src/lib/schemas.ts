@@ -12,6 +12,28 @@ const optionalDate = z.preprocess(
   z.date().optional()
 );
 
+const requiredDate = z.preprocess(
+  (value) => {
+    if (value instanceof Date) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      return parseItalianDate(trimmed) ?? value;
+    }
+    return value;
+  },
+  z.date({
+    required_error: "Data di nascita obbligatoria",
+    invalid_type_error: "Data non valida. Usa il formato GG/MM/AAAA",
+  })
+);
+
+const optionalString = (max: number) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().max(max).optional().nullable()
+  );
+
 export const italianDateSchema = z
   .string()
   .refine(
@@ -44,28 +66,80 @@ export const courseSchema = courseBaseSchema;
 
 export const courseUpdateSchema = courseBaseSchema.partial();
 
-export const courseEditionSchema = z.object({
+const courseEditionBaseSchema = z.object({
   clientId: z.string().cuid(),
   startDate: optionalDate,
   endDate: optionalDate,
   deadlineRegistry: optionalDate,
   status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
-  notes: z.string().max(2000).optional().or(z.literal("")),
+  notes: z.string().max(2000).optional().nullable().or(z.literal("")),
 });
 
+function validateEditionDates(
+  data: {
+    startDate?: Date;
+    endDate?: Date;
+    deadlineRegistry?: Date;
+  },
+  ctx: z.RefinementCtx
+) {
+  if (data.startDate && data.endDate && data.endDate <= data.startDate) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La data di fine deve essere successiva alla data di inizio",
+      path: ["endDate"],
+    });
+  }
+
+  if (
+    data.startDate &&
+    data.deadlineRegistry &&
+    data.deadlineRegistry >= data.startDate
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "La deadline anagrafiche deve essere precedente alla data di inizio",
+      path: ["deadlineRegistry"],
+    });
+  }
+}
+
+export const courseEditionSchema = courseEditionBaseSchema.superRefine(
+  validateEditionDates
+);
+
+export const courseEditionUpdateSchema = courseEditionBaseSchema
+  .partial()
+  .superRefine(validateEditionDates);
+
 export const employeeSchema = z.object({
-  nome: z.string().min(1, "Nome obbligatorio").max(100),
-  cognome: z.string().min(1, "Cognome obbligatorio").max(100),
+  nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
+  cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
   codiceFiscale: z
     .string()
-    .length(16, "CF deve essere 16 caratteri")
+    .trim()
+    .length(16, "Il codice fiscale deve essere di 16 caratteri")
     .refine(isValidCodiceFiscale, "Codice Fiscale non valido"),
-  dataNascita: optionalDate,
-  luogoNascita: z.string().max(100).optional().or(z.literal("")),
-  email: z.string().email("Email non valida").optional().or(z.literal("")),
-  telefono: z.string().max(30).optional().or(z.literal("")),
-  mansione: z.string().max(100).optional().or(z.literal("")),
-  note: z.string().max(500).optional().or(z.literal("")),
+  sesso: z.enum(["M", "F"], { required_error: "Sesso obbligatorio" }),
+  dataNascita: requiredDate,
+  luogoNascita: z.string().trim().min(1, "Comune di nascita obbligatorio").max(100),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email obbligatoria")
+    .email("Email non valida"),
+  telefono: optionalString(30),
+  cellulare: optionalString(30),
+  indirizzo: optionalString(255),
+  comuneResidenza: z
+    .string()
+    .trim()
+    .min(1, "Comune di residenza obbligatorio")
+    .max(100),
+  cap: z.string().trim().min(1, "CAP obbligatorio").max(5),
+  mansione: optionalString(100),
+  note: optionalString(500),
 });
 
 export const clientSchema = z.object({

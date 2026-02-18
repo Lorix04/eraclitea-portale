@@ -59,6 +59,8 @@ type AuditLogRow = {
 
 export default function AdminAuditPage() {
   const [rows, setRows] = useState<AuditLogRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [action, setAction] = useState("");
@@ -79,10 +81,26 @@ export default function AdminAuditPage() {
   }, [page, limit, action, entityType, dateFrom, dateTo]);
 
   const loadAudit = useCallback(async () => {
-    const res = await fetch(`/api/admin/audit?${queryString}`);
-    const json = await res.json();
-    setRows(json.data ?? []);
-    setTotal(json.total ?? 0);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/audit?${queryString}`);
+      if (!res.ok) {
+        setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+        setRows([]);
+        setTotal(0);
+        return;
+      }
+      const json = await res.json();
+      setRows(json.data ?? []);
+      setTotal(json.total ?? 0);
+    } catch {
+      setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   }, [queryString]);
 
   useEffect(() => {
@@ -145,8 +163,15 @@ export default function AdminAuditPage() {
         />
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[980px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3">Data/Ora</th>
@@ -158,7 +183,30 @@ export default function AdminAuditPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 6 }).map((_, row) => (
+                <tr key={`audit-skeleton-${row}`} className="border-t">
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-6 w-24 animate-pulse rounded bg-muted" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                  </td>
+                </tr>
+              ))
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
                   Nessun log trovato.
@@ -187,7 +235,8 @@ export default function AdminAuditPage() {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <div className="flex items-center justify-between text-sm">
@@ -197,7 +246,7 @@ export default function AdminAuditPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            className="rounded-md border px-3 py-1"
+            className="min-h-[44px] rounded-md border px-3 py-1"
             disabled={page <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           >
@@ -205,7 +254,7 @@ export default function AdminAuditPage() {
           </button>
           <button
             type="button"
-            className="rounded-md border px-3 py-1"
+            className="min-h-[44px] rounded-md border px-3 py-1"
             disabled={page >= totalPages}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
           >

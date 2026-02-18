@@ -169,14 +169,15 @@ export default function CertificateTable({
       ) : null}
 
       <div className="hidden md:block">
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <table
-            ref={tableRef}
-            role="grid"
-            aria-label="Lista attestati"
-            className="w-full text-sm"
-            tabIndex={0}
-          >
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="overflow-hidden rounded-lg border bg-card">
+            <table
+              ref={tableRef}
+              role="grid"
+              aria-label="Lista attestati"
+              className="w-full min-w-[980px] text-sm"
+              tabIndex={0}
+            >
             <thead className="bg-muted/40 text-left">
               <tr role="row">
                 <th className="w-12 px-4 py-3" role="columnheader" scope="col">
@@ -282,7 +283,12 @@ export default function CertificateTable({
                       <td className="px-4 py-3">
                         {cert.employee.cognome} {cert.employee.nome}
                       </td>
-                      <td className="px-4 py-3">{getCourseLabel(cert)}</td>
+                      <td
+                        className="max-w-[260px] truncate px-4 py-3"
+                        title={getCourseLabel(cert)}
+                      >
+                        {getCourseLabel(cert)}
+                      </td>
                       <td
                         className="px-4 py-3"
                         title={`${uploadedInfo}${uploaderInfo}`}
@@ -303,7 +309,7 @@ export default function CertificateTable({
                       <td className="px-4 py-3">
                         <a
                           href={`/api/attestati/${cert.id}/download`}
-                          className="btn-brand-outline inline-flex items-center rounded-md px-2 py-1 text-xs"
+                          className="btn-brand-outline inline-flex min-h-[44px] items-center rounded-md px-2 py-1 text-xs"
                           aria-label="Scarica attestato"
                         >
                           <Download className="h-4 w-4" />
@@ -314,7 +320,8 @@ export default function CertificateTable({
                 })
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -404,7 +411,7 @@ export default function CertificateTable({
                   </span>
                   <a
                     href={`/api/attestati/${cert.id}/download`}
-                    className="btn-brand-outline inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs"
+                    className="btn-brand-outline inline-flex min-h-[44px] items-center gap-2 rounded-md px-2 py-1 text-xs"
                     aria-label="Scarica attestato"
                   >
                     <Download className="h-4 w-4" />

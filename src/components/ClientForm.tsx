@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import { Eye, EyeOff } from "lucide-react";
 import { clientSchema } from "@/lib/schemas";
 import CategorySelect from "@/components/CategorySelect";
 import { BrandingPreview } from "@/components/BrandingPreview";
@@ -151,6 +152,7 @@ export default function ClientForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [logoPath, setLogoPath] = useState<string | null>(
     initialBranding?.logoPath ?? null
   );
@@ -626,17 +628,31 @@ export default function ClientForm({
             <FormLabel required={!isEdit}>
               {isEdit ? "Nuova password (opzionale)" : "Password"}
             </FormLabel>
-            <input
-              type="password"
-              className={`rounded-md border bg-background px-3 py-2 ${
-                errors.password
-                  ? "border-red-500 focus-visible:outline-red-500"
-                  : ""
-              }`}
-              placeholder={isEdit ? "Lascia vuoto per non modificare" : undefined}
-              value={form.password ?? ""}
-              onChange={(event) => updateField("password", event.target.value)}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className={`w-full rounded-md border bg-background px-3 py-2 pr-10 ${
+                  errors.password
+                    ? "border-red-500 focus-visible:outline-red-500"
+                    : ""
+                }`}
+                placeholder={isEdit ? "Lascia vuoto per non modificare" : undefined}
+                value={form.password ?? ""}
+                onChange={(event) => updateField("password", event.target.value)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             <FormFieldError message={errors.password} />
           </div>
         </div>

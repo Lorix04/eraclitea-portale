@@ -145,6 +145,18 @@ export async function DELETE(
     return NextResponse.json({ error: "Categoria non trovata" }, { status: 404 });
   }
 
+  const coursesCount = await prisma.courseCategory.count({
+    where: { categoryId: context.params.id },
+  });
+  if (coursesCount > 0) {
+    return NextResponse.json(
+      {
+        error: `Impossibile eliminare la categoria: e associata a ${coursesCount} cors${coursesCount === 1 ? "o" : "i"}. Riassegna prima i corsi a un'altra categoria.`,
+      },
+      { status: 400 }
+    );
+  }
+
   await prisma.category.delete({ where: { id: context.params.id } });
 
   await logAudit({

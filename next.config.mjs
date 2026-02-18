@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from "@sentry/nextjs";
+import fs from "node:fs";
+import path from "node:path";
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -36,6 +38,33 @@ const nextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+  webpack(config, { isServer }) {
+    if (isServer) {
+      config.plugins.push({
+        apply(compiler) {
+          compiler.hooks.afterEmit.tap("EnsureDashboardPageManifest", () => {
+            const serverOutputDir = compiler.options.output.path;
+            const manifestPath = path.join(
+              serverOutputDir,
+              "app",
+              "(dashboard)",
+              "page_client-reference-manifest.js"
+            );
+
+            if (!fs.existsSync(manifestPath)) {
+              fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+              fs.writeFileSync(
+                manifestPath,
+                "self.__RSC_MANIFEST=self.__RSC_MANIFEST||{};\n",
+                "utf8"
+              );
+            }
+          });
+        },
+      });
+    }
+    return config;
   },
 };
 

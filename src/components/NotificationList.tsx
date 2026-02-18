@@ -1,13 +1,31 @@
-﻿"use client";
+"use client";
 
-import { Bell, BookOpen, ClipboardCheck, FileCheck } from "lucide-react";
+import { Bell, BookOpen, ClipboardCheck, FileCheck, LifeBuoy } from "lucide-react";
 
 export type NotificationItem = {
   id: string;
-  type: "COURSE_PUBLISHED" | "CERT_UPLOADED" | "REMINDER" | "ATTENDANCE_RECORDED";
+  type:
+    | "NEW_EDITION"
+    | "DEADLINE_REMINDER_7D"
+    | "DEADLINE_REMINDER_2D"
+    | "CERTIFICATES_AVAILABLE"
+    | "CERTIFICATE_EXPIRING_60D"
+    | "CERTIFICATE_EXPIRING_30D"
+    | "REGISTRY_RECEIVED"
+    | "EDITION_DATES_CHANGED"
+    | "EDITION_CANCELLED"
+    | "COURSE_PUBLISHED"
+    | "CERT_UPLOADED"
+    | "REMINDER"
+    | "ATTENDANCE_RECORDED"
+    | "TICKET_OPENED"
+    | "TICKET_REPLY"
+    | "TICKET_NEW_MESSAGE"
+    | "TICKET_STATUS_CHANGED";
   title: string;
   message?: string;
   courseEditionId?: string;
+  ticketId?: string;
   courseTitle?: string;
   editionNumber?: number;
   createdAt: string | Date;
@@ -22,10 +40,23 @@ type NotificationListProps = {
 };
 
 const ICONS = {
+  NEW_EDITION: BookOpen,
+  DEADLINE_REMINDER_7D: Bell,
+  DEADLINE_REMINDER_2D: Bell,
+  CERTIFICATES_AVAILABLE: FileCheck,
+  CERTIFICATE_EXPIRING_60D: Bell,
+  CERTIFICATE_EXPIRING_30D: Bell,
+  REGISTRY_RECEIVED: ClipboardCheck,
+  EDITION_DATES_CHANGED: BookOpen,
+  EDITION_CANCELLED: Bell,
   COURSE_PUBLISHED: BookOpen,
   CERT_UPLOADED: FileCheck,
   REMINDER: Bell,
   ATTENDANCE_RECORDED: ClipboardCheck,
+  TICKET_OPENED: LifeBuoy,
+  TICKET_REPLY: LifeBuoy,
+  TICKET_NEW_MESSAGE: LifeBuoy,
+  TICKET_STATUS_CHANGED: LifeBuoy,
 };
 
 function formatRelativeTime(value: string | Date) {

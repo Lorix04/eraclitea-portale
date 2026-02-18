@@ -1,19 +1,16 @@
 ﻿"use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Plus, Search, X } from "lucide-react";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BrandedButton } from "@/components/BrandedButton";
+import AddEmployeeModal from "@/components/AddEmployeeModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { FormLabel } from "@/components/ui/FormLabel";
-import { FormFieldError } from "@/components/ui/FormFieldError";
-import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
-import { isValidCodiceFiscale, normalizeCodiceFiscale } from "@/lib/validators";
 import { toast } from "sonner";
 
 type EditionOption = {
@@ -26,6 +23,8 @@ type EmployeeRow = {
   nome: string;
   cognome: string;
   codiceFiscale: string;
+  email?: string | null;
+  telefono?: string | null;
   createdAt?: string | Date;
   _count?: { registrations?: number; certificates?: number };
   registrations?: { courseEditionId: string }[];
@@ -53,15 +52,8 @@ function ClientDipendentiContent() {
   const [page, setPage] = useState(initialPage);
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addModalMounted, setAddModalMounted] = useState(false);
-  const [addSaving, setAddSaving] = useState(false);
-  const [addForm, setAddForm] = useState({
-    nome: "",
-    cognome: "",
-    codiceFiscale: "",
-    email: "",
-  });
-  const [addErrors, setAddErrors] = useState<Record<string, string>>({});
+  const { data: session } = useSession();
+  const sessionClientId = session?.user?.clientId ?? undefined;
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -106,23 +98,7 @@ function ClientDipendentiContent() {
     loadEditions();
   }, []);
 
-  useEffect(() => {
-    setAddModalMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!addModalMounted) return;
-    if (addModalOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [addModalOpen, addModalMounted]);
-
-  const { data, isLoading, refetch } = useEmployees({
+  const { data, isLoading, isError, refetch } = useEmployees({
     page: 1,
     limit: 1000,
     includeRegistrations: true,
@@ -244,94 +220,6 @@ function ClientDipendentiContent() {
     }
   };
 
-  const updateAddField = (key: keyof typeof addForm, value: string) => {
-    setAddForm((prev) => ({ ...prev, [key]: value }));
-    if (addErrors[key]) {
-      setAddErrors((prev) => ({ ...prev, [key]: "" }));
-    }
-  };
-
-  const resetAddForm = () => {
-    setAddForm({
-      nome: "",
-      cognome: "",
-      codiceFiscale: "",
-      email: "",
-    });
-    setAddErrors({});
-  };
-
-  const handleAddEmployee = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const fieldErrors: Record<string, string> = {};
-    if (!addForm.nome.trim()) fieldErrors.nome = "Questo campo e obbligatorio";
-    if (!addForm.cognome.trim()) {
-      fieldErrors.cognome = "Questo campo e obbligatorio";
-    }
-    if (!addForm.codiceFiscale.trim()) {
-      fieldErrors.codiceFiscale = "Questo campo e obbligatorio";
-    } else if (!isValidCodiceFiscale(addForm.codiceFiscale)) {
-      fieldErrors.codiceFiscale = "Codice fiscale non valido";
-    }
-
-    const normalizedCF = normalizeCodiceFiscale(addForm.codiceFiscale);
-    if (
-      !fieldErrors.codiceFiscale &&
-      allEmployees.some(
-        (employee) =>
-          normalizeCodiceFiscale(employee.codiceFiscale) === normalizedCF
-      )
-    ) {
-      fieldErrors.codiceFiscale = "Dipendente con questo codice fiscale gia presente";
-    }
-
-    setAddErrors(fieldErrors);
-    if (Object.keys(fieldErrors).length > 0) return;
-
-    setAddSaving(true);
-    try {
-      const res = await fetch("/api/dipendenti", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: addForm.nome.trim(),
-          cognome: addForm.cognome.trim(),
-          codiceFiscale: normalizedCF,
-          email: addForm.email.trim() || "",
-        }),
-      });
-
-      if (!res.ok) {
-        const dataRes = await res.json().catch(() => ({}));
-        if (Array.isArray(dataRes?.errors)) {
-          const nextErrors: Record<string, string> = {};
-          dataRes.errors.forEach((issue: { path?: string[]; message?: string }) => {
-            const field = issue.path?.[0];
-            if (field && issue.message) {
-              nextErrors[field] = issue.message;
-            }
-          });
-          if (Object.keys(nextErrors).length > 0) {
-            setAddErrors(nextErrors);
-            return;
-          }
-        }
-        toast.error(dataRes?.error ?? "Errore durante il salvataggio");
-        return;
-      }
-
-      toast.success("Dipendente aggiunto con successo");
-      resetAddForm();
-      setAddModalOpen(false);
-      await refetch();
-    } catch (error) {
-      console.error("Errore creazione dipendente:", error);
-      toast.error("Errore durante il salvataggio");
-    } finally {
-      setAddSaving(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -344,14 +232,17 @@ function ClientDipendentiContent() {
         <div className="flex flex-wrap items-center gap-2">
           <a
             href={exportUrl}
-            className="btn-brand-outline rounded-md px-4 py-2 text-sm"
+            className="btn-brand-outline inline-flex min-h-[44px] items-center rounded-md px-4 py-2 text-sm"
           >
             Esporta CSV
           </a>
           <BrandedButton
             size="sm"
             onClick={() => {
-              resetAddForm();
+              if (!sessionClientId) {
+                toast.error("Cliente non disponibile");
+                return;
+              }
               setAddModalOpen(true);
             }}
           >
@@ -366,14 +257,14 @@ function ClientDipendentiContent() {
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
+              className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 pl-9 text-sm"
               placeholder="Cerca nome, cognome o CF"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
             value={editionId}
             onChange={(event) => setEditionId(event.target.value)}
             aria-label="Filtro edizione"
@@ -386,7 +277,7 @@ function ClientDipendentiContent() {
             ))}
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
             value={certStatus}
             onChange={(event) => setCertStatus(event.target.value)}
             aria-label="Filtro attestati"
@@ -396,7 +287,7 @@ function ClientDipendentiContent() {
             <option value="without">Senza attestato</option>
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
             value={sortOrder}
             onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
             aria-label="Ordinamento dipendenti"
@@ -410,7 +301,7 @@ function ClientDipendentiContent() {
             </span>
             <button
               type="button"
-              className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
               onClick={resetFilters}
             >
               <X className="mr-1 h-4 w-4" />
@@ -419,6 +310,12 @@ function ClientDipendentiContent() {
           </div>
         </div>
       </div>
+
+      {isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.
+        </div>
+      ) : null}
 
       <EmployeeTable
         employees={pagedEmployees}
@@ -473,119 +370,16 @@ function ClientDipendentiContent() {
         }
       />
 
-      {addModalOpen && addModalMounted
-        ? createPortal(
-            <div className="fixed inset-0 z-50">
-              <div
-                className="fixed inset-0 bg-black/50"
-                onClick={() => {
-                  if (!addSaving) setAddModalOpen(false);
-                }}
-                aria-hidden="true"
-              />
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div
-                  className="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg"
-                  role="dialog"
-                  aria-modal="true"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <h2 className="text-lg font-semibold">Aggiungi dipendente</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Inserisci i dati del nuovo dipendente.
-                  </p>
-                  <form className="mt-4 space-y-4" onSubmit={handleAddEmployee}>
-                    <FormRequiredLegend />
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="flex flex-col gap-2 text-sm">
-                        <FormLabel required>Nome</FormLabel>
-                        <input
-                          className={`rounded-md border bg-background px-3 py-2 ${
-                            addErrors.nome
-                              ? "border-red-500 focus-visible:outline-red-500"
-                              : ""
-                          }`}
-                          value={addForm.nome}
-                          onChange={(event) =>
-                            updateAddField("nome", event.target.value)
-                          }
-                        />
-                        <FormFieldError message={addErrors.nome} />
-                      </div>
-                      <div className="flex flex-col gap-2 text-sm">
-                        <FormLabel required>Cognome</FormLabel>
-                        <input
-                          className={`rounded-md border bg-background px-3 py-2 ${
-                            addErrors.cognome
-                              ? "border-red-500 focus-visible:outline-red-500"
-                              : ""
-                          }`}
-                          value={addForm.cognome}
-                          onChange={(event) =>
-                            updateAddField("cognome", event.target.value)
-                          }
-                        />
-                        <FormFieldError message={addErrors.cognome} />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 text-sm">
-                      <FormLabel required>Codice Fiscale</FormLabel>
-                      <input
-                        className={`rounded-md border bg-background px-3 py-2 ${
-                          addErrors.codiceFiscale
-                            ? "border-red-500 focus-visible:outline-red-500"
-                            : ""
-                        }`}
-                        value={addForm.codiceFiscale}
-                        onChange={(event) =>
-                          updateAddField(
-                            "codiceFiscale",
-                            event.target.value.toUpperCase()
-                          )
-                        }
-                      />
-                      <FormFieldError message={addErrors.codiceFiscale} />
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="flex flex-col gap-2 text-sm">
-                        <FormLabel>Email</FormLabel>
-                        <input
-                          type="email"
-                          className={`rounded-md border bg-background px-3 py-2 ${
-                            addErrors.email
-                              ? "border-red-500 focus-visible:outline-red-500"
-                              : ""
-                          }`}
-                          value={addForm.email}
-                          onChange={(event) =>
-                            updateAddField("email", event.target.value)
-                          }
-                        />
-                        <FormFieldError message={addErrors.email} />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                      <BrandedButton
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          if (!addSaving) setAddModalOpen(false);
-                        }}
-                      >
-                        Annulla
-                      </BrandedButton>
-                      <BrandedButton type="submit" disabled={addSaving}>
-                        {addSaving ? "Salvataggio..." : "Aggiungi"}
-                      </BrandedButton>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      <AddEmployeeModal
+        open={addModalOpen}
+        clientId={sessionClientId}
+        branded
+        onClose={() => setAddModalOpen(false)}
+        onCreated={() => {
+          refetch();
+          setAddModalOpen(false);
+        }}
+      />
     </div>
   );
 }

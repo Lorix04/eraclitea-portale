@@ -28,6 +28,7 @@ export default function AdminExportPage() {
   const [rows, setRows] = useState<Record<string, string | number>[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadBase = async () => {
@@ -79,26 +80,48 @@ export default function AdminExportPage() {
   useEffect(() => {
     const loadPreview = async () => {
       setLoadingPreview(true);
-      const res = await fetch(previewUrl);
-      const json = await res.json();
-      setRows(json.rows ?? []);
-      setLoadingPreview(false);
+      setError(null);
+      try {
+        const res = await fetch(previewUrl);
+        if (!res.ok) {
+          setRows([]);
+          setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+          return;
+        }
+        const json = await res.json();
+        setRows(json.rows ?? []);
+      } catch {
+        setRows([]);
+        setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+      } finally {
+        setLoadingPreview(false);
+      }
     };
     loadPreview();
   }, [previewUrl]);
 
   const handleExport = async () => {
     setLoadingExport(true);
-    const res = await fetch(downloadUrl);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const ext = format === "xlsx" ? "xlsx" : "csv";
-    a.download = `export_${exportType}_${new Date().toISOString().split("T")[0]}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setLoadingExport(false);
+    setError(null);
+    try {
+      const res = await fetch(downloadUrl);
+      if (!res.ok) {
+        setError("Si e verificato un errore durante l'esportazione. Riprova piu tardi.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = format === "xlsx" ? "xlsx" : "csv";
+      a.download = `export_${exportType}_${new Date().toISOString().split("T")[0]}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Si e verificato un errore durante l'esportazione. Riprova piu tardi.");
+    } finally {
+      setLoadingExport(false);
+    }
   };
 
   const showClientFilter = ["employees", "certificates", "registrations"].includes(
@@ -204,6 +227,12 @@ export default function AdminExportPage() {
         </label>
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="rounded-lg border bg-card p-4">
         <p className="text-sm font-medium">Anteprima (ultimi 10 record)</p>
         <div className="mt-3 overflow-auto">
@@ -254,7 +283,7 @@ export default function AdminExportPage() {
 
       <button
         type="button"
-        className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
         onClick={handleExport}
         disabled={loadingExport}
       >

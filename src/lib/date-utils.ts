@@ -83,3 +83,29 @@ export function formatRelativeDate(date: Date | string | null | undefined): stri
 
   return formatItalianDate(dateObj);
 }
+
+export function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return "-";
+
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  if (!isValid(dateObj)) return "-";
+
+  return dateObj.toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+export function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function endOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { promises as fs } from "fs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getSmtpConfig } from "@/lib/email";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -28,7 +29,8 @@ export async function GET() {
     storageOk = false;
   }
 
-  const emailOk = !!process.env.SMTP_HOST;
+  const smtpConfig = await getSmtpConfig();
+  const emailOk = smtpConfig !== null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -38,7 +40,12 @@ export async function GET() {
 
   return NextResponse.json({
     database: { ok: dbOk, latency: dbLatency },
-    email: { ok: emailOk, provider: process.env.SMTP_HOST || "Not configured" },
+    email: {
+      ok: emailOk,
+      provider: smtpConfig
+        ? `${smtpConfig.host}:${smtpConfig.port}`
+        : "Not configured",
+    },
     storage: { ok: storageOk, ...storageStats },
     api: { ok: true, uptime: process.uptime() },
     metrics: {

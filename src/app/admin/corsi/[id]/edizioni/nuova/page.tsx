@@ -140,6 +140,12 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      const message = String(data?.error ?? "");
+      if (message.includes("fine")) {
+        setErrors((prev) => ({ ...prev, endDate: message }));
+      } else if (message.includes("deadline")) {
+        setErrors((prev) => ({ ...prev, deadlineRegistry: message }));
+      }
       toast.error(data?.error ?? "Errore durante la creazione.");
       return;
     }

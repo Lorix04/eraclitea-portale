@@ -42,7 +42,7 @@ export default function CourseAttendanceClientPage({
         </div>
         <button
           type="button"
-          className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+          className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
           onClick={handleDownload}
         >
           <Download className="mr-2 h-4 w-4" />
@@ -66,9 +66,17 @@ export default function CourseAttendanceClientPage({
             stats={data.stats}
             readonly
           />
-          <p className="text-xs text-muted-foreground">
-            Legenda: P = Presente, A = Assente, G = Assente giustificato.
-          </p>
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-700">
+              ✅ Presente
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-red-700">
+              ❌ Assente
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-600">
+              — Non registrato
+            </span>
+          </div>
           <AttendanceStats stats={data.stats} />
         </div>
       ) : (

@@ -3,8 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Download, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import {
+  Archive,
+  CheckCircle,
+  Clock,
+  Download,
+  Lock,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
@@ -13,27 +24,18 @@ import { AttendanceMatrix } from "@/components/AttendanceMatrix";
 import { AttendanceStats } from "@/components/AttendanceStats";
 import { useAttendance } from "@/hooks/useAttendance";
 import CertificateTable from "@/components/CertificateTable";
-import AnagraficheResponsive from "@/components/AnagraficheResponsive";
 import { LessonForm } from "@/components/LessonForm";
 import { AttendanceStatus, Lesson } from "@/types";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
+import EditionStatusBadge from "@/components/EditionStatusBadge";
 
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Bozza",
-  PUBLISHED: "Aperto",
-  CLOSED: "Chiuso",
-  ARCHIVED: "Archiviato",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  PUBLISHED: "bg-emerald-100 text-emerald-700",
-  CLOSED: "bg-orange-100 text-orange-700",
-  ARCHIVED: "bg-red-100 text-red-700",
-};
+const AnagraficheResponsive = dynamic(
+  () => import("@/components/AnagraficheResponsive"),
+  { ssr: false }
+);
 
 const TABS = [
   { id: "info", label: "Info" },
@@ -51,6 +53,7 @@ type EditionDetail = {
   deadlineRegistry?: string | null;
   status: string;
   notes?: string | null;
+  registrySentAt?: string | null;
   course: { id: string; title: string; durationHours?: number | null };
   client: { id: string; ragioneSociale: string };
   _count?: { registrations: number; lessons: number; certificates: number };
@@ -65,7 +68,13 @@ type RegistrationRow = {
     nome: string;
     cognome: string;
     codiceFiscale: string;
+    sesso?: string | null;
     email?: string | null;
+    telefono?: string | null;
+    cellulare?: string | null;
+    indirizzo?: string | null;
+    comuneResidenza?: string | null;
+    cap?: string | null;
     dataNascita?: string | null;
     luogoNascita?: string | null;
     mansione?: string | null;
@@ -130,9 +139,15 @@ export default function AdminEditionDetailPage({
           nome: "",
           cognome: "",
           codiceFiscale: "",
+          sesso: "",
           dataNascita: "",
           luogoNascita: "",
           email: "",
+          telefono: "",
+          cellulare: "",
+          indirizzo: "",
+          comuneResidenza: "",
+          cap: "",
           mansione: "",
           note: "",
         },
@@ -142,11 +157,17 @@ export default function AdminEditionDetailPage({
       nome: reg.employee.nome,
       cognome: reg.employee.cognome,
       codiceFiscale: reg.employee.codiceFiscale,
+      sesso: reg.employee.sesso ?? "",
       dataNascita: reg.employee.dataNascita
         ? formatItalianDate(reg.employee.dataNascita)
         : "",
       luogoNascita: reg.employee.luogoNascita ?? "",
       email: reg.employee.email ?? "",
+      telefono: reg.employee.telefono ?? "",
+      cellulare: reg.employee.cellulare ?? "",
+      indirizzo: reg.employee.indirizzo ?? "",
+      comuneResidenza: reg.employee.comuneResidenza ?? "",
+      cap: reg.employee.cap ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
     }));
@@ -262,6 +283,10 @@ export default function AdminEditionDetailPage({
 
   const handleSave = async () => {
     if (!edition) return;
+    if (edition.status === "ARCHIVED") {
+      toast.error("L'edizione e archiviata. Nessuna modifica consentita.");
+      return;
+    }
     const fieldErrors: Record<string, string> = {};
     if (!startDate) fieldErrors.startDate = "Questo campo e obbligatorio";
     if (!endDate) fieldErrors.endDate = "Questo campo e obbligatorio";
@@ -287,6 +312,12 @@ export default function AdminEditionDetailPage({
 
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
+      const message = String(json.error ?? "");
+      if (message.includes("fine")) {
+        setErrors((prev) => ({ ...prev, endDate: message }));
+      } else if (message.includes("deadline")) {
+        setErrors((prev) => ({ ...prev, deadlineRegistry: message }));
+      }
       toast.error(json.error ?? "Errore durante il salvataggio");
       return;
     }
@@ -311,6 +342,10 @@ export default function AdminEditionDetailPage({
     notes?: string;
   }) => {
     if (!edition) return;
+    if (edition.status === "ARCHIVED") {
+      toast.error("L'edizione e archiviata. Nessuna modifica consentita.");
+      return;
+    }
     setLessonSaving(true);
     const method = editingLesson ? "PUT" : "POST";
     const endpoint = editingLesson
@@ -337,6 +372,11 @@ export default function AdminEditionDetailPage({
   };
 
   const handleLessonDelete = async (lessonId: string) => {
+    if (!edition) return;
+    if (edition.status === "ARCHIVED") {
+      toast.error("L'edizione e archiviata. Nessuna modifica consentita.");
+      return;
+    }
     if (!confirm("Eliminare questa lezione?")) return;
     setLessonDeleting(lessonId);
     const res = await fetch(
@@ -376,6 +416,9 @@ export default function AdminEditionDetailPage({
     return <p className="text-sm text-muted-foreground">Edizione non trovata.</p>;
   }
 
+  const isArchived = edition.status === "ARCHIVED";
+  const isClosed = edition.status === "CLOSED";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -394,12 +437,14 @@ export default function AdminEditionDetailPage({
           >
             Torna al corso
           </Link>
-          <Link
-            href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
-            className="rounded-md border px-3 py-2 text-sm"
-          >
-            Carica attestato
-          </Link>
+          {!isArchived ? (
+            <Link
+              href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
+              className="rounded-md border px-3 py-2 text-sm"
+            >
+              Carica attestato
+            </Link>
+          ) : null}
           <button
             type="button"
             className="rounded-md bg-destructive px-3 py-2 text-sm text-destructive-foreground"
@@ -411,13 +456,7 @@ export default function AdminEditionDetailPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span
-          className={`rounded-full px-3 py-1 ${
-            STATUS_BADGE[edition.status] ?? "bg-muted text-muted-foreground"
-          }`}
-        >
-          {STATUS_LABELS[edition.status] ?? edition.status}
-        </span>
+        <EditionStatusBadge status={edition.status} className="px-3 py-1 text-sm" />
         <span className="text-muted-foreground">
           Lezioni: {edition._count?.lessons ?? 0}
         </span>
@@ -433,6 +472,14 @@ export default function AdminEditionDetailPage({
 
       {tab === "info" ? (
         <div className="space-y-6 rounded-lg border bg-card p-6">
+          {isArchived ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
+              <Archive className="h-4 w-4" />
+              <span>
+                <strong>Edizione archiviata</strong> - I dati sono in sola lettura.
+              </span>
+            </div>
+          ) : null}
           <FormRequiredLegend />
           <div className="grid gap-4 md:grid-cols-3">
             <ItalianDateInput
@@ -445,6 +492,7 @@ export default function AdminEditionDetailPage({
                 }
               }}
               required
+              disabled={isArchived}
               error={errors.startDate}
             />
             <ItalianDateInput
@@ -457,6 +505,7 @@ export default function AdminEditionDetailPage({
                 }
               }}
               required
+              disabled={isArchived}
               error={errors.endDate}
             />
             <ItalianDateInput
@@ -469,6 +518,7 @@ export default function AdminEditionDetailPage({
                 }
               }}
               required
+              disabled={isArchived}
               error={errors.deadlineRegistry}
             />
           </div>
@@ -479,6 +529,7 @@ export default function AdminEditionDetailPage({
               className="rounded-md border bg-background px-3 py-2"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
+              disabled={isArchived}
             >
               <option value="DRAFT">Bozza</option>
               <option value="PUBLISHED">Aperto</option>
@@ -493,39 +544,52 @@ export default function AdminEditionDetailPage({
               className="min-h-[120px] rounded-md border bg-background px-3 py-2"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              disabled={isArchived}
             />
           </label>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Salvataggio..." : "Salva modifiche"}
-            </button>
-          </div>
+          {!isArchived ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? "Salvataggio..." : "Salva modifiche"}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       {tab === "lezioni" ? (
         <div className="space-y-4">
+          {isArchived ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
+              <Archive className="h-4 w-4" />
+              <span>
+                <strong>Edizione archiviata</strong> - I dati sono in sola lettura.
+              </span>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               Totale lezioni: {lessons.length} &middot; Ore totali: {totalLessonHours}
             </p>
-            <button
-              type="button"
-              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-              onClick={() => {
-                setEditingLesson(null);
-                setLessonModalOpen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Aggiungi lezione
-            </button>
+            {!isArchived ? (
+              <button
+                type="button"
+                className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                onClick={() => {
+                  setEditingLesson(null);
+                  setLessonModalOpen(true);
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Aggiungi lezione
+              </button>
+            ) : null}
           </div>
 
           {lessonsLoading ? (
@@ -540,7 +604,8 @@ export default function AdminEditionDetailPage({
             </div>
           ) : (
             <div className="overflow-hidden rounded-lg border bg-card">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[760px] text-sm">
                 <thead className="bg-muted/40 text-left">
                   <tr>
                     <th className="px-4 py-3">Data</th>
@@ -562,33 +627,38 @@ export default function AdminEditionDetailPage({
                       <td className="px-4 py-3">{lessonItem.durationHours}h</td>
                       <td className="px-4 py-3">{lessonItem.title || "-"}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-primary"
-                            onClick={() => {
-                              setEditingLesson(lessonItem);
-                              setLessonModalOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Modifica
-                          </button>
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 text-xs text-destructive"
-                            onClick={() => handleLessonDelete(lessonItem.id)}
-                            disabled={lessonDeleting === lessonItem.id}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            {lessonDeleting === lessonItem.id ? "Elimino..." : "Elimina"}
-                          </button>
-                        </div>
+                        {!isArchived ? (
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 text-xs text-primary"
+                              onClick={() => {
+                                setEditingLesson(lessonItem);
+                                setLessonModalOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Modifica
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 text-xs text-destructive"
+                              onClick={() => handleLessonDelete(lessonItem.id)}
+                              disabled={lessonDeleting === lessonItem.id}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {lessonDeleting === lessonItem.id ? "Elimino..." : "Elimina"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Sola lettura</span>
+                        )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -596,6 +666,36 @@ export default function AdminEditionDetailPage({
 
       {tab === "anagrafiche" ? (
         <div className="space-y-4">
+          {isArchived ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
+              <Archive className="h-4 w-4" />
+              <span>
+                <strong>Edizione archiviata</strong> - I dati sono in sola lettura.
+              </span>
+            </div>
+          ) : null}
+          {edition.registrySentAt ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+              <CheckCircle className="h-4 w-4" />
+              <span>
+                Anagrafiche inviate dal cliente il{" "}
+                <strong>{formatItalianDate(edition.registrySentAt)}</strong>
+              </span>
+            </div>
+          ) : edition.status !== "DRAFT" ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+              <Clock className="h-4 w-4" />
+              <span>Il cliente non ha ancora inviato le anagrafiche.</span>
+            </div>
+          ) : null}
+          {isClosed ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+              <Lock className="h-4 w-4" />
+              <span>
+                <strong>Edizione chiusa</strong> - Le anagrafiche sono bloccate per il cliente. L&apos;admin puo ancora modificarle se necessario.
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {registrations.length} dipendenti registrati
@@ -608,32 +708,45 @@ export default function AdminEditionDetailPage({
               <Skeleton className="mt-3 h-32 w-full" />
             </div>
           ) : (
-            <AnagraficheResponsive
-              initialData={registryRows}
-              courseEditionId={edition.id}
-              clientId={edition.client.id}
-            />
+            <div className={isArchived ? "[&_button]:hidden" : ""}>
+              <AnagraficheResponsive
+                initialData={registryRows}
+                courseEditionId={edition.id}
+                clientId={edition.client.id}
+                readOnly={isArchived}
+              />
+            </div>
           )}
         </div>
       ) : null}
 
       {tab === "presenze" ? (
-        <PresenzeTab courseEditionId={edition.id} />
+        <PresenzeTab courseEditionId={edition.id} readOnly={isArchived} />
       ) : null}
 
       {tab === "attestati" ? (
         <div className="space-y-4">
+          {isArchived ? (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
+              <Archive className="h-4 w-4" />
+              <span>
+                <strong>Edizione archiviata</strong> - I dati sono in sola lettura.
+              </span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               {certificates.length} attestati trovati
             </p>
             <div className="flex gap-2">
-              <Link
-                href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
-                className="rounded-md border px-3 py-2 text-sm"
-              >
-                Carica attestato
-              </Link>
+              {!isArchived ? (
+                <Link
+                  href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
+                  className="rounded-md border px-3 py-2 text-sm"
+                >
+                  Carica attestato
+                </Link>
+              ) : null}
             </div>
           </div>
           <CertificateTable certificates={certificates} isLoading={certificatesLoading} />
@@ -700,7 +813,13 @@ export default function AdminEditionDetailPage({
   );
 }
 
-function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
+function PresenzeTab({
+  courseEditionId,
+  readOnly = false,
+}: {
+  courseEditionId: string;
+  readOnly?: boolean;
+}) {
   const { data, isLoading, saveAttendances } = useAttendance(courseEditionId);
   const [attendanceMap, setAttendanceMap] = useState<Map<string, AttendanceEntry>>(
     new Map()
@@ -730,6 +849,7 @@ function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
     status: AttendanceStatus,
     notes?: string
   ) => {
+    if (readOnly) return;
     const key = `${lessonId}:${employeeId}`;
     setAttendanceMap((prev) => {
       const next = new Map(prev);
@@ -744,6 +864,7 @@ function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     if (pendingUpdates.size === 0) return;
     const payload = Array.from(pendingUpdates.values());
     try {
@@ -778,6 +899,14 @@ function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
 
   return (
     <div className="space-y-4">
+      {readOnly ? (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
+          <Archive className="h-4 w-4" />
+          <span>
+            <strong>Edizione archiviata</strong> - I dati sono in sola lettura.
+          </span>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Lezioni: {data?.totalLessons ?? 0} &middot; Ore totali: {data?.totalHours ?? 0}
@@ -799,15 +928,17 @@ function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
             <Download className="mr-2 h-4 w-4" />
             Esporta PDF
           </button>
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-            onClick={handleSave}
-            disabled={pendingUpdates.size === 0 || saveAttendances.isPending}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {saveAttendances.isPending ? "Salvataggio..." : "Salva modifiche"}
-          </button>
+          {!readOnly ? (
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+              onClick={handleSave}
+              disabled={pendingUpdates.size === 0 || saveAttendances.isPending}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {saveAttendances.isPending ? "Salvataggio..." : "Salva modifiche"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -825,6 +956,8 @@ function PresenzeTab({ courseEditionId }: { courseEditionId: string }) {
             attendances={matrixAttendances}
             stats={data.stats}
             onUpdate={handleUpdate}
+            readonly={readOnly}
+            isAdmin
           />
           <p className="text-xs text-muted-foreground">
             Legenda: P = Presente, A = Assente, G = Assente giustificato.

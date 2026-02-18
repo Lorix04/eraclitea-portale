@@ -1,7 +1,18 @@
 ﻿import { PrismaClient, Role, CourseStatus, RegistrationStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { EMAIL_PREFERENCE_DEFAULTS } from "../src/lib/email-preferences";
 
 const prisma = new PrismaClient();
+
+async function seedEmailPreferences() {
+  for (const pref of EMAIL_PREFERENCE_DEFAULTS) {
+    await prisma.emailPreference.upsert({
+      where: { emailType: pref.emailType },
+      update: {},
+      create: pref,
+    });
+  }
+}
 
 async function main() {
   console.log("🌱 Seeding database...");
@@ -307,6 +318,9 @@ async function main() {
     }
   }
 
+  await seedEmailPreferences();
+  console.log(`✅ Preferenze email seedate: ${EMAIL_PREFERENCE_DEFAULTS.length}`);
+
   console.log("🎉 Seeding completato!");
   console.log("\n📋 Credenziali demo:");
   console.log("   Admin: admin@enteformazione.it / admin123");
@@ -321,3 +335,6 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+

@@ -29,7 +29,13 @@ export default function AdminEmployeeDetailPage() {
     const updatePayload = {
       nome: payload.nome,
       cognome: payload.cognome,
+      sesso: payload.sesso,
       email: payload.email,
+      telefono: payload.telefono,
+      cellulare: payload.cellulare,
+      indirizzo: payload.indirizzo,
+      comuneResidenza: payload.comuneResidenza,
+      cap: payload.cap,
       mansione: payload.mansione,
       luogoNascita: payload.luogoNascita,
       note: payload.note,

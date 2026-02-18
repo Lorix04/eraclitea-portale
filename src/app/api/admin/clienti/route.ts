@@ -7,12 +7,16 @@ import { validateBody } from "@/lib/api-utils";
 import { clientCreateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { Prisma } from "@prisma/client";
+import { sendWelcomeEmail } from "@/lib/email-notifications";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search");
@@ -61,6 +65,7 @@ export async function GET(request: Request) {
         select: { id: true, email: true, isActive: true },
       },
       categories: { include: { category: true } },
+      _count: { select: { editions: true } },
     },
     orderBy,
   });
@@ -72,6 +77,7 @@ export async function GET(request: Request) {
     referenteNome: client.referenteNome,
     referenteEmail: client.referenteEmail,
     telefono: client.telefono,
+    editionsCount: client._count.editions,
     isActive: client.isActive,
     user: client.users[0] ?? null,
     categories: client.categories.map((entry) => ({
@@ -81,14 +87,22 @@ export async function GET(request: Request) {
     })),
   }));
 
-  return NextResponse.json({ data });
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error("[ADMIN_CLIENTS_GET] Error:", error);
+    return NextResponse.json(
+      { error: "Errore interno del server" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
   const validation = await validateBody(request, clientCreateSchema);
   if ("error" in validation) {
@@ -132,7 +146,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await tx.user.create({
+    const createdUser = await tx.user.create({
       data: {
         email: user.email,
         passwordHash,
@@ -142,16 +156,30 @@ export async function POST(request: Request) {
       },
     });
 
-    return createdClient;
+    return { client: createdClient, user: createdUser };
+  });
+
+  void sendWelcomeEmail({
+    clientEmail: user.email,
+    clientName: client.referenteNome || client.ragioneSociale || user.email,
+    clientId: created.user.id,
+    tempPassword: user.password,
   });
 
   await logAudit({
     userId: session.user.id,
     action: "CLIENT_CREATE",
     entityType: "Client",
-    entityId: created.id,
+    entityId: created.client.id,
     ipAddress: getClientIP(request),
   });
 
-  return NextResponse.json({ data: created }, { status: 201 });
+    return NextResponse.json({ data: created.client }, { status: 201 });
+  } catch (error) {
+    console.error("[ADMIN_CLIENTS_POST] Error:", error);
+    return NextResponse.json(
+      { error: "Errore interno del server" },
+      { status: 500 }
+    );
+  }
 }

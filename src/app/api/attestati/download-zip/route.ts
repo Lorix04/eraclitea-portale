@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { logAudit, getClientIP } from "@/lib/audit";
 import { validateBody } from "@/lib/api-utils";
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdminView =
+    session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
   const validation = await validateBody(request, downloadZipSchema);
   if ("error" in validation) {
@@ -33,11 +37,12 @@ export async function POST(request: Request) {
     id: { in: ids },
   };
 
-  if (session.user.role === "CLIENT") {
-    if (!session.user.clientId) {
+  if (!isAdminView) {
+    const clientId = effectiveClient?.clientId ?? session.user.clientId;
+    if (!clientId) {
       return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
     }
-    where.clientId = session.user.clientId;
+    where.clientId = clientId;
   }
 
   const certificates = await prisma.certificate.findMany({ where });

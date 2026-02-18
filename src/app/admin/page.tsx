@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Award, BookOpen, Building2, AlertTriangle, Users } from "lucide-react";
+import {
+  Award,
+  BookOpen,
+  Building2,
+  AlertTriangle,
+  Users,
+  Plus,
+  Layers,
+} from "lucide-react";
 import StatsCard from "@/components/admin/StatsCard";
 import ActivityItem from "@/components/admin/ActivityItem";
 import RegistrationItem from "@/components/admin/RegistrationItem";
@@ -13,6 +21,8 @@ type AdminStats = {
   activeClients: number;
   totalCourses: number;
   publishedCourses: number;
+  totalEditions: number;
+  activeEditions: number;
   totalEmployees: number;
   totalCertificates: number;
   pendingRegistrations: number;
@@ -58,8 +68,8 @@ export default function AdminPage() {
           <Skeleton className="h-6 w-48" />
           <Skeleton className="mt-2 h-4 w-72" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
             <div
               key={index}
               className="rounded-lg border border-gray-200 bg-white p-4"
@@ -107,7 +117,24 @@ export default function AdminPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/admin/corsi/nuovo"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Nuovo Corso
+        </Link>
+        <Link
+          href="/admin/clienti/nuovo"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+        >
+          <Plus className="h-4 w-4" />
+          Nuovo Cliente
+        </Link>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatsCard
           title="Clienti attivi"
           value={stats.activeClients}
@@ -117,9 +144,15 @@ export default function AdminPage() {
         />
         <StatsCard
           title="Edizioni attive"
-          value={stats.publishedCourses}
+          value={stats.activeEditions ?? stats.publishedCourses}
           icon={<BookOpen className="h-5 w-5" />}
           href="/admin/corsi"
+        />
+        <StatsCard
+          title="Totale edizioni"
+          value={stats.totalEditions}
+          icon={<Layers className="h-5 w-5" />}
+          href="/admin/edizioni"
         />
         <StatsCard
           title="Dipendenti totali"

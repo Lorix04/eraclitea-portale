@@ -4,6 +4,7 @@ import { z } from "zod";
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { formatItalianDate } from "@/lib/date-utils";
@@ -275,6 +276,9 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdminView =
+    session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
   const validation = validateQuery(request, querySchema);
   if ("error" in validation) {
@@ -282,11 +286,19 @@ export async function GET(
   }
 
   const { format } = validation.data;
+  const scopedRole: "ADMIN" | "CLIENT" = isAdminView ? "ADMIN" : "CLIENT";
+  const scopedClientId = isAdminView
+    ? session.user.clientId
+    : effectiveClient?.clientId;
+
+  if (scopedRole === "CLIENT" && !scopedClientId) {
+    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
+  }
 
   const matrix = await getAttendanceMatrix(
     context.params.id,
-    session.user.role,
-    session.user.clientId
+    scopedRole,
+    scopedClientId
   );
 
   if (!matrix) {

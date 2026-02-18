@@ -2,31 +2,39 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Plus, Search, Trash2, User, X } from "lucide-react";
+import { Download, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
 
 type CertificateRow = {
   id: string;
   filePath: string;
+  achievedAt?: string | null;
+  expiresAt?: string | null;
   uploadedAt?: string | null;
   createdAt?: string | null;
   employeeId: string;
   employee?: { nome: string; cognome: string };
-  client?: { ragioneSociale: string };
+  client?: { id?: string; ragioneSociale: string };
   courseEdition?: {
     id: string;
     editionNumber?: number | null;
-    course?: { title: string } | null;
+    course?: { id?: string; title: string } | null;
   } | null;
 };
 
 type ClientOption = {
   id: string;
   ragioneSociale: string;
+};
+
+type CourseOption = {
+  id: string;
+  title: string;
 };
 
 type EmployeeOption = {
@@ -66,16 +74,63 @@ function getEditionLabel(edition: EditionOption, includeClient: boolean) {
   return `${title} (${editionNumber})${includeClient ? clientLabel : ""}`;
 }
 
+function getExpiryBadge(expiresAt?: string | null) {
+  if (!expiresAt) {
+    return (
+      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+        N/D
+      </span>
+    );
+  }
+
+  const now = new Date();
+  const exp = new Date(expiresAt);
+  const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (daysLeft < 0) {
+    return (
+      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+        Scaduto
+      </span>
+    );
+  }
+
+  if (daysLeft <= 30) {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+        Scade tra {daysLeft}gg
+      </span>
+    );
+  }
+
+  if (daysLeft <= 90) {
+    return (
+      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700">
+        In scadenza
+      </span>
+    );
+  }
+
+  return (
+    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
+      Valido
+    </span>
+  );
+}
+
 export default function AdminAttestatiPage() {
   const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
   const [clientId, setClientId] = useState<string | null>(null);
+  const [courseId, setCourseId] = useState<string | null>(null);
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [courseEditionId, setCourseEditionId] = useState<string | null>(null);
+  const [expiryStatus, setExpiryStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [searchEmployee, setSearchEmployee] = useState("");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -86,9 +141,11 @@ export default function AdminAttestatiPage() {
   const debouncedSearchEmployee = useDebounce(searchEmployee, 300);
 
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [editCertificateId, setEditCertificateId] = useState<string | null>(null);
   const [certificateToDelete, setCertificateToDelete] = useState<{
     id: string;
     fileName: string;
@@ -98,12 +155,15 @@ export default function AdminAttestatiPage() {
 
   const fetchCertificates = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "20");
     if (clientId) params.set("clientId", clientId);
+    if (courseId) params.set("courseId", courseId);
     if (employeeId) params.set("employeeId", employeeId);
     if (courseEditionId) params.set("courseEditionId", courseEditionId);
+    if (expiryStatus !== "all") params.set("expiryStatus", expiryStatus);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (debouncedSearchEmployee) {
       params.set("searchEmployee", debouncedSearchEmployee);
@@ -113,21 +173,34 @@ export default function AdminAttestatiPage() {
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
 
-    const res = await fetch(`/api/attestati?${params.toString()}`);
-    if (!res.ok) {
+    try {
+      const res = await fetch(`/api/attestati?${params.toString()}`);
+      if (!res.ok) {
+        setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+        setCertificates([]);
+        setTotalPages(1);
+        setTotal(0);
+        return;
+      }
+      const data: ApiResponse = await res.json();
+      setCertificates(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotal(data.total || 0);
+    } catch {
+      setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+      setCertificates([]);
+      setTotalPages(1);
+      setTotal(0);
+    } finally {
       setLoading(false);
-      return;
     }
-    const data: ApiResponse = await res.json();
-    setCertificates(data.data || []);
-    setTotalPages(data.totalPages || 1);
-    setTotal(data.total || 0);
-    setLoading(false);
   }, [
     page,
     clientId,
+    courseId,
     employeeId,
     courseEditionId,
+    expiryStatus,
     debouncedSearch,
     debouncedSearchEmployee,
     sortOrder,
@@ -145,6 +218,13 @@ export default function AdminAttestatiPage() {
       .then((res) => res.json())
       .then((data) => setClients(data.data || data || []))
       .catch(() => setClients([]));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/corsi")
+      .then((res) => res.json())
+      .then((data) => setCourses(data.data || []))
+      .catch(() => setCourses([]));
   }, []);
 
   useEffect(() => {
@@ -246,8 +326,10 @@ export default function AdminAttestatiPage() {
 
   const resetFilters = () => {
     setClientId(null);
+    setCourseId(null);
     setEmployeeId(null);
     setCourseEditionId(null);
+    setExpiryStatus("all");
     setSearch("");
     setSearchEmployee("");
     setSortOrder("desc");
@@ -267,7 +349,7 @@ export default function AdminAttestatiPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+            className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
             onClick={handleDownloadAll}
           >
             <Download className="mr-2 h-4 w-4" />
@@ -275,13 +357,19 @@ export default function AdminAttestatiPage() {
           </button>
           <Link
             href="/admin/attestati/upload"
-            className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
           >
             <Plus className="mr-2 h-4 w-4" />
             Carica attestato
           </Link>
         </div>
       </div>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-4">
@@ -298,6 +386,23 @@ export default function AdminAttestatiPage() {
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.ragioneSociale}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="w-[200px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={courseId ?? "all"}
+            onChange={(event) => {
+              const value = event.target.value;
+              setCourseId(value === "all" ? null : value);
+              setPage(1);
+            }}
+          >
+            <option value="all">Tutti i corsi</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
               </option>
             ))}
           </select>
@@ -349,6 +454,20 @@ export default function AdminAttestatiPage() {
           >
             <option value="desc">Più recenti prima</option>
             <option value="asc">Più antichi prima</option>
+          </select>
+
+          <select
+            className="w-[220px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={expiryStatus}
+            onChange={(event) => {
+              setExpiryStatus(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">Tutti gli stati scadenza</option>
+            <option value="valid">Validi</option>
+            <option value="expiring">In scadenza (&lt; 90gg)</option>
+            <option value="expired">Scaduti</option>
           </select>
         </div>
 
@@ -427,7 +546,7 @@ export default function AdminAttestatiPage() {
             <span className="text-sm text-muted-foreground">{resultLabel}</span>
             <button
               type="button"
-              className="inline-flex items-center rounded-md border px-2 py-1 text-xs"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-2 py-1 text-xs"
               onClick={resetFilters}
             >
               <X className="mr-1 h-4 w-4" />
@@ -438,14 +557,18 @@ export default function AdminAttestatiPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[1180px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3">Nome File</th>
               <th className="px-4 py-3">Dipendente</th>
               <th className="px-4 py-3">Cliente</th>
               <th className="px-4 py-3">Corso</th>
-              <th className="px-4 py-3">Data</th>
+              <th className="px-4 py-3">Data Rilascio</th>
+              <th className="px-4 py-3">Data Scadenza</th>
+              <th className="px-4 py-3">Stato</th>
+              <th className="px-4 py-3">Caricato</th>
               <th className="px-4 py-3 text-right">Azioni</th>
             </tr>
           </thead>
@@ -468,6 +591,15 @@ export default function AdminAttestatiPage() {
                   <td className="px-4 py-3">
                     <Skeleton className="h-4 w-24" />
                   </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-24" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-24" />
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Skeleton className="h-8 w-8 rounded-md" />
@@ -478,7 +610,7 @@ export default function AdminAttestatiPage() {
               ))
             ) : certificates.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="py-8 text-center text-muted-foreground">
                   Nessun attestato trovato
                 </td>
               </tr>
@@ -487,10 +619,12 @@ export default function AdminAttestatiPage() {
                 const fileName = cert.filePath
                   ? getFileName(cert.filePath)
                   : "Attestato";
-                const dateValue = cert.uploadedAt || cert.createdAt || null;
+                const uploadedAt = cert.uploadedAt || cert.createdAt || null;
                 return (
                   <tr key={cert.id} className="border-t">
-                    <td className="px-4 py-3 font-medium">{fileName}</td>
+                    <td className="max-w-[280px] truncate px-4 py-3 font-medium" title={fileName}>
+                      {fileName}
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/dipendenti/${cert.employeeId}`}
@@ -510,13 +644,30 @@ export default function AdminAttestatiPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {dateValue ? formatItalianDate(dateValue) : "-"}
+                      {cert.achievedAt ? formatItalianDate(cert.achievedAt) : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {cert.expiresAt ? formatItalianDate(cert.expiresAt) : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {getExpiryBadge(cert.expiresAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {uploadedAt ? formatItalianDate(uploadedAt) : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="rounded-md border px-2 py-1 text-xs"
+                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
+                          onClick={() => setEditCertificateId(cert.id)}
+                          title="Modifica attestato"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
                           onClick={() => handleDownload(cert.id, fileName)}
                           title="Scarica"
                         >
@@ -524,7 +675,7 @@ export default function AdminAttestatiPage() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-md border px-2 py-1 text-xs text-destructive hover:text-destructive"
+                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs text-destructive hover:text-destructive"
                           onClick={() => handleDeleteClick(cert, fileName)}
                           title="Elimina"
                         >
@@ -537,7 +688,8 @@ export default function AdminAttestatiPage() {
               })
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       {totalPages > 1 ? (
@@ -548,7 +700,7 @@ export default function AdminAttestatiPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="rounded-md border px-3 py-1 text-sm"
+              className="min-h-[44px] rounded-md border px-3 py-1 text-sm"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={page === 1}
             >
@@ -556,7 +708,7 @@ export default function AdminAttestatiPage() {
             </button>
             <button
               type="button"
-              className="rounded-md border px-3 py-1 text-sm"
+              className="min-h-[44px] rounded-md border px-3 py-1 text-sm"
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page === totalPages}
             >
@@ -579,6 +731,16 @@ export default function AdminAttestatiPage() {
             ? `L'attestato "${certificateToDelete.fileName}" del dipendente ${certificateToDelete.employeeName} verrà eliminato permanentemente. Questa azione non può essere annullata.`
             : "Questa azione non può essere annullata."
         }
+      />
+
+      <EditCertificateModal
+        open={Boolean(editCertificateId)}
+        certificateId={editCertificateId}
+        onClose={() => setEditCertificateId(null)}
+        onSaved={() => {
+          setEditCertificateId(null);
+          fetchCertificates();
+        }}
       />
     </div>
   );

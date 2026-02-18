@@ -161,6 +161,7 @@ export default function AdminCourseAttendancePage({
             attendances={matrixAttendances}
             stats={data.stats}
             onUpdate={handleUpdate}
+            isAdmin
           />
           <p className="text-xs text-muted-foreground">
             Legenda: P = Presente, A = Assente, G = Assente giustificato.

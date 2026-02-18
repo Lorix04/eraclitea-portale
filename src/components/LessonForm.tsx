@@ -14,6 +14,13 @@ interface LessonFormProps {
   onCancel: () => void;
 }
 
+function getTimeInMinutes(value: string): number | null {
+  if (!value) return null;
+  const [hour, minute] = value.split(":").map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  return hour * 60 + minute;
+}
+
 export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -67,6 +74,19 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
     if (!date) fieldErrors.date = "Questo campo e obbligatorio";
     if (!startTime) fieldErrors.startTime = "Questo campo e obbligatorio";
     if (!endTime) fieldErrors.endTime = "Questo campo e obbligatorio";
+    const startMinutes = getTimeInMinutes(startTime);
+    const endMinutes = getTimeInMinutes(endTime);
+    if (
+      startMinutes !== null &&
+      endMinutes !== null &&
+      endMinutes <= startMinutes
+    ) {
+      fieldErrors.endTime =
+        "L'ora di fine deve essere successiva all'ora di inizio";
+    }
+    if (durationHours === "" || Number(durationHours) <= 0) {
+      fieldErrors.durationHours = "Inserisci una durata valida";
+    }
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length > 0) return;
 
@@ -141,12 +161,20 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
           type="number"
           min="0.5"
           step="0.5"
-          className="rounded-md border bg-background px-3 py-2"
+          className={`rounded-md border bg-background px-3 py-2 ${
+            errors.durationHours
+              ? "border-red-500 focus-visible:outline-red-500"
+              : ""
+          }`}
           value={durationHours}
-          onChange={(event) =>
-            setDurationHours(event.target.value ? Number(event.target.value) : "")
-          }
+          onChange={(event) => {
+            setDurationHours(event.target.value ? Number(event.target.value) : "");
+            if (errors.durationHours) {
+              setErrors((prev) => ({ ...prev, durationHours: "" }));
+            }
+          }}
         />
+        <FormFieldError message={errors.durationHours} />
       </label>
 
       <label className="flex flex-col gap-2 text-sm">

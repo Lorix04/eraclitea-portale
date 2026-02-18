@@ -7,6 +7,7 @@ import { Search, Trash2 } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
+import EditionStatusBadge from "@/components/EditionStatusBadge";
 
 type EditionRow = {
   id: string;
@@ -24,20 +25,6 @@ type CourseEditionsTableProps = {
   courseId: string;
   courseName: string;
   editions: EditionRow[];
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  DRAFT: "Bozza",
-  PUBLISHED: "Aperto",
-  CLOSED: "Chiuso",
-  ARCHIVED: "Archiviato",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "bg-muted text-muted-foreground",
-  PUBLISHED: "bg-emerald-100 text-emerald-700",
-  CLOSED: "bg-orange-100 text-orange-700",
-  ARCHIVED: "bg-red-100 text-red-700",
 };
 
 export default function CourseEditionsTable({
@@ -191,14 +178,7 @@ export default function CourseEditionsTable({
                     : "-"}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs ${
-                      STATUS_BADGE[edition.status] ??
-                      "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {STATUS_LABELS[edition.status] ?? edition.status}
-                  </span>
+                  <EditionStatusBadge status={edition.status} />
                 </td>
                 <td className="px-4 py-3">{edition.registrationsCount}</td>
                 <td className="px-4 py-3">

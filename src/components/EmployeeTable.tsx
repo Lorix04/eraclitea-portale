@@ -12,6 +12,7 @@ type EmployeeRow = {
   cognome: string;
   codiceFiscale: string;
   email?: string | null;
+  telefono?: string | null;
   dataNascita?: string | Date | null;
   client?: { id: string; ragioneSociale: string };
   _count?: { registrations?: number; certificates?: number };
@@ -46,14 +47,16 @@ export default function EmployeeTable({
   return (
     <div className="space-y-4">
       <div className="hidden md:block">
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="overflow-hidden rounded-lg border bg-card">
+            <table className="w-full min-w-[920px] text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Cognome</th>
                 <th className="px-4 py-3">Codice Fiscale</th>
                 <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Telefono</th>
                 {showClient ? <th className="px-4 py-3">Cliente</th> : null}
                 <th className="px-4 py-3">Corsi</th>
                 <th className="px-4 py-3">Azioni</th>
@@ -75,6 +78,9 @@ export default function EmployeeTable({
                     <td className="px-4 py-3">
                       <Skeleton className="h-4 w-40" />
                     </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
                     {showClient ? (
                       <td className="px-4 py-3">
                         <Skeleton className="h-4 w-32" />
@@ -91,7 +97,7 @@ export default function EmployeeTable({
               ) : employees.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showClient ? 7 : 6}
+                    colSpan={showClient ? 8 : 7}
                     className="px-4 py-6 text-center text-muted-foreground"
                   >
                     Nessun dipendente trovato.
@@ -106,8 +112,15 @@ export default function EmployeeTable({
                   >
                     <td className="px-4 py-3 font-medium">{employee.nome}</td>
                     <td className="px-4 py-3">{employee.cognome}</td>
-                    <td className="px-4 py-3">{employee.codiceFiscale}</td>
-                    <td className="px-4 py-3">{employee.email || "-"}</td>
+                    <td className="max-w-[180px] truncate px-4 py-3" title={employee.codiceFiscale}>
+                      {employee.codiceFiscale}
+                    </td>
+                    <td className="max-w-[220px] truncate px-4 py-3" title={employee.email ?? "-"}>
+                      {employee.email || "-"}
+                    </td>
+                    <td className="max-w-[160px] truncate px-4 py-3" title={employee.telefono ?? "-"}>
+                      {employee.telefono || "-"}
+                    </td>
                     {showClient ? (
                       <td className="px-4 py-3">
                         {employee.client?.ragioneSociale || "-"}
@@ -128,7 +141,7 @@ export default function EmployeeTable({
                         {hasDelete ? (
                           <button
                             type="button"
-                            className="text-destructive"
+                            className="inline-flex min-h-[44px] items-center text-destructive"
                             onClick={(event) => {
                               event.stopPropagation();
                               onDelete?.(employee);
@@ -144,7 +157,8 @@ export default function EmployeeTable({
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -187,6 +201,9 @@ export default function EmployeeTable({
               <div className="text-xs text-muted-foreground">
                 Email: {employee.email || "-"}
               </div>
+              <div className="text-xs text-muted-foreground">
+                Telefono: {employee.telefono || "-"}
+              </div>
               {showClient ? (
                 <div className="text-xs text-muted-foreground">
                   Cliente: {employee.client?.ragioneSociale || "-"}
@@ -209,7 +226,7 @@ export default function EmployeeTable({
                   {hasDelete ? (
                     <button
                       type="button"
-                      className="text-destructive"
+                      className="inline-flex min-h-[44px] items-center text-destructive"
                       onClick={() => onDelete?.(employee)}
                       title="Elimina"
                     >

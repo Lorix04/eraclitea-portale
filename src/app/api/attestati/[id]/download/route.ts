@@ -2,6 +2,7 @@
 import path from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { getFile } from "@/lib/storage";
 import { getClientIP, logAudit } from "@/lib/audit";
@@ -16,6 +17,9 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdminView =
+    session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
   const certificate = await prisma.certificate.findUnique({
     where: { id: context.params.id },
@@ -25,11 +29,10 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (
-    session.user.role === "CLIENT" &&
-    certificate.clientId !== session.user.clientId
-  ) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdminView) {
+    if (!effectiveClient || certificate.clientId !== effectiveClient.clientId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const fileBuffer = await getFile(certificate.filePath);

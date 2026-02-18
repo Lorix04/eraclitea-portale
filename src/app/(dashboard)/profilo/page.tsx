@@ -56,7 +56,7 @@ export default async function ProfiloPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border bg-card p-6">
+      <div id="cambio-password" className="rounded-lg border bg-card p-6">
         <h2 className="text-lg font-semibold">Cambia Password</h2>
         <div className="mt-4">
           <ChangePasswordForm />

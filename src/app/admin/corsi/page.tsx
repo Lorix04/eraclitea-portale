@@ -46,6 +46,7 @@ export default function AdminCorsiPage() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<{
     id: string;
@@ -69,10 +70,22 @@ export default function AdminCorsiPage() {
 
   const loadCourses = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/corsi${queryString}`);
-    const json = await res.json();
-    setCourses(json.data ?? []);
-    setLoading(false);
+    setError(null);
+    try {
+      const res = await fetch(`/api/corsi${queryString}`);
+      if (!res.ok) {
+        setCourses([]);
+        setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+        return;
+      }
+      const json = await res.json();
+      setCourses(json.data ?? []);
+    } catch {
+      setCourses([]);
+      setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
+    } finally {
+      setLoading(false);
+    }
   }, [queryString]);
 
   useEffect(() => {
@@ -152,7 +165,7 @@ export default function AdminCorsiPage() {
         </div>
         <Link
           href="/admin/corsi/nuovo"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
         >
           Nuovo corso
         </Link>
@@ -216,7 +229,7 @@ export default function AdminCorsiPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
             >
               <X className="mr-1 h-4 w-4" />
               Resetta
@@ -225,8 +238,15 @@ export default function AdminCorsiPage() {
         </div>
       </div>
 
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[1080px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3">Titolo</th>
@@ -319,7 +339,8 @@ export default function AdminCorsiPage() {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <DeleteConfirmModal

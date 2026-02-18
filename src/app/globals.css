@@ -211,6 +211,15 @@ body {
   outline-color: var(--color-primary);
 }
 
+/* Keep Handsontable sticky header below modals in anagrafiche views */
+.anagrafiche-sheet .ht_clone_top,
+.anagrafiche-sheet .ht_clone_left,
+.anagrafiche-sheet .ht_clone_top_left_corner,
+.anagrafiche-sheet .ht_clone_inline_start,
+.anagrafiche-sheet .ht_clone_top_inline_start_corner {
+  z-index: 10 !important;
+}
+
 /* Safety fix: ensure modal overlays cover full viewport */
 .fixed.inset-0 {
   top: 0;
@@ -276,3 +285,44 @@ body {
     margin: 2cm;
   }
 }
+
+/* === Landing Page Animations === */
+
+@keyframes preloaderGlow {
+  0% { opacity: 0; filter: drop-shadow(0 0 0px #EAB308); transform: scale(0.8); }
+  50% { opacity: 1; filter: drop-shadow(0 0 30px #EAB308); transform: scale(1); }
+  80% { filter: drop-shadow(0 0 60px #EAB308); }
+  100% { filter: drop-shadow(0 0 20px #EAB308); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(234, 179, 8, 0.3)); }
+  50% { filter: drop-shadow(0 0 35px rgba(234, 179, 8, 0.6)); }
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+@keyframes logoFlash {
+  0% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.5)); }
+  50% { filter: drop-shadow(0 0 80px rgba(234, 179, 8, 1)) brightness(1.5); }
+  100% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.5)); }
+}
+
+.preloader-logo { animation: preloaderGlow 1.5s ease-in-out; }
+.glow-pulse { animation: glowPulse 3.6s ease-in-out infinite; }
+.bounce-down { animation: bounceDown 1.8s ease-in-out infinite; }
+.logo-flash { animation: logoFlash 0.5s ease-in-out; }
+
+.reveal-1 { animation: revealUp 0.9s ease-out 1.55s both; }
+.reveal-2 { animation: revealUp 0.9s ease-out 1.72s both; }
+.reveal-3 { animation: revealUp 0.9s ease-out 1.9s both; }
+.reveal-4 { animation: revealUp 0.9s ease-out 2.08s both; }
+.reveal-5 { animation: revealUp 0.9s ease-out 2.26s both; }

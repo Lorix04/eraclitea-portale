@@ -6,9 +6,15 @@ type EmployeeDetail = {
   nome: string;
   cognome: string;
   codiceFiscale: string;
+  sesso?: string | null;
   dataNascita?: string | Date | null;
   luogoNascita?: string | null;
   email?: string | null;
+  telefono?: string | null;
+  cellulare?: string | null;
+  indirizzo?: string | null;
+  comuneResidenza?: string | null;
+  cap?: string | null;
   mansione?: string | null;
   note?: string | null;
   client?: { id: string; ragioneSociale: string };

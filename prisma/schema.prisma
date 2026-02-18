@@ -23,6 +23,10 @@ model User {
   resetTokenExpiry DateTime?
   auditLogs    AuditLog[]
   uploadedCertificates Certificate[]
+  clientTickets      Ticket[]        @relation("ClientTickets")
+  assignedTickets    Ticket[]        @relation("AssignedTickets")
+  ticketMessages     TicketMessage[] @relation("TicketMessages")
+  notifications      Notification[]
 }
 
 enum Role {
@@ -195,10 +199,15 @@ model Employee {
   nome          String
   cognome       String
   codiceFiscale String
+  sesso         String?
   dataNascita   DateTime?
   luogoNascita  String?
   email         String?
   telefono      String?
+  cellulare     String?
+  indirizzo     String?
+  comuneResidenza String?
+  cap           String?
   mansione      String?
   note          String?
   createdAt     DateTime  @default(now())
@@ -208,6 +217,53 @@ model Employee {
   attendances   Attendance[]
 
   @@unique([clientId, codiceFiscale])
+}
+
+model EmailAccount {
+  id          String   @id @default(cuid())
+  name        String
+  senderName  String
+  senderEmail String
+  smtpHost    String
+  smtpPort    Int
+  smtpUser    String
+  smtpPass    String
+  smtpSecure  Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isDefault])
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  recipientEmail String
+  recipientName  String?
+  recipientId    String?
+  emailType      String
+  subject        String
+  courseEditionId String?
+  status         String   @default("SENT")
+  errorMessage   String?
+  sentAt         DateTime @default(now())
+
+  @@index([recipientEmail])
+  @@index([emailType])
+  @@index([sentAt])
+  @@index([status])
+  @@index([courseEditionId])
+}
+
+model EmailPreference {
+  id          String   @id @default(cuid())
+  emailType   String   @unique
+  label       String
+  description String
+  isEnabled   Boolean  @default(true)
+  category    String
+  updatedAt   DateTime @updatedAt
 }
 
 model CourseRegistration {
@@ -285,21 +341,97 @@ model Notification {
   type      NotificationType
   title     String
   message   String?
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseEditionId String?
   courseEdition  CourseEdition? @relation(fields: [courseEditionId], references: [id])
+  ticketId   String?
+  ticket     Ticket?         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   isGlobal  Boolean          @default(false)
   createdAt DateTime         @default(now())
   reads     NotificationRead[]
 
   @@index([createdAt])
   @@index([isGlobal])
+  @@index([userId])
+  @@index([ticketId])
 }
 
 enum NotificationType {
+  NEW_EDITION
+  DEADLINE_REMINDER_7D
+  DEADLINE_REMINDER_2D
+  CERTIFICATES_AVAILABLE
+  CERTIFICATE_EXPIRING_60D
+  CERTIFICATE_EXPIRING_30D
+  REGISTRY_RECEIVED
+  EDITION_DATES_CHANGED
+  EDITION_CANCELLED
   COURSE_PUBLISHED
   CERT_UPLOADED
   REMINDER
   ATTENDANCE_RECORDED
+  TICKET_OPENED
+  TICKET_REPLY
+  TICKET_NEW_MESSAGE
+  TICKET_STATUS_CHANGED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketCategory {
+  TECHNICAL
+  INFO_REQUEST
+  REGISTRY
+  CERTIFICATES
+  BILLING
+  OTHER
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  subject      String
+  category     TicketCategory
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  clientId     String
+  client       User           @relation("ClientTickets", fields: [clientId], references: [id], onDelete: Cascade)
+  assignedToId String?
+  assignedTo   User?          @relation("AssignedTickets", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages     TicketMessage[]
+  notifications Notification[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  closedAt     DateTime?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([category])
+}
+
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User     @relation("TicketMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  message     String   @db.Text
+  attachments String[] @default([])
+  createdAt   DateTime @default(now())
+
+  @@index([ticketId])
 }
 
 model NotificationRead {

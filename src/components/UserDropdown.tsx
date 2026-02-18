@@ -40,9 +40,14 @@ export default function UserDropdown() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 mt-3 w-56 rounded-lg border bg-card shadow-lg">
+        <div className="absolute right-0 mt-3 min-w-[220px] max-w-[280px] rounded-lg border bg-card shadow-lg">
           <div className="border-b px-4 py-3">
-            <p className="text-sm font-medium">{session.user.email}</p>
+            <p
+              className="max-w-[200px] truncate text-sm font-medium"
+              title={session.user.email ?? undefined}
+            >
+              {session.user.email}
+            </p>
             <p className="text-xs text-muted-foreground">
               {session.user.role?.toLowerCase()}
             </p>

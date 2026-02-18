@@ -3,6 +3,7 @@ import MobileSidebar from "@/components/MobileSidebar";
 import SearchCommand from "@/components/SearchCommand";
 import SkipLink from "@/components/SkipLink";
 import UserDropdown from "@/components/UserDropdown";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function AdminLayout({
   children,
@@ -28,6 +29,7 @@ export default function AdminLayout({
           </div>
           <div className="flex items-center gap-3">
             <SearchCommand />
+            <NotificationBell />
             <UserDropdown />
           </div>
         </header>

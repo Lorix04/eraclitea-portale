@@ -1,21 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, Check } from "lucide-react";
 import { toast } from "sonner";
-import NotificationList, {
+import ClientNotificationList, {
   type NotificationItem,
-} from "@/components/NotificationList";
+} from "@/components/ClientNotificationList";
 import { LoadingTable } from "@/components/ui/loading-table";
 import { BrandedButton } from "@/components/BrandedButton";
 import { BrandedTabs } from "@/components/BrandedTabs";
+import {
+  CLIENT_NOTIFICATION_TYPES,
+  type ClientNotificationType,
+} from "@/lib/client-notification-types";
 
 type FilterType =
   | "all"
   | "unread"
-  | "COURSE_PUBLISHED"
-  | "CERT_UPLOADED";
+  | ClientNotificationType;
 
 type NotificationsResponse = {
   items: NotificationItem[];
@@ -31,7 +35,9 @@ async function fetchNotifications(filter: FilterType, page: number) {
   params.set("limit", "20");
   if (filter === "unread") params.set("unreadOnly", "true");
   if (
-    ["COURSE_PUBLISHED", "CERT_UPLOADED"].includes(filter)
+    filter !== "all" &&
+    filter !== "unread" &&
+    CLIENT_NOTIFICATION_TYPES.includes(filter as ClientNotificationType)
   ) {
     params.set("type", filter);
   }
@@ -46,9 +52,10 @@ async function fetchNotifications(filter: FilterType, page: number) {
 export default function NotifichePage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [page, setPage] = useState(1);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isFetching } = useQuery<NotificationsResponse>({
+  const { data, isLoading, isFetching, isError } = useQuery<NotificationsResponse>({
     queryKey: ["notifications", "list", filter, page],
     queryFn: () => fetchNotifications(filter, page),
     placeholderData: (prev) => prev,
@@ -70,17 +77,35 @@ export default function NotifichePage() {
     },
   });
 
+  const getNotificationLink = (item: NotificationItem) => {
+    if (item.ticketId) {
+      return `/supporto/${item.ticketId}`;
+    }
+
+    if (item.courseEditionId) {
+      return `/corsi/${item.courseEditionId}`;
+    }
+
+    if (
+      item.type === "CERT_UPLOADED" ||
+      item.type === "CERTIFICATES_AVAILABLE" ||
+      item.type === "CERTIFICATE_EXPIRING_60D" ||
+      item.type === "CERTIFICATE_EXPIRING_30D"
+    ) {
+      return "/attestati";
+    }
+
+    return null;
+  };
+
   const handleItemClick = async (item: NotificationItem) => {
     if (!item.isRead) {
       await fetch(`/api/notifiche/${item.id}/read`, { method: "POST" });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-    if (item.type === "CERT_UPLOADED") {
-      window.location.href = "/attestati";
-      return;
-    }
-    if (item.courseEditionId) {
-      window.location.href = `/corsi/${item.courseEditionId}`;
+    const link = getNotificationLink(item);
+    if (link) {
+      router.push(link);
     }
   };
 
@@ -108,8 +133,16 @@ export default function NotifichePage() {
         tabs={[
           { id: "all", label: "Tutte" },
           { id: "unread", label: "Non lette" },
-          { id: "COURSE_PUBLISHED", label: "Corsi" },
-          { id: "CERT_UPLOADED", label: "Attestati" },
+          { id: "NEW_EDITION", label: "Nuove edizioni" },
+          { id: "DEADLINE_REMINDER_7D", label: "Scadenze" },
+          { id: "DEADLINE_REMINDER_2D", label: "Urgenti 2gg" },
+          { id: "CERTIFICATES_AVAILABLE", label: "Attestati" },
+          { id: "CERTIFICATE_EXPIRING_30D", label: "Scadenze attestati" },
+          { id: "REGISTRY_RECEIVED", label: "Anagrafiche" },
+          { id: "EDITION_DATES_CHANGED", label: "Variazioni" },
+          { id: "EDITION_CANCELLED", label: "Annullamenti" },
+          { id: "TICKET_REPLY", label: "Supporto" },
+          { id: "TICKET_STATUS_CHANGED", label: "Stato ticket" },
         ]}
         activeTab={filter}
         onTabChange={(value) => {
@@ -123,7 +156,11 @@ export default function NotifichePage() {
           <div className="absolute right-2 top-2 h-4 w-4 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
         ) : null}
 
-        {isLoading ? (
+        {isError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.
+          </div>
+        ) : isLoading ? (
           <LoadingTable rows={5} cols={2} />
         ) : data?.items.length === 0 ? (
           <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -132,7 +169,7 @@ export default function NotifichePage() {
           </div>
         ) : (
           <div className="rounded-lg border bg-card p-3">
-            <NotificationList
+            <ClientNotificationList
               items={data?.items ?? []}
               onItemClick={handleItemClick}
               emptyText="Nessuna notifica disponibile"

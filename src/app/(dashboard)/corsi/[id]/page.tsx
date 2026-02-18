@@ -10,9 +10,11 @@ import { useSubmitRegistrations } from "@/hooks/useSubmitRegistrations";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
 import { Skeleton } from "@/components/ui/Skeleton";
+import EditionStatusBadge from "@/components/EditionStatusBadge";
 
 type CourseDetail = {
   id: string;
+  clientId?: string;
   editionNumber?: number | null;
   title: string;
   categories?: { id: string; name: string; color?: string | null }[];
@@ -26,14 +28,21 @@ type CourseDetail = {
   registrations: Array<{
     id: string;
     status: string;
+    updatedAt: string | Date;
     employee: {
       id: string;
       nome: string;
       cognome: string;
       codiceFiscale: string;
+      sesso?: string | null;
       dataNascita?: string | null;
       luogoNascita?: string | null;
       email?: string | null;
+      telefono?: string | null;
+      cellulare?: string | null;
+      indirizzo?: string | null;
+      comuneResidenza?: string | null;
+      cap?: string | null;
       mansione?: string | null;
       note?: string | null;
     };
@@ -139,9 +148,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           nome: "",
           cognome: "",
           codiceFiscale: "",
+          sesso: "",
           dataNascita: "",
           luogoNascita: "",
           email: "",
+          telefono: "",
+          cellulare: "",
+          indirizzo: "",
+          comuneResidenza: "",
+          cap: "",
           mansione: "",
           note: "",
         },
@@ -151,11 +166,17 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       nome: reg.employee.nome,
       cognome: reg.employee.cognome,
       codiceFiscale: reg.employee.codiceFiscale,
+      sesso: reg.employee.sesso ?? "",
       dataNascita: reg.employee.dataNascita
         ? formatItalianDate(reg.employee.dataNascita)
         : "",
       luogoNascita: reg.employee.luogoNascita ?? "",
       email: reg.employee.email ?? "",
+      telefono: reg.employee.telefono ?? "",
+      cellulare: reg.employee.cellulare ?? "",
+      indirizzo: reg.employee.indirizzo ?? "",
+      comuneResidenza: reg.employee.comuneResidenza ?? "",
+      cap: reg.employee.cap ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
     }));
@@ -170,8 +191,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         employee.nome &&
         employee.cognome &&
         employee.codiceFiscale &&
+        employee.sesso &&
         employee.dataNascita &&
-        employee.luogoNascita
+        employee.luogoNascita &&
+        employee.email
       );
     }).length;
     const invalid = Math.max(0, total - valid);
@@ -183,6 +206,34 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     if (course.registrations.length === 0) return false;
     return course.registrations.every((reg) => reg.status !== "INSERTED");
   }, [course]);
+  const submittedAt = useMemo(() => {
+    if (!course || !isSubmitted) return null;
+    const timestamps = course.registrations
+      .filter((reg) => reg.status !== "INSERTED")
+      .map((reg) => new Date(reg.updatedAt).getTime())
+      .filter((value) => !Number.isNaN(value));
+    if (timestamps.length === 0) return null;
+    return new Date(Math.max(...timestamps));
+  }, [course, isSubmitted]);
+
+  const deadlineDate = useMemo(() => {
+    if (!course?.deadlineRegistry) return null;
+    const date = new Date(course.deadlineRegistry);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }, [course?.deadlineRegistry]);
+
+  const deadlineExpired = useMemo(() => {
+    if (!deadlineDate) return false;
+    return deadlineDate.getTime() < Date.now();
+  }, [deadlineDate]);
+
+  const isClosedStatus = useMemo(() => {
+    const status = (course?.status || "").toUpperCase();
+    return status === "CLOSED" || status === "ARCHIVED";
+  }, [course?.status]);
+
+  const isEditionLocked = isClosedStatus || deadlineExpired;
+  const isAnagraficheReadOnly = isEditionLocked;
 
   const handleSend = async () => {
     setConfirmOpen(false);
@@ -284,9 +335,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           </p>
         ) : null}
         {course.status ? (
-          <p className="text-sm text-muted-foreground">
-            Stato: {course.status}
-          </p>
+          <div className="mt-2">
+            <EditionStatusBadge status={course.status} className="text-xs" />
+          </div>
         ) : null}
       </div>
 
@@ -298,6 +349,19 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
       {tab === "anagrafiche" ? (
         <div className="space-y-4">
+          {isClosedStatus ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <strong>Anagrafiche bloccate:</strong> l&apos;edizione e stata
+              chiusa. Le anagrafiche non sono piu modificabili.
+            </div>
+          ) : null}
+          {!isClosedStatus && deadlineExpired && deadlineDate ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <strong>Anagrafiche bloccate:</strong> la deadline per
+              l&apos;inserimento e scaduta il {formatItalianDate(deadlineDate)}.
+            </div>
+          ) : null}
+
           <div className="rounded-lg border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Stato compilazione</span>
@@ -335,7 +399,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             ) : null}
             {isSubmitted ? (
               <p className="text-sm text-emerald-700">
-                Anagrafiche inviate all&apos;ente di formazione.
+                Anagrafiche inviate all&apos;ente di formazione
+                {submittedAt ? ` il ${formatItalianDate(submittedAt)}` : ""}.
+                {!isEditionLocked ? " Puoi ancora modificarle entro la deadline." : ""}
               </p>
             ) : null}
           </div>
@@ -343,15 +409,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           <AnagraficheResponsive
             initialData={rows}
             courseEditionId={course.id}
-            readOnly={isSubmitted}
+            clientId={course.clientId}
+            readOnly={isAnagraficheReadOnly}
           />
 
-          <BrandedButton
-            onClick={() => setConfirmOpen(true)}
-            disabled={!registrationStats.canSubmit || isSubmitted || submitMutation.isPending}
-          >
-            Invia Anagrafiche ({registrationStats.valid} dipendenti)
-          </BrandedButton>
+          {!isSubmitted && !isEditionLocked ? (
+            <BrandedButton
+              onClick={() => setConfirmOpen(true)}
+              disabled={!registrationStats.canSubmit || submitMutation.isPending}
+            >
+              Invia Anagrafiche ({registrationStats.valid} dipendenti)
+            </BrandedButton>
+          ) : null}
         </div>
       ) : null}
 
@@ -436,41 +505,56 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                   ))}
                 </div>
               </div>
-            ) : !attendanceSummary || attendanceSummary.stats.length === 0 ? (
+            ) : !attendanceSummary || attendanceSummary.totalLessons === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">
+                  Nessuna lezione disponibile per questa edizione.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Le presenze saranno visibili quando l&apos;ente inserira le lezioni.
+                </p>
+              </div>
+            ) : attendanceSummary.stats.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">
                 Nessuna presenza registrata.
               </p>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-left">
-                  <tr>
-                    <th className="px-4 py-3">Dipendente</th>
-                    <th className="px-4 py-3">Presenze</th>
-                    <th className="px-4 py-3">Percentuale</th>
-                    <th className="px-4 py-3">Stato</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendanceSummary.stats.map((stat) => (
-                    <tr key={stat.employeeId} className="border-t">
-                      <td className="px-4 py-3 font-medium">
-                        {stat.employeeName}
-                      </td>
-                      <td className="px-4 py-3">
-                        {stat.present + stat.justified}/{stat.totalLessons}
-                      </td>
-                      <td className="px-4 py-3">{stat.percentage}%</td>
-                      <td className="px-4 py-3">
-                        {stat.belowMinimum ? (
-                          <span className="text-amber-700">⚠️ Minimo</span>
-                        ) : (
-                          <span className="text-emerald-700">✅ OK</span>
-                        )}
-                      </td>
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead className="bg-muted/40 text-left">
+                    <tr>
+                      <th className="px-4 py-3">Dipendente</th>
+                      <th className="px-4 py-3">Presenze</th>
+                      <th className="px-4 py-3">Percentuale</th>
+                      <th className="px-4 py-3">Stato</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {attendanceSummary.stats.map((stat) => (
+                      <tr key={stat.employeeId} className="border-t">
+                        <td className="max-w-[220px] truncate px-4 py-3 font-medium" title={stat.employeeName}>
+                          {stat.employeeName}
+                        </td>
+                        <td className="px-4 py-3">
+                          {stat.present + stat.justified}/{stat.totalLessons}
+                        </td>
+                        <td className="px-4 py-3">{stat.percentage}%</td>
+                        <td className="px-4 py-3">
+                          {stat.belowMinimum ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-700">
+                              ⚠️ Minimo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-700">
+                              ✅ OK
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>

@@ -15,6 +15,10 @@ export async function saveCertificateFile(
   clientId: string,
   employeeId: string
 ): Promise<string> {
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    throw new Error("Solo file PDF sono accettati");
+  }
+
   const safeName = path.basename(file.name);
   const dir = path.resolve(BASE_DIR, clientId, employeeId);
   await fs.mkdir(dir, { recursive: true });

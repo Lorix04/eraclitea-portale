@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 
@@ -12,12 +11,9 @@ const TAB_MAP: Record<string, string> = {
 };
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT") {
+  const context = await getEffectiveClientContext();
+  if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!session.user.clientId) {
-    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
   const validation = validateQuery(
@@ -41,7 +37,8 @@ export async function GET(request: Request) {
 
   const editions = await prisma.courseEdition.findMany({
     where: {
-      clientId: session.user.clientId,
+      clientId: context.clientId,
+      status: { not: "DRAFT" },
       ...(categoryId
         ? { course: { categories: { some: { categoryId } } } }
         : {}),
@@ -53,7 +50,7 @@ export async function GET(request: Request) {
         },
       },
       registrations: {
-        select: { status: true },
+        select: { status: true, updatedAt: true },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -65,6 +62,15 @@ export async function GET(request: Request) {
       const completedCount = edition.registrations.filter(
         (reg) => reg.status === "TRAINED"
       ).length;
+      const isSubmitted =
+        registrationsCount > 0 &&
+        edition.registrations.every((reg) => reg.status !== "INSERTED");
+      const submittedAt = isSubmitted
+        ? [...edition.registrations]
+            .filter((reg) => reg.status !== "INSERTED")
+            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]
+            ?.updatedAt ?? null
+        : null;
 
       let status: "AVAILABLE" | "IN_PROGRESS" | "COMPLETED" = "AVAILABLE";
       if (registrationsCount > 0 && completedCount === registrationsCount) {
@@ -84,6 +90,9 @@ export async function GET(request: Request) {
         endDate: edition.endDate,
         deadlineRegistry: edition.deadlineRegistry,
         status,
+        editionStatus: edition.status,
+        isSubmitted,
+        submittedAt,
         registrationsCount,
         completedCount,
         isNew,

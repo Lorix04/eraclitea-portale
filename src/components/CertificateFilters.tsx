@@ -26,7 +26,7 @@ export default function CertificateFilters({
   return (
     <div className="grid gap-4 md:grid-cols-4">
       <select
-        className="rounded-md border bg-background px-3 py-2 text-sm"
+        className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
         value={filters.courseEditionId ?? ""}
         onChange={(event) =>
           onChange({
@@ -44,7 +44,7 @@ export default function CertificateFilters({
       </select>
 
       <select
-        className="rounded-md border bg-background px-3 py-2 text-sm"
+        className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
         value={filters.employeeId ?? ""}
         onChange={(event) =>
           onChange({ ...filters, employeeId: event.target.value || undefined })
@@ -60,7 +60,7 @@ export default function CertificateFilters({
 
       <input
         type="number"
-        className="rounded-md border bg-background px-3 py-2 text-sm"
+        className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
         placeholder="Anno"
         value={filters.year ?? ""}
         onChange={(event) =>
@@ -72,7 +72,7 @@ export default function CertificateFilters({
       />
 
       <select
-        className="rounded-md border bg-background px-3 py-2 text-sm"
+        className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
         value={filters.status ?? ""}
         onChange={(event) =>
           onChange({

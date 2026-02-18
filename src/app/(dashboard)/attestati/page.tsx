@@ -59,7 +59,7 @@ export default function ClientAttestatiPage() {
     return params.toString();
   }, [debouncedFilters, page]);
 
-  const { data, isLoading, isFetching } = useQuery<CertificateResponse>({
+  const { data, isLoading, isFetching, isError } = useQuery<CertificateResponse>({
     queryKey: ["certificates", "cliente", debouncedFilters, page],
     queryFn: () => fetchJson(`/api/attestati/cliente?${queryString}`),
     placeholderData: (prev) => prev,
@@ -130,7 +130,7 @@ export default function ClientAttestatiPage() {
       />
 
       <CertificateTable
-        certificates={data?.data ?? []}
+        certificates={isError ? [] : data?.data ?? []}
         isLoading={isLoading}
         isFetching={isFetching}
         pagination={{
@@ -139,6 +139,12 @@ export default function ClientAttestatiPage() {
           onPageChange: setPage,
         }}
       />
+
+      {isError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.
+        </div>
+      ) : null}
     </div>
   );
 }

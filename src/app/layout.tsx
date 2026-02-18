@@ -1,6 +1,6 @@
 ﻿import "./globals.css";
 import type { Metadata } from "next";
-import { Sora, Source_Sans_3 } from "next/font/google";
+import { Outfit, Playfair_Display, Sora, Source_Sans_3 } from "next/font/google";
 import Providers from "@/app/providers";
 import Toaster from "@/components/Toaster";
 import WebVitals from "@/app/web-vitals";
@@ -19,12 +19,21 @@ const bodyFont = Source_Sans_3({
   variable: "--font-sans",
 });
 
+const landingBodyFont = Outfit({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const landingDisplayFont = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-landing-display",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: {
-    default: "Portale Formazione",
-    template: "%s | Portale Formazione",
-  },
-  description: "Portale per la gestione della formazione aziendale",
+  title: "Sapienta — Portale Formazione",
+  description: "Portale di formazione aziendale Sapienta",
   keywords: ["formazione", "corsi", "attestati", "sicurezza"],
   authors: [{ name: "Ente Formazione" }],
   robots: {
@@ -32,8 +41,8 @@ export const metadata: Metadata = {
     follow: false,
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/icons/sapienta-remove.ico",
+    apple: "/icons/sapienta-remove.png",
   },
   manifest: "/manifest.json",
 };
@@ -46,7 +55,7 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
+        className={`${bodyFont.variable} ${displayFont.variable} ${landingBodyFont.variable} ${landingDisplayFont.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
       >
         <Providers>{children}</Providers>
         <Toaster />

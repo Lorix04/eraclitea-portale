@@ -10,6 +10,7 @@ import {
   BookOpen,
   History,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Users,
   UserCircle,
@@ -19,11 +20,12 @@ import { useBranding } from "@/components/BrandingProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const CLIENT_LINKS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/corsi", label: "Corsi", icon: BookOpen },
   { href: "/dipendenti", label: "Dipendenti", icon: Users },
   { href: "/notifiche", label: "Notifiche", icon: Bell },
   { href: "/attestati", label: "Attestati", icon: Award },
+  { href: "/supporto", label: "Supporto", icon: LifeBuoy },
   { href: "/storico", label: "Storico", icon: History },
   { href: "/profilo", label: "Profilo", icon: UserCircle },
 ];

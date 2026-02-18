@@ -5,6 +5,15 @@ export type CourseStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
 export type RegistrationStatus = "INSERTED" | "CONFIRMED" | "TRAINED";
 
 export type NotificationType =
+  | "NEW_EDITION"
+  | "DEADLINE_REMINDER_7D"
+  | "DEADLINE_REMINDER_2D"
+  | "CERTIFICATES_AVAILABLE"
+  | "CERTIFICATE_EXPIRING_60D"
+  | "CERTIFICATE_EXPIRING_30D"
+  | "REGISTRY_RECEIVED"
+  | "EDITION_DATES_CHANGED"
+  | "EDITION_CANCELLED"
   | "COURSE_PUBLISHED"
   | "CERT_UPLOADED"
   | "REMINDER"
@@ -12,16 +21,39 @@ export type NotificationType =
 
 export type AttendanceStatus = "PRESENT" | "ABSENT" | "ABSENT_JUSTIFIED";
 
+/** Tipo per i dati dipendente nel foglio Excel e nei form */
+export type EmployeeFormRow = {
+  nome: string;
+  cognome: string;
+  codiceFiscale: string;
+  sesso?: string;
+  dataNascita?: string;
+  luogoNascita?: string;
+  email?: string;
+  telefono?: string;
+  cellulare?: string;
+  indirizzo?: string;
+  comuneResidenza?: string;
+  cap?: string;
+  mansione?: string;
+  note?: string;
+};
+
 export interface Employee {
   id: string;
   clientId: string;
   nome: string;
   cognome: string;
   codiceFiscale: string;
+  sesso?: string | null;
   dataNascita?: Date | string | null;
   luogoNascita?: string | null;
   email?: string | null;
   telefono?: string | null;
+  cellulare?: string | null;
+  indirizzo?: string | null;
+  comuneResidenza?: string | null;
+  cap?: string | null;
   mansione?: string | null;
   note?: string | null;
   createdAt: Date | string;

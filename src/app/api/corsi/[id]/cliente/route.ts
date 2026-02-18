@@ -1,18 +1,14 @@
 ﻿import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
   _request: Request,
   context: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT") {
+  const effectiveClient = await getEffectiveClientContext();
+  if (!effectiveClient) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!session.user.clientId) {
-    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
   const edition = await prisma.courseEdition.findUnique({
@@ -31,14 +27,18 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (edition.clientId !== session.user.clientId) {
+  if (edition.clientId !== effectiveClient.clientId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (edition.status === "DRAFT") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const certificates = await prisma.certificate.findMany({
     where: {
       courseEditionId: edition.id,
-      clientId: session.user.clientId,
+      clientId: effectiveClient.clientId,
     },
     include: {
       employee: { select: { nome: true, cognome: true } },
@@ -72,14 +72,21 @@ export async function GET(
       registrations: edition.registrations.map((reg) => ({
         id: reg.id,
         status: reg.status,
+        updatedAt: reg.updatedAt,
         employee: {
           id: reg.employee.id,
           nome: reg.employee.nome,
           cognome: reg.employee.cognome,
           codiceFiscale: reg.employee.codiceFiscale,
+          sesso: reg.employee.sesso,
           dataNascita: reg.employee.dataNascita,
           luogoNascita: reg.employee.luogoNascita,
           email: reg.employee.email,
+          telefono: reg.employee.telefono,
+          cellulare: reg.employee.cellulare,
+          indirizzo: reg.employee.indirizzo,
+          comuneResidenza: reg.employee.comuneResidenza,
+          cap: reg.employee.cap,
           mansione: reg.employee.mansione,
           note: reg.employee.note,
         },

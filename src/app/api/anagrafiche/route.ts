@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
-import { normalizeCodiceFiscale } from "@/lib/validators";
+import { isValidCodiceFiscale, normalizeCodiceFiscale } from "@/lib/validators";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { parseItalianDate } from "@/lib/date-utils";
 
@@ -10,24 +11,29 @@ type EmployeeRow = {
   nome?: string;
   cognome?: string;
   codiceFiscale?: string;
+  sesso?: string | null;
   dataNascita?: string | Date | null;
   luogoNascita?: string | null;
   email?: string | null;
+  telefono?: string | null;
+  cellulare?: string | null;
+  indirizzo?: string | null;
+  comuneResidenza?: string | null;
+  cap?: string | null;
   mansione?: string | null;
   note?: string | null;
 };
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT") {
+  const context = await getEffectiveClientContext();
+  if (!context) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!session.user.clientId) {
-    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
   const employees = await prisma.employee.findMany({
-    where: { clientId: session.user.clientId },
+    where: { clientId: context.clientId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -62,7 +68,11 @@ export async function POST(request: Request) {
   if (courseEditionId) {
     const edition = await prisma.courseEdition.findUnique({
       where: { id: courseEditionId },
-      select: { clientId: true },
+      select: {
+        clientId: true,
+        status: true,
+        deadlineRegistry: true,
+      },
     });
     if (!edition) {
       return NextResponse.json(
@@ -75,6 +85,48 @@ export async function POST(request: Request) {
         { error: "Edizione non associata al cliente" },
         { status: 403 }
       );
+    }
+
+    if (edition.status === "ARCHIVED") {
+      return NextResponse.json(
+        { error: "L'edizione e archiviata. Nessuna modifica consentita." },
+        { status: 403 }
+      );
+    }
+
+    if (!isAdmin) {
+      if (edition.status === "CLOSED") {
+        return NextResponse.json(
+          {
+            error:
+              "L'edizione e chiusa. Le anagrafiche non sono modificabili.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (edition.status !== "PUBLISHED") {
+        return NextResponse.json(
+          {
+            error:
+              "Le anagrafiche non possono essere modificate: l'edizione non e aperta.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (
+        edition.deadlineRegistry &&
+        new Date() > new Date(edition.deadlineRegistry)
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Le anagrafiche non possono essere modificate: la deadline e scaduta.",
+          },
+          { status: 403 }
+        );
+      }
     }
   }
 
@@ -92,16 +144,66 @@ export async function POST(request: Request) {
 
   const results = await Promise.all(
     filtered.map(async (row) => {
-      const rawDate = row.dataNascita ? String(row.dataNascita) : "";
-      const parsedDate = rawDate ? parseItalianDate(rawDate) : null;
+      const nome = String(row.nome ?? "").trim();
+      const cognome = String(row.cognome ?? "").trim();
+      const sessoRaw = String(row.sesso ?? "").trim().toUpperCase();
+      const luogoNascita = String(row.luogoNascita ?? "").trim();
+      const emailRaw = String(row.email ?? "").trim();
+      const rawDate = row.dataNascita ? String(row.dataNascita).trim() : "";
 
-      if (rawDate && !parsedDate) {
+      const missingFields: string[] = [];
+      if (!nome) missingFields.push("nome");
+      if (!cognome) missingFields.push("cognome");
+      if (!sessoRaw) missingFields.push("sesso");
+      if (!rawDate) missingFields.push("dataNascita");
+      if (!luogoNascita) missingFields.push("luogoNascita");
+      if (!emailRaw) missingFields.push("email");
+      if (!String(row.comuneResidenza ?? "").trim()) missingFields.push("comuneResidenza");
+      if (!String(row.cap ?? "").trim()) missingFields.push("cap");
+
+      if (missingFields.length > 0) {
         errors.push({
           codiceFiscale: row.codiceFiscale,
-          field: "dataNascita",
-          message: `Data non valida: "${rawDate}". Usa il formato GG/MM/AAAA`,
+          message: `Campi obbligatori mancanti: ${missingFields.join(", ")}`,
         });
-        return null;
+      }
+
+      if (!isValidCodiceFiscale(String(row.codiceFiscale ?? ""))) {
+        errors.push({
+          codiceFiscale: row.codiceFiscale,
+          field: "codiceFiscale",
+          message: "Codice fiscale non valido",
+        });
+      }
+
+      const sesso = sessoRaw === "M" || sessoRaw === "F" ? sessoRaw : null;
+      if (sessoRaw && !sesso) {
+        errors.push({
+          codiceFiscale: row.codiceFiscale,
+          field: "sesso",
+          message: "Sesso non valido. Usa M o F",
+        });
+      }
+
+      const email = emailRaw && emailRegex.test(emailRaw) ? emailRaw : null;
+      if (emailRaw && !email) {
+        errors.push({
+          codiceFiscale: row.codiceFiscale,
+          field: "email",
+          message: "Email non valida",
+        });
+      }
+
+      let parsedDate: Date | null = null;
+      if (rawDate) {
+        parsedDate = parseItalianDate(rawDate);
+        if (!parsedDate) {
+          errors.push({
+            codiceFiscale: row.codiceFiscale,
+            field: "dataNascita",
+            message: `Data non valida: "${rawDate}". Usa il formato GG/MM/AAAA`,
+          });
+        }
       }
 
       try {
@@ -113,24 +215,36 @@ export async function POST(request: Request) {
             },
           },
           update: {
-            nome: row.nome ?? "",
-            cognome: row.cognome ?? "",
+            nome,
+            cognome,
+            sesso,
             dataNascita: parsedDate,
-            luogoNascita: row.luogoNascita ?? null,
-            email: row.email ?? null,
-            mansione: row.mansione ?? null,
-            note: row.note ?? null,
+            luogoNascita: luogoNascita || null,
+            email,
+            telefono: String(row.telefono ?? "").trim() || null,
+            cellulare: String(row.cellulare ?? "").trim() || null,
+            indirizzo: String(row.indirizzo ?? "").trim() || null,
+            comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
+            cap: String(row.cap ?? "").trim() || null,
+            mansione: String(row.mansione ?? "").trim() || null,
+            note: String(row.note ?? "").trim() || null,
           },
           create: {
             clientId,
-            nome: row.nome ?? "",
-            cognome: row.cognome ?? "",
+            nome,
+            cognome,
             codiceFiscale: row.codiceFiscale as string,
+            sesso,
             dataNascita: parsedDate,
-            luogoNascita: row.luogoNascita ?? null,
-            email: row.email ?? null,
-            mansione: row.mansione ?? null,
-            note: row.note ?? null,
+            luogoNascita: luogoNascita || null,
+            email,
+            telefono: String(row.telefono ?? "").trim() || null,
+            cellulare: String(row.cellulare ?? "").trim() || null,
+            indirizzo: String(row.indirizzo ?? "").trim() || null,
+            comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
+            cap: String(row.cap ?? "").trim() || null,
+            mansione: String(row.mansione ?? "").trim() || null,
+            note: String(row.note ?? "").trim() || null,
           },
         });
         savedEmployees.push(row);

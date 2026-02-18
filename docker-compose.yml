@@ -36,6 +36,7 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - FILE_STORAGE_PATH=/app/storage
     volumes:
       - app_storage:/app/storage

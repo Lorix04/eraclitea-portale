@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bell } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NotificationList, {
   type NotificationItem,
@@ -12,6 +13,7 @@ import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function NotificationBell() {
+  const { data: session } = useSession();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -49,11 +51,46 @@ export default function NotificationBell() {
   }, []);
 
   const handleItemClick = async (item: NotificationItem) => {
-    if (!item.isRead) {
+    const isAdmin = session?.user?.role === "ADMIN";
+
+    if (!isAdmin && !item.isRead) {
       markAsRead.mutate(item.id);
     }
     setOpen(false);
-    if (item.type === "CERT_UPLOADED") {
+
+    if (isAdmin) {
+      if (item.ticketId) {
+        router.push(`/admin/ticket/${item.ticketId}`);
+        return;
+      }
+      if (
+        item.type === "CERT_UPLOADED" ||
+        item.type === "CERTIFICATES_AVAILABLE" ||
+        item.type === "CERTIFICATE_EXPIRING_60D" ||
+        item.type === "CERTIFICATE_EXPIRING_30D"
+      ) {
+        router.push("/admin/attestati");
+        return;
+      }
+      if (item.courseEditionId) {
+        router.push("/admin/edizioni");
+        return;
+      }
+      router.push("/admin");
+      return;
+    }
+
+    if (item.ticketId) {
+      router.push(`/supporto/${item.ticketId}`);
+      return;
+    }
+
+    if (
+      item.type === "CERT_UPLOADED" ||
+      item.type === "CERTIFICATES_AVAILABLE" ||
+      item.type === "CERTIFICATE_EXPIRING_60D" ||
+      item.type === "CERTIFICATE_EXPIRING_30D"
+    ) {
       router.push("/attestati");
       return;
     }
@@ -94,7 +131,7 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between border-b px-4 py-3">
             <p className="text-sm font-medium">Notifiche</p>
             <div className="flex items-center gap-2 text-xs">
-              {hasUnread ? (
+              {hasUnread && session?.user?.role !== "ADMIN" ? (
                 <button
                   type="button"
                   className="link-brand"
@@ -103,7 +140,10 @@ export default function NotificationBell() {
                   Segna tutte
                 </button>
               ) : null}
-              <Link href="/notifiche" className="link-brand">
+              <Link
+                href={session?.user?.role === "ADMIN" ? "/admin/ticket" : "/notifiche"}
+                className="link-brand"
+              >
                 Vedi tutte
               </Link>
             </div>

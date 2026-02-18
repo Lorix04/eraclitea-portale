@@ -42,7 +42,7 @@ export async function GET(
 
   const edition = await prisma.courseEdition.findFirst({
     where: { id: context.params.edId, courseId: context.params.id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!edition) {
@@ -134,11 +134,18 @@ export async function POST(
 
   const edition = await prisma.courseEdition.findFirst({
     where: { id: context.params.edId, courseId: context.params.id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!edition) {
     return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+  }
+
+  if (edition.status === "ARCHIVED") {
+    return NextResponse.json(
+      { error: "L'edizione e archiviata. Nessuna modifica consentita." },
+      { status: 403 }
+    );
   }
 
   try {

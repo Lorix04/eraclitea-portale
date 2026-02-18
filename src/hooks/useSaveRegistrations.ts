@@ -1,25 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
-
-type Employee = {
-  id?: string;
-  nome: string;
-  cognome: string;
-  codiceFiscale: string;
-  dataNascita?: string;
-  luogoNascita?: string;
-  email?: string;
-  mansione?: string;
-  note?: string;
-};
+import type { EmployeeFormRow } from "@/types";
 
 export function useSaveRegistrations(courseEditionId?: string, clientId?: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (employees: Employee[]) => {
+    mutationFn: async (employees: EmployeeFormRow[]) => {
       const res = await fetch("/api/anagrafiche", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,7 +35,7 @@ export function useSaveRegistrations(courseEditionId?: string, clientId?: string
   });
 
   const debouncedSave = useCallback(
-    (employees: Employee[]) => {
+    (employees: EmployeeFormRow[]) => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
@@ -58,7 +47,7 @@ export function useSaveRegistrations(courseEditionId?: string, clientId?: string
   );
 
   const saveNow = useCallback(
-    (employees: Employee[]) => {
+    (employees: EmployeeFormRow[]) => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }

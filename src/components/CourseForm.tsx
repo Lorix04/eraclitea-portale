@@ -184,7 +184,7 @@ export default function CourseForm({
   const handleSave = async () => {
     const saved = await saveCourse();
     if (!saved?.id) return;
-    router.push("/admin/corsi");
+    router.push(`/admin/corsi/${saved.id}/edit`);
   };
 
   const handleDeleteCourse = async () => {

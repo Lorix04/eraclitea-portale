@@ -25,7 +25,9 @@ type AuditAction =
   | "CERTIFICATE_DELETE"
   | "CERT_DOWNLOAD"
   | "CSV_EXPORT"
-  | "REGISTRY_UPDATE";
+  | "REGISTRY_UPDATE"
+  | "IMPERSONATE_START"
+  | "IMPERSONATE_STOP";
 
 type AuditParams = {
   userId: string;

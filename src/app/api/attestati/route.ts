@@ -6,14 +6,18 @@ import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  limit: z.coerce.number().min(1).max(500).default(20),
   search: z.string().optional(),
   searchEmployee: z.string().optional(),
   clientId: z.string().optional(),
   employeeId: z.string().optional(),
+  courseId: z.string().optional(),
   courseEditionId: z.string().optional(),
+  expiryStatus: z.enum(["all", "valid", "expiring", "expired"]).default("all"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   period: z.enum(["all", "today", "week", "month", "year"]).default("all"),
   dateFrom: z.string().optional(),
@@ -21,10 +25,11 @@ const querySchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
   const validation = validateQuery(request, querySchema);
   if ("error" in validation) {
@@ -38,16 +43,15 @@ export async function GET(request: Request) {
     searchEmployee,
     clientId,
     employeeId,
+    courseId,
     courseEditionId: validatedCourseEditionId,
+    expiryStatus,
     sortOrder,
     period,
     dateFrom,
     dateTo,
   } = validation.data;
-  const courseEditionId =
-    validatedCourseEditionId ??
-    new URL(request.url).searchParams.get("courseId") ??
-    undefined;
+  const courseEditionId = validatedCourseEditionId ?? undefined;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 20;
   const skip = (safePage - 1) * safeLimit;
@@ -71,6 +75,14 @@ export async function GET(request: Request) {
   }
 
   const andFilters: Prisma.CertificateWhereInput[] = [];
+
+  if (courseId) {
+    andFilters.push({
+      courseEdition: {
+        courseId,
+      },
+    });
+  }
 
   if (search) {
     andFilters.push({
@@ -141,6 +153,22 @@ export async function GET(request: Request) {
     andFilters.push({ uploadedAt: { gte: from } });
   }
 
+  if (expiryStatus && expiryStatus !== "all") {
+    const now = new Date();
+    const in90Days = new Date(now);
+    in90Days.setDate(in90Days.getDate() + 90);
+
+    if (expiryStatus === "expired") {
+      andFilters.push({ expiresAt: { lt: now } });
+    } else if (expiryStatus === "expiring") {
+      andFilters.push({ expiresAt: { gte: now, lte: in90Days } });
+    } else if (expiryStatus === "valid") {
+      andFilters.push({
+        OR: [{ expiresAt: null }, { expiresAt: { gt: in90Days } }],
+      });
+    }
+  }
+
   if (andFilters.length) {
     where.AND = andFilters;
   }
@@ -167,23 +195,38 @@ export async function GET(request: Request) {
     prisma.certificate.count({ where }),
   ]);
 
-  return NextResponse.json({
-    data: certificates,
-    total,
-    page: safePage,
-    limit: safeLimit,
-    totalPages: Math.max(1, Math.ceil(total / safeLimit)),
-  });
+    return NextResponse.json({
+      data: certificates,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    });
+  } catch (error) {
+    console.error("[CERTIFICATES_GET] Error:", error);
+    return NextResponse.json(
+      { error: "Errore interno del server" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  return NextResponse.json(
-    { error: "Upload non ancora implementato" },
-    { status: 501 }
-  );
+    return NextResponse.json(
+      { error: "Upload non ancora implementato" },
+      { status: 501 }
+    );
+  } catch (error) {
+    console.error("[CERTIFICATES_POST] Error:", error);
+    return NextResponse.json(
+      { error: "Errore interno del server" },
+      { status: 500 }
+    );
+  }
 }

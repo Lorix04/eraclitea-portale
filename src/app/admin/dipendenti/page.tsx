@@ -3,13 +3,14 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, UserPlus, X } from "lucide-react";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
+import AddEmployeeModal from "@/components/AddEmployeeModal";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -64,6 +65,7 @@ function AdminDipendentiContent() {
   const [page, setPage] = useState(initialPage);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [editions, setEditions] = useState<EditionOption[]>([]);
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -126,7 +128,7 @@ function AdminDipendentiContent() {
     }
   }, [editionId, editionOptions]);
 
-  const { data, isLoading, refetch } = useEmployees({
+  const { data, isLoading, error, refetch } = useEmployees({
     page: 1,
     limit: 1000,
     includeRegistrations: true,
@@ -273,7 +275,10 @@ function AdminDipendentiContent() {
             Gestisci l&apos;elenco dipendenti e le iscrizioni ai corsi.
           </p>
         </div>
-        <Link href={exportUrl} className="rounded-md border px-4 py-2 text-sm">
+        <Link
+          href={exportUrl}
+          className="inline-flex min-h-[44px] items-center rounded-md border px-4 py-2 text-sm"
+        >
           Esporta CSV
         </Link>
       </div>
@@ -335,13 +340,21 @@ function AdminDipendentiContent() {
             <option value="desc">Piu recenti</option>
             <option value="asc">Piu vecchi</option>
           </select>
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+            onClick={() => setAddModalOpen(true)}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Aggiungi dipendente
+          </button>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">
               {totalCount} dipendenti trovati
             </span>
             <button
               type="button"
-              className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
               onClick={resetFilters}
             >
               <X className="mr-1 h-4 w-4" />
@@ -350,6 +363,12 @@ function AdminDipendentiContent() {
           </div>
         </div>
       </div>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.
+        </div>
+      ) : null}
 
       <EmployeeTable
         employees={pagedEmployees}
@@ -366,7 +385,7 @@ function AdminDipendentiContent() {
         <div className="flex gap-2">
           <button
             type="button"
-            className="rounded-md border px-3 py-1"
+            className="min-h-[44px] rounded-md border px-3 py-1"
             disabled={currentPage <= 1}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
           >
@@ -374,7 +393,7 @@ function AdminDipendentiContent() {
           </button>
           <button
             type="button"
-            className="rounded-md border px-3 py-1"
+            className="min-h-[44px] rounded-md border px-3 py-1"
             disabled={currentPage >= totalPages}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
           >
@@ -402,6 +421,14 @@ function AdminDipendentiContent() {
             ? `Questo dipendente ha ${employeeToDelete.registrationsCount} iscrizioni a corsi e ${employeeToDelete.certificatesCount} attestati. Tutti i dati associati verranno eliminati permanentemente.`
             : "Questa azione non puo essere annullata."
         }
+      />
+
+      <AddEmployeeModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onCreated={() => {
+          refetch();
+        }}
       />
     </div>
   );

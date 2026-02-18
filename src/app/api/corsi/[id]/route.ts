@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { courseUpdateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { deleteCertificateFile } from "@/lib/certificate-storage";
 
 export async function GET(
   _request: Request,
@@ -167,6 +168,22 @@ export async function DELETE(
 
   if (!course) {
     return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
+  }
+
+  const certificates = await prisma.certificate.findMany({
+    where: {
+      courseEdition: { courseId: context.params.id },
+    },
+    select: { filePath: true },
+  });
+
+  for (const certificate of certificates) {
+    if (!certificate.filePath) continue;
+    try {
+      await deleteCertificateFile(certificate.filePath);
+    } catch (error) {
+      console.warn("Impossibile eliminare file attestato:", certificate.filePath, error);
+    }
   }
 
   await prisma.course.delete({
