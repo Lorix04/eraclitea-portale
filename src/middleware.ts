@@ -27,11 +27,20 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const impersonateAdminId = req.cookies.get(IMPERSONATE_ADMIN_COOKIE)?.value;
   const impersonateClientId = req.cookies.get(IMPERSONATE_CLIENT_COOKIE)?.value;
+  const tokenUserId =
+    (typeof token?.id === "string" && token.id) ||
+    (typeof token?.sub === "string" && token.sub) ||
+    null;
+  const hasImpersonationCookies = Boolean(
+    impersonateAdminId && impersonateClientId
+  );
+  const isImpersonationOwnerMatch =
+    !tokenUserId || impersonateAdminId === tokenUserId;
   const isImpersonatingClient =
     token?.role === "ADMIN" &&
-    typeof token?.id === "string" &&
-    !!impersonateClientId &&
-    impersonateAdminId === token.id;
+    hasImpersonationCookies &&
+    isImpersonationOwnerMatch;
+  const effectiveRole = isImpersonatingClient ? "CLIENT" : token?.role;
 
   if (pathname.startsWith("/api/")) {
     const ip =
@@ -111,13 +120,10 @@ export async function middleware(req: NextRequest) {
   }
 
   if (pathname === "/") {
-    if (isImpersonatingClient) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    if (token?.role === "ADMIN") {
+    if (effectiveRole === "ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
-    if (token?.role === "CLIENT") {
+    if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
@@ -131,26 +137,23 @@ export async function middleware(req: NextRequest) {
     AUTH_ROUTES.includes(pathname) ||
     AUTH_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   ) {
-    if (isImpersonatingClient) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    if (token?.role === "ADMIN") {
+    if (effectiveRole === "ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
-    if (token?.role === "CLIENT") {
+    if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
   }
 
   if (pathname.startsWith("/admin")) {
-    if (isImpersonatingClient) {
+    if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
-    if (token.role !== "ADMIN") {
+    if (effectiveRole !== "ADMIN") {
       return NextResponse.redirect(new URL("/", req.url));
     }
   }
@@ -159,7 +162,7 @@ export async function middleware(req: NextRequest) {
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
-    if (token.role !== "CLIENT" && !isImpersonatingClient) {
+    if (effectiveRole !== "CLIENT") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
   }
