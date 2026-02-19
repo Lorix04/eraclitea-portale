@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const isHttps = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
     const cookieStore = cookies();
     const impersonateAdminId =
       cookieStore.get(IMPERSONATE_ADMIN_COOKIE)?.value ?? null;
@@ -32,14 +33,14 @@ export async function POST(request: Request) {
 
     response.cookies.set(IMPERSONATE_ADMIN_COOKIE, "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       maxAge: 0,
       path: "/",
     });
     response.cookies.set(IMPERSONATE_CLIENT_COOKIE, "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       maxAge: 0,
       path: "/",

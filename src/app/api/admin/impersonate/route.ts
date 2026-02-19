@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
+    const isHttps = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
 
     response.cookies.set(IMPERSONATE_ADMIN_COOKIE, session.user.id, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       maxAge: IMPERSONATE_MAX_AGE_SECONDS,
       path: "/",
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
 
     response.cookies.set(IMPERSONATE_CLIENT_COOKIE, clientUser.id, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       maxAge: IMPERSONATE_MAX_AGE_SECONDS,
       path: "/",
