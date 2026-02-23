@@ -12,7 +12,6 @@ import {
   Pencil,
   Search,
   Send,
-  Settings,
   Star,
   Trash2,
 } from "lucide-react";
@@ -521,29 +520,18 @@ export default function EmailSettingsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Link
-          href="/admin"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          {"<-"} SMTP
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg border bg-card p-2">
-            <Settings className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Configurazione SMTP</h1>
-            <p className="text-sm text-muted-foreground">
-              Configura gli account SMTP per l&apos;invio di email dal portale.
-            </p>
-            <Link
-              href="/admin/impostazioni/email/log"
-              className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
-            >
-              <ListChecks className="h-4 w-4" />
-              Apri log email inviate
-            </Link>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Configurazione SMTP</h1>
+          <p className="text-sm text-muted-foreground">
+            Configura gli account SMTP per l&apos;invio di email dal portale.
+          </p>
+          <Link
+            href="/admin/smtp/log"
+            className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+          >
+            <ListChecks className="h-4 w-4" />
+            Apri log email inviate
+          </Link>
         </div>
       </div>
 

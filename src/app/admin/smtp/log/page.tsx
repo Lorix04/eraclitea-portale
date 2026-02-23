@@ -107,10 +107,10 @@ export default function EmailLogPage() {
     <div className="space-y-6">
       <div className="space-y-2">
         <Link
-          href="/admin/impostazioni/email"
+          href="/admin/smtp"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          {"<-"} Configurazione Email
+          {"<-"} Configurazione SMTP
         </Link>
         <div>
           <h1 className="text-2xl font-bold">Log Email Inviate</h1>
