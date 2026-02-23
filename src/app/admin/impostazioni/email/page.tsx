@@ -525,14 +525,14 @@ export default function EmailSettingsPage() {
           href="/admin"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          {"<-"} Impostazioni
+          {"<-"} SMTP
         </Link>
         <div className="flex items-center gap-3">
           <div className="rounded-lg border bg-card p-2">
             <Settings className="h-5 w-5 text-muted-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Account Email</h1>
+            <h1 className="text-2xl font-bold">Configurazione SMTP</h1>
             <p className="text-sm text-muted-foreground">
               Configura gli account SMTP per l&apos;invio di email dal portale.
             </p>

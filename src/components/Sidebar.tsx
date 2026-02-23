@@ -17,7 +17,7 @@ import {
   LogOut,
   Tag,
   ShieldCheck,
-  Settings,
+  Server,
   UploadCloud,
   Users,
   UserCircle,
@@ -47,7 +47,7 @@ const ADMIN_LINKS = [
   { href: "/admin/export", label: "Export", icon: FileText },
   { href: "/admin/audit", label: "Audit", icon: ShieldCheck },
   { href: "/admin/status", label: "Status", icon: Activity },
-  { href: "/admin/impostazioni/email", label: "Impostazioni", icon: Settings },
+  { href: "/admin/impostazioni/email", label: "SMTP", icon: Server },
 ];
 
 type SidebarProps = {
