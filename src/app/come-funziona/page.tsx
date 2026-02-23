@@ -353,7 +353,7 @@ export default function ComeFunzionaPage() {
             <Image src="/icons/i-down-remove.png" alt="" width={20} height={20} />
             <span className="text-sm tracking-wider text-gray-600 dark:text-white/60">SAPIENTA</span>
           </div>
-          <p className="text-xs text-gray-400 dark:text-white/30">© {new Date().getFullYear()} Sapienta - Ente di Formazione. Tutti i diritti riservati.</p>
+          <p className="text-xs text-gray-400 dark:text-white/30">© {new Date().getFullYear()} Sapienta - Portale Formazione. Tutti i diritti riservati.</p>
           <Link href="/" className="mt-4 inline-flex items-center gap-1 text-xs text-gray-500 dark:text-white/50 transition-colors hover:text-[#EAB308]"><Home className="h-3 w-3" /> Torna alla Home</Link>
         </div>
       </footer>
