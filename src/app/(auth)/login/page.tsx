@@ -56,12 +56,12 @@ export default function LoginPage() {
           <LogIn className="h-6 w-6 text-[#EAB308]" />
         </div>
         <h2
-          className="mb-1 text-xl font-semibold text-white"
+          className="mb-1 text-xl font-semibold text-gray-900 dark:text-white"
           style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
         >
           Accedi
         </h2>
-        <p className="text-sm text-white/40">Inserisci le tue credenziali</p>
+        <p className="text-sm text-gray-500 dark:text-white/40">Inserisci le tue credenziali</p>
       </div>
 
       {error ? (
@@ -72,15 +72,15 @@ export default function LoginPage() {
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-white/60">
+          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
             Email <span className="text-red-400">*</span>
           </label>
           <input
             type="email"
-            className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+            className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 dark:bg-[#111111] dark:text-white dark:placeholder-white/20 ${
               errors.email
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
-                : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
             }`}
             placeholder="nome@azienda.it"
             value={email}
@@ -95,16 +95,16 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-white/60">
+          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
             Password <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 dark:bg-[#111111] dark:text-white dark:placeholder-white/20 ${
                 errors.password
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
-                  : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                  : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
               }`}
               placeholder="••••••••"
               value={password}
@@ -118,7 +118,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-[#EAB308]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40"
               aria-label={showPassword ? "Nascondi password" : "Mostra password"}
             >
               {showPassword ? (
@@ -135,14 +135,14 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-between">
           <label className="group flex cursor-pointer items-center gap-2">
-            <span className="relative">
-              <input
-                type="checkbox"
+              <span className="relative">
+                <input
+                  type="checkbox"
                 checked={rememberMe}
                 onChange={(event) => setRememberMe(event.target.checked)}
-                className="peer sr-only"
-              />
-              <span className="flex h-4 w-4 items-center justify-center rounded border border-white/20 bg-[#111111] transition-all peer-checked:border-[#EAB308] peer-checked:bg-[#EAB308]">
+                  className="peer sr-only"
+                />
+              <span className="flex h-4 w-4 items-center justify-center rounded border border-gray-300 bg-white transition-all peer-checked:border-[#EAB308] peer-checked:bg-[#EAB308] dark:border-white/20 dark:bg-[#111111]">
                 {rememberMe ? (
                   <svg
                     className="h-3 w-3 text-black"
@@ -156,7 +156,7 @@ export default function LoginPage() {
                 ) : null}
               </span>
             </span>
-            <span className="text-xs text-white/40 transition-colors group-hover:text-white/60">
+            <span className="text-xs text-gray-500 transition-colors group-hover:text-gray-700 dark:text-white/40 dark:group-hover:text-white/60">
               Ricordami
             </span>
           </label>

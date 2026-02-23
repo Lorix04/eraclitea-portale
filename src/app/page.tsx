@@ -14,6 +14,7 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Particle = {
   x: number;
@@ -88,7 +89,7 @@ function TiltCard({ children, className = "", disabled = false, onHoverChange }:
   return (
     <div
       ref={cardRef}
-      className={`relative overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#121212] p-7 transition-transform duration-200 ease-out hover:border-[#EAB308]/40 ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-7 shadow-md transition-transform duration-200 ease-out hover:border-gray-300 dark:border-gray-700 dark:bg-[#121212] dark:hover:border-[#EAB308]/40 ${className}`}
       style={{ transform: disabled ? undefined : transform }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => onHoverChange?.(true)}
@@ -317,7 +318,7 @@ export default function LandingPage() {
   return (
     <>
       <div
-        className={`fixed inset-0 z-[9999] flex items-center justify-center bg-[#0A0A0A] transition-opacity duration-500 ${
+        className={`fixed inset-0 z-[9999] flex items-center justify-center bg-gray-100 transition-opacity duration-500 dark:bg-[#0A0A0A] ${
           loaded ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
@@ -340,7 +341,7 @@ export default function LandingPage() {
       <header
         className={`fixed left-0 right-0 top-[2px] z-50 transition-all duration-300 ${
           scrollProgress > 2
-            ? "border-b border-[#EAB308]/10 bg-[#0A0A0A]/80 shadow-lg shadow-black/20 backdrop-blur-md"
+            ? "border-b border-gray-200 bg-white/90 shadow-lg shadow-gray-300/30 backdrop-blur-md dark:border-[#EAB308]/10 dark:bg-[#0A0A0A]/80 dark:shadow-black/20"
             : "bg-transparent"
         }`}
       >
@@ -348,16 +349,17 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Image src="/icons/i-down-remove.png" alt="Sapienta" width={32} height={32} />
             <span
-              className="text-lg font-semibold tracking-[0.2em] text-white"
+              className="text-lg font-semibold tracking-[0.2em] text-gray-900 dark:text-white"
               style={{ fontFamily: "var(--font-landing-display)" }}
             >
               SAPIENTA
             </span>
           </div>
           <div className="flex items-center gap-6">
+            <ThemeToggle />
             <Link
               href="/come-funziona"
-              className="hidden items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-[#EAB308] sm:inline-flex"
+              className="hidden items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-[#EAB308] dark:text-white/70 sm:inline-flex"
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
             >
@@ -376,7 +378,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="relative min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
+      <main className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-[#0A0A0A] dark:text-white">
         <section
           ref={heroRef}
           className="relative flex min-h-screen items-center justify-center px-6 pb-14 pt-24 md:pb-20 md:pt-28"
@@ -410,7 +412,7 @@ export default function LandingPage() {
             </p>
 
             <h1
-              className="reveal-3 text-5xl font-semibold leading-tight text-white md:text-7xl"
+              className="reveal-3 text-5xl font-semibold leading-tight text-gray-900 dark:text-white md:text-7xl"
               style={{
                 fontFamily: "var(--font-landing-display)",
                 letterSpacing: "0.2em",
@@ -420,7 +422,7 @@ export default function LandingPage() {
             </h1>
 
             <p
-              className="reveal-4 mt-7 max-w-3xl text-lg leading-relaxed text-zinc-200 md:text-xl"
+              className="reveal-4 mt-7 max-w-3xl text-lg leading-relaxed text-gray-700 dark:text-zinc-200 md:text-xl"
               style={{ fontFamily: "var(--font-body)" }}
             >
               La tua piattaforma di formazione aziendale. Gestisci corsi, dipendenti e attestati in
@@ -439,7 +441,7 @@ export default function LandingPage() {
 
             <button
               type="button"
-              className="bounce-down reveal-5 pointer-events-auto mt-14 inline-flex items-center gap-2 text-sm tracking-wide text-zinc-300 hover:text-white"
+              className="bounce-down reveal-5 pointer-events-auto mt-14 inline-flex items-center gap-2 text-sm tracking-wide text-gray-600 transition-colors hover:text-gray-900 dark:text-zinc-300 dark:hover:text-white"
               onClick={scrollToNextSection}
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
@@ -459,36 +461,36 @@ export default function LandingPage() {
         >
           <div className="mx-auto w-full max-w-6xl">
             <h2
-              className="mb-5 text-center text-4xl text-white md:text-5xl"
+              className="mb-5 text-center text-4xl text-gray-900 dark:text-white md:text-5xl"
               style={{ fontFamily: "var(--font-landing-display)" }}
             >
               Servizi Premium
             </h2>
-            <p className="mx-auto mb-14 max-w-2xl text-center text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+            <p className="mx-auto mb-14 max-w-2xl text-center text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
               Un ecosistema completo per la formazione professionale aziendale.
             </p>
 
             <div className="grid gap-6 md:grid-cols-3">
-              <TiltCard disabled={isMobile} onHoverChange={setIsHovering} className="shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+              <TiltCard disabled={isMobile} onHoverChange={setIsHovering}>
                 <BookOpen className="mb-5 h-9 w-9 text-[#EAB308]" />
-                <h3 className="mb-3 text-2xl font-semibold text-white">Gestione Corsi</h3>
-                <p className="text-sm leading-relaxed text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+                <h3 className="mb-3 text-2xl font-semibold text-gray-900 dark:text-white">Gestione Corsi</h3>
+                <p className="text-sm leading-relaxed text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                   Organizza edizioni, lezioni e presenze con un flusso operativo semplice e preciso.
                 </p>
               </TiltCard>
 
-              <TiltCard disabled={isMobile} onHoverChange={setIsHovering} className="shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+              <TiltCard disabled={isMobile} onHoverChange={setIsHovering}>
                 <Users className="mb-5 h-9 w-9 text-[#EAB308]" />
-                <h3 className="mb-3 text-2xl font-semibold text-white">Gestione Dipendenti</h3>
-                <p className="text-sm leading-relaxed text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+                <h3 className="mb-3 text-2xl font-semibold text-gray-900 dark:text-white">Gestione Dipendenti</h3>
+                <p className="text-sm leading-relaxed text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                   Centralizza le anagrafiche e collega ogni dipendente ai percorsi formativi corretti.
                 </p>
               </TiltCard>
 
-              <TiltCard disabled={isMobile} onHoverChange={setIsHovering} className="shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+              <TiltCard disabled={isMobile} onHoverChange={setIsHovering}>
                 <Award className="mb-5 h-9 w-9 text-[#EAB308]" />
-                <h3 className="mb-3 text-2xl font-semibold text-white">Attestati e Certificazioni</h3>
-                <p className="text-sm leading-relaxed text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+                <h3 className="mb-3 text-2xl font-semibold text-gray-900 dark:text-white">Attestati e Certificazioni</h3>
+                <p className="text-sm leading-relaxed text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                   Certificati digitali sempre disponibili, tracciabili e pronti per il download.
                 </p>
               </TiltCard>
@@ -504,7 +506,7 @@ export default function LandingPage() {
         >
           <div className="mx-auto w-full max-w-6xl">
             <h2
-              className="mb-12 text-center text-4xl text-white md:text-5xl"
+              className="mb-12 text-center text-4xl text-gray-900 dark:text-white md:text-5xl"
               style={{ fontFamily: "var(--font-landing-display)" }}
             >
               Come Funziona
@@ -537,12 +539,12 @@ export default function LandingPage() {
                     description: "Recupera certificazioni e storico in pochi click, sempre disponibili.",
                   },
                 ].map((step) => (
-                  <div key={step.number} className="relative z-10 rounded-2xl border border-white/10 bg-white/[0.015] p-6 text-center md:px-6">
-                    <div className="relative z-20 mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#EAB308] bg-[#1A1A1A] text-xl font-semibold text-[#EAB308] shadow-[0_0_0_8px_#1A1A1A,0_0_22px_rgba(234,179,8,0.14)]">
+                  <div key={step.number} className="relative z-10 rounded-2xl border border-gray-200 bg-white/[0.015] p-6 text-center shadow-sm dark:border-gray-700 md:px-6">
+                    <div className="relative z-20 mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#EAB308] bg-gray-100 text-xl font-semibold text-[#EAB308] shadow-[0_0_0_4px_#F9FAFB,0_0_22px_rgba(234,179,8,0.14)] dark:border-[#EAB308] dark:bg-[#1A1A1A] dark:shadow-[0_0_0_4px_#1A1A1A,0_0_22px_rgba(234,179,8,0.14)]">
                       {step.number}
                     </div>
-                    <h3 className="mb-2 text-xl font-semibold text-white">{step.title}</h3>
-                    <p className="text-sm text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+                    <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">{step.title}</h3>
+                    <p className="text-sm text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                       {step.description}
                     </p>
                   </div>
@@ -570,26 +572,26 @@ export default function LandingPage() {
           }`}
         >
           <div className="mx-auto grid w-full max-w-6xl gap-10 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.015] p-6 text-center">
+            <div className="rounded-2xl border border-gray-200 bg-white/[0.015] p-6 text-center shadow-sm dark:border-gray-700">
               <Shield className="mx-auto mb-4 h-10 w-10 text-[#EAB308]" />
-              <h3 className="mb-2 text-xl font-semibold text-white">Sicuro e Affidabile</h3>
-              <p className="text-sm text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Sicuro e Affidabile</h3>
+              <p className="text-sm text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                 Dati protetti e backup automatici giornalieri su infrastruttura affidabile.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.015] p-6 text-center">
+            <div className="rounded-2xl border border-gray-200 bg-white/[0.015] p-6 text-center shadow-sm dark:border-gray-700">
               <Clock className="mx-auto mb-4 h-10 w-10 text-[#EAB308]" />
-              <h3 className="mb-2 text-xl font-semibold text-white">Sempre Accessibile</h3>
-              <p className="text-sm text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Sempre Accessibile</h3>
+              <p className="text-sm text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                 Accedi da qualsiasi dispositivo, ovunque ti trovi, in qualunque momento.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.015] p-6 text-center">
+            <div className="rounded-2xl border border-gray-200 bg-white/[0.015] p-6 text-center shadow-sm dark:border-gray-700">
               <Headphones className="mx-auto mb-4 h-10 w-10 text-[#EAB308]" />
-              <h3 className="mb-2 text-xl font-semibold text-white">Supporto Dedicato</h3>
-              <p className="text-sm text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
+              <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">Supporto Dedicato</h3>
+              <p className="text-sm text-gray-600 dark:text-zinc-300" style={{ fontFamily: "var(--font-body)" }}>
                 Un team specializzato ti accompagna in ogni fase operativa.
               </p>
             </div>
@@ -598,18 +600,18 @@ export default function LandingPage() {
 
         <section
           ref={ctaReveal.ref}
-          className={`relative z-10 bg-gradient-to-b from-[#0A0A0A] via-[#111827] to-[#0A0A0A] px-6 py-16 transition-all duration-700 md:py-24 ${
+          className={`relative z-10 bg-gray-900 px-6 py-16 transition-all duration-700 dark:bg-gradient-to-b dark:from-[#0A0A0A] dark:via-[#111827] dark:to-[#0A0A0A] md:py-24 ${
             ctaReveal.isVisible ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
           }`}
         >
-          <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 rounded-3xl border border-white/10 bg-black/20 p-8 text-center md:p-12">
+          <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-lg shadow-black/10 dark:border-white/10 dark:bg-black/20 dark:shadow-none md:p-12">
             <h2
-              className="text-4xl text-white md:text-5xl"
+              className="text-4xl text-gray-900 dark:text-white md:text-5xl"
               style={{ fontFamily: "var(--font-landing-display)" }}
             >
               Sei un nostro cliente?
             </h2>
-            <p className="max-w-2xl text-zinc-200" style={{ fontFamily: "var(--font-body)" }}>
+            <p className="max-w-2xl text-gray-600 dark:text-zinc-200" style={{ fontFamily: "var(--font-body)" }}>
               Accedi al portale per gestire i tuoi corsi di formazione in modo rapido ed elegante.
             </p>
             <MagneticButton
@@ -622,13 +624,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <footer className="relative z-10 border-t border-white/5 py-8">
+        <footer className="relative z-10 border-t border-gray-200 dark:border-white/5 py-8">
           <div className="mx-auto w-full max-w-7xl px-6 text-center">
             <div className="mb-3 flex items-center justify-center gap-2">
               <Image src="/icons/i-down-remove.png" alt="" width={20} height={20} />
-              <span className="text-sm tracking-wider text-white/60">SAPIENTA</span>
+              <span className="text-sm tracking-wider text-gray-600 dark:text-white/60">SAPIENTA</span>
             </div>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-gray-400 dark:text-white/30">
               © {new Date().getFullYear()} Sapienta - Ente di Formazione. Tutti i diritti riservati.
             </p>
           </div>
@@ -637,3 +639,4 @@ export default function LandingPage() {
     </>
   );
 }
+

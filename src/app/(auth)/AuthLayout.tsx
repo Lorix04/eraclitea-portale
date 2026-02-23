@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type AuthLayoutProps = {
   children: React.ReactNode;
@@ -84,11 +85,14 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
   return (
     <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0A0A]"
+      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gray-100 dark:bg-[#0A0A0A]"
       style={{ fontFamily: "var(--font-body)" }}
     >
+      <div className="absolute right-4 top-4 z-30">
+        <ThemeToggle />
+      </div>
       <canvas ref={canvasRef} className="absolute inset-0 z-0" />
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(234,179,8,0.03)_0%,transparent_60%)]" />
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(234,179,8,0.08)_0%,transparent_60%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(234,179,8,0.03)_0%,transparent_60%)]" />
 
       <div
         className={`relative z-10 w-full max-w-md px-6 transition-all duration-700 ease-out ${
@@ -106,21 +110,21 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             />
           </Link>
           <h1
-            className="text-2xl font-bold tracking-[0.15em] text-white"
+            className="text-2xl font-bold tracking-[0.15em] text-gray-900 dark:text-white"
             style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
           >
             SAPIENTA
           </h1>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-[#1A1A1A] p-8 shadow-2xl shadow-black/50">
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-black/50">
           {children}
         </div>
 
         <div className="mt-6 text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-1 text-sm text-white/40 transition-colors hover:text-[#EAB308]"
+            className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40"
           >
             &larr; Torna alla Home
           </Link>
@@ -129,4 +133,3 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
     </div>
   );
 }
-

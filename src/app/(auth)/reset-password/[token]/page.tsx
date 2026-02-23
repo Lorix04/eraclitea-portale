@@ -90,7 +90,7 @@ export default function ResetPasswordPage({
       <AuthLayout>
         <div className="flex flex-col items-center justify-center py-8">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#EAB308] border-t-transparent" />
-          <p className="mt-4 text-sm text-white/50">Verifica del link in corso...</p>
+          <p className="mt-4 text-sm text-gray-500 dark:text-white/50">Verifica del link in corso...</p>
         </div>
       </AuthLayout>
     );
@@ -112,12 +112,12 @@ export default function ResetPasswordPage({
             </svg>
           </div>
           <h2
-            className="text-xl font-semibold text-white"
+            className="text-xl font-semibold text-gray-900 dark:text-white"
             style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
           >
             Link non valido
           </h2>
-          <p className="text-sm text-white/45">Il link di reset e scaduto o non valido.</p>
+          <p className="text-sm text-gray-500 dark:text-white/45">Il link di reset e scaduto o non valido.</p>
           <Link
             href="/recupera-password"
             className="inline-block rounded-lg bg-[#EAB308] px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#FACC15]"
@@ -145,12 +145,12 @@ export default function ResetPasswordPage({
             </svg>
           </div>
           <h2
-            className="text-xl font-semibold text-white"
+            className="text-xl font-semibold text-gray-900 dark:text-white"
             style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
           >
             Password aggiornata!
           </h2>
-          <p className="text-sm text-white/45">Ora puoi accedere con la tua nuova password.</p>
+          <p className="text-sm text-gray-500 dark:text-white/45">Ora puoi accedere con la tua nuova password.</p>
           <Link
             href="/login"
             className="inline-block rounded-lg bg-[#EAB308] px-6 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#FACC15]"
@@ -166,12 +166,12 @@ export default function ResetPasswordPage({
     <AuthLayout>
       <div className="mb-6 text-center">
         <h2
-          className="mb-1 text-xl font-semibold text-white"
+          className="mb-1 text-xl font-semibold text-gray-900 dark:text-white"
           style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
         >
           Nuova Password
         </h2>
-        <p className="text-sm text-white/40">Scegli la tua nuova password</p>
+        <p className="text-sm text-gray-500 dark:text-white/40">Scegli la tua nuova password</p>
       </div>
 
       {error ? (
@@ -182,16 +182,16 @@ export default function ResetPasswordPage({
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-white/60">
+          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
             Nuova password <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
-              className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 dark:bg-[#111111] dark:text-white dark:placeholder-white/20 ${
                 fieldErrors.password
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
-                  : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                  : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
               }`}
               minLength={8}
               placeholder="Almeno 8 caratteri"
@@ -206,7 +206,7 @@ export default function ResetPasswordPage({
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-[#EAB308]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40"
               aria-label={showPassword ? "Nascondi password" : "Mostra password"}
             >
               {showPassword ? (
@@ -222,16 +222,16 @@ export default function ResetPasswordPage({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-white/60">
+          <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
             Conferma password <span className="text-red-400">*</span>
           </label>
           <div className="relative">
             <input
               type={showConfirmPassword ? "text" : "password"}
-              className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 pr-10 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 dark:bg-[#111111] dark:text-white dark:placeholder-white/20 ${
                 fieldErrors.confirmPassword
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
-                  : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                  : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
               }`}
               placeholder="Ripeti la password"
               value={confirmPassword}
@@ -245,7 +245,7 @@ export default function ResetPasswordPage({
             <button
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors hover:text-[#EAB308]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40"
               aria-label={
                 showConfirmPassword
                   ? "Nascondi conferma password"
@@ -296,7 +296,7 @@ export default function ResetPasswordPage({
       </form>
 
       <div className="mt-4 text-center">
-        <Link href="/login" className="text-xs text-white/40 transition-colors hover:text-[#EAB308]">
+        <Link href="/login" className="text-xs text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40">
           &larr; Torna al login
         </Link>
       </div>

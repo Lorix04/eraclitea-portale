@@ -46,12 +46,12 @@ export default function RecuperaPasswordPage() {
     <AuthLayout>
       <div className="mb-6 text-center">
         <h2
-          className="mb-1 text-xl font-semibold text-white"
+          className="mb-1 text-xl font-semibold text-gray-900 dark:text-white"
           style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
         >
           Recupera Password
         </h2>
-        <p className="text-sm text-white/40">Inserisci la tua email per ricevere il link di reset</p>
+        <p className="text-sm text-gray-500 dark:text-white/40">Inserisci la tua email per ricevere il link di reset</p>
       </div>
 
       {isSubmitted ? (
@@ -72,8 +72,8 @@ export default function RecuperaPasswordPage() {
             </svg>
           </div>
           <div>
-            <p className="mb-1 font-medium text-white">Email inviata!</p>
-            <p className="text-sm text-white/40">
+            <p className="mb-1 font-medium text-gray-900 dark:text-white">Email inviata!</p>
+            <p className="text-sm text-gray-500 dark:text-white/40">
               Se l&apos;indirizzo e registrato, riceverai un link per reimpostare la password.
               Controlla anche la cartella spam.
             </p>
@@ -95,15 +95,15 @@ export default function RecuperaPasswordPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-white/60">
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
                 Email <span className="text-red-400">*</span>
               </label>
               <input
                 type="email"
-                className={`w-full rounded-lg border bg-[#111111] px-4 py-2.5 text-sm text-white placeholder-white/20 transition-all focus:outline-none focus:ring-2 ${
+                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all focus:outline-none focus:ring-2 dark:bg-[#111111] dark:text-white dark:placeholder-white/20 ${
                   fieldErrors.email
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
-                    : "border-white/10 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50"
+                    : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
                 }`}
                 placeholder="nome@azienda.it"
                 value={email}
@@ -153,7 +153,7 @@ export default function RecuperaPasswordPage() {
           <div className="mt-4 text-center">
             <Link
               href="/login"
-              className="text-xs text-white/40 transition-colors hover:text-[#EAB308]"
+              className="text-xs text-gray-500 transition-colors hover:text-[#EAB308] dark:text-white/40"
             >
               &larr; Torna al login
             </Link>

@@ -10,6 +10,7 @@ import ClientSearchCommand from "@/components/ClientSearchCommand";
 import SkipLink from "@/components/SkipLink";
 import ClientUserDropdown from "@/components/ClientUserDropdown";
 import ImpersonateBanner from "@/components/ImpersonateBanner";
+import DisableDarkMode from "@/components/DisableDarkMode";
 import { authOptions } from "@/lib/auth";
 import {
   IMPERSONATE_ADMIN_COOKIE,
@@ -104,6 +105,7 @@ export default function DashboardLayout({
 }) {
   return (
     <BrandingProvider>
+      <DisableDarkMode />
       <ImpersonateBanner />
       <div className="app-shell flex min-h-screen">
         <SkipLink />
