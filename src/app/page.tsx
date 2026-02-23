@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -167,17 +167,11 @@ function MagneticButton({ href, children, isMobile, onHoverChange }: MagneticBut
 
 export default function LandingPage() {
   const [loaded, setLoaded] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: -100, y: -100 });
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isHovering, setIsHovering] = useState(false);
+  const [, setIsHovering] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
   const [logoFlash, setLogoFlash] = useState(false);
 
-  const dotRef = useRef<HTMLDivElement | null>(null);
-  const followerRef = useRef<HTMLDivElement | null>(null);
-  const mousePosRef = useRef({ x: -100, y: -100 });
-  const followerPosRef = useRef({ x: -100, y: -100 });
-  const lastSpotlightUpdate = useRef(0);
   const heroRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canvasMouseRef = useRef({ x: 0, y: 0 });
@@ -186,24 +180,6 @@ export default function LandingPage() {
   const processReveal = useScrollReveal<HTMLElement>(0.25);
   const reasonsReveal = useScrollReveal<HTMLElement>();
   const ctaReveal = useScrollReveal<HTMLElement>();
-
-  const handleMouseMove = useCallback((event: React.MouseEvent<HTMLElement>) => {
-    if (isMobile || !loaded) return;
-
-    const x = event.clientX;
-    const y = event.clientY;
-    mousePosRef.current = { x, y };
-
-    if (dotRef.current) {
-      dotRef.current.style.transform = `translate(${x - 4}px, ${y - 4}px)`;
-    }
-
-    const now = Date.now();
-    if (now - lastSpotlightUpdate.current > 50) {
-      lastSpotlightUpdate.current = now;
-      setMousePos({ x, y });
-    }
-  }, [isMobile, loaded]);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoaded(true), 1500);
@@ -244,26 +220,6 @@ export default function LandingPage() {
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  useEffect(() => {
-    if (isMobile || !loaded) return;
-
-    let animationId = 0;
-    const animate = () => {
-      followerPosRef.current.x += (mousePosRef.current.x - followerPosRef.current.x) * 0.15;
-      followerPosRef.current.y += (mousePosRef.current.y - followerPosRef.current.y) * 0.15;
-
-      if (followerRef.current) {
-        const size = followerRef.current.classList.contains("cursor-hovering") ? 64 : 40;
-        followerRef.current.style.transform = `translate(${followerPosRef.current.x - size / 2}px, ${followerPosRef.current.y - size / 2}px)`;
-      }
-
-      animationId = requestAnimationFrame(animate);
-    };
-
-    animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
-  }, [isMobile, loaded]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -381,42 +337,12 @@ export default function LandingPage() {
         style={{ width: `${scrollProgress}%` }}
       />
 
-      {!isMobile ? (
-        <>
-          <div
-            className="pointer-events-none fixed inset-0 z-[1] transition-opacity duration-300"
-            style={{
-              background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(234, 179, 8, 0.04), transparent 40%)`,
-              opacity: loaded ? 1 : 0,
-            }}
-          />
-          <div
-            ref={dotRef}
-            className="pointer-events-none fixed left-0 top-0 z-[10000] h-2 w-2 rounded-full bg-[#EAB308] mix-blend-difference transition-opacity duration-300"
-            style={{ willChange: "transform", transform: "translate(-120px, -120px)", opacity: loaded ? 1 : 0 }}
-          />
-          <div
-            ref={followerRef}
-            className={`pointer-events-none fixed left-0 top-0 rounded-full border border-[#EAB308]/50 transition-[width,height] duration-200 ease-out ${
-              isHovering ? "h-16 w-16 cursor-hovering" : "h-10 w-10"
-            }`}
-            style={{
-              willChange: "transform",
-              transform: "translate(-140px, -140px)",
-              zIndex: 9999,
-              opacity: loaded ? 1 : 0,
-            }}
-          />
-        </>
-      ) : null}
-
       <header
-        onMouseMove={handleMouseMove}
         className={`fixed left-0 right-0 top-[2px] z-50 transition-all duration-300 ${
           scrollProgress > 2
             ? "border-b border-[#EAB308]/10 bg-[#0A0A0A]/80 shadow-lg shadow-black/20 backdrop-blur-md"
             : "bg-transparent"
-        } ${!isMobile ? "cursor-none [&_*]:!cursor-none" : ""}`}
+        }`}
       >
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 md:py-5">
           <div className="flex items-center gap-3">
@@ -450,12 +376,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main
-        onMouseMove={handleMouseMove}
-        className={`relative min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white ${
-          !isMobile ? "cursor-none [&_*]:!cursor-none" : ""
-        }`}
-      >
+      <main className="relative min-h-screen overflow-x-hidden bg-[#0A0A0A] text-white">
         <section
           ref={heroRef}
           className="relative flex min-h-screen items-center justify-center px-6 pb-14 pt-24 md:pb-20 md:pt-28"
