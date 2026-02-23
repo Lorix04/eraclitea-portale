@@ -109,12 +109,6 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               className="glow-pulse mx-auto mb-4"
             />
           </Link>
-          <h1
-            className="text-2xl font-bold tracking-[0.15em] text-gray-900 dark:text-white"
-            style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
-          >
-            SAPIENTA
-          </h1>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-black/50">
