@@ -41,8 +41,8 @@ export default function AdminCorsiPage() {
   const [searchTitle, setSearchTitle] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [visibilityType, setVisibilityType] = useState("all");
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState("title");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
