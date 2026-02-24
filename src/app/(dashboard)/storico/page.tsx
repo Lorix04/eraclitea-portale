@@ -222,7 +222,7 @@ export default function StoricoPage() {
           onChange={(event) => setCategoryId(event.target.value)}
           className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
         >
-          <option value="">Tutte le categorie</option>
+          <option value="">Tutte le aree</option>
           {filterOptions.categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}

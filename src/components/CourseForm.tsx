@@ -228,12 +228,12 @@ export default function CourseForm({
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
-          <span className="font-medium">Categorie</span>
+          <span className="font-medium">Area</span>
           <CategorySelect
             value={form.categoryIds ?? []}
             onChange={(ids) => updateField("categoryIds", ids)}
-            placeholder="Nessuna categoria"
-            searchPlaceholder="Cerca categoria"
+            placeholder="Nessuna area"
+            searchPlaceholder="Cerca area"
           />
         </div>
       </div>
@@ -294,7 +294,7 @@ export default function CourseForm({
               checked={form.visibilityType === "BY_CATEGORY"}
               onChange={() => updateField("visibilityType", "BY_CATEGORY")}
             />
-            Categoria per clienti
+            Area per clienti
           </label>
         </div>
 
@@ -328,15 +328,15 @@ export default function CourseForm({
               }))}
               selectedIds={form.visibilityCategoryIds ?? []}
               onSelectionChange={(ids) => updateField("visibilityCategoryIds", ids)}
-              placeholder="Cerca categoria clienti"
-              emptyMessage="Nessuna categoria disponibile"
+              placeholder="Cerca area clienti"
+              emptyMessage="Nessuna area disponibile"
               maxHeight="250px"
             />
           </div>
         ) : null}
         {form.visibilityType === "BY_CATEGORY" ? (
           <p className="text-xs text-muted-foreground">
-            {selectedCategoryCount} categorie selezionate
+            {selectedCategoryCount} aree selezionate
           </p>
         ) : null}
       </div>

@@ -619,7 +619,7 @@ export function EditCertificateModal({
                               type="text"
                               value={courseSearch}
                               onChange={(event) => setCourseSearch(event.target.value)}
-                              placeholder="Cerca corso o categoria..."
+                              placeholder="Cerca corso o area..."
                               className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm"
                               autoFocus
                             />
@@ -796,4 +796,3 @@ export function EditCertificateModal({
     document.body
   );
 }
-

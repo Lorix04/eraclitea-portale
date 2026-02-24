@@ -34,7 +34,7 @@ const VISIBILITY_BADGE: Record<string, string> = {
 const VISIBILITY_LABELS: Record<string, string> = {
   ALL: "Tutti",
   SELECTED_CLIENTS: "Selezionati",
-  BY_CATEGORY: "Categoria",
+  BY_CATEGORY: "Area",
 };
 
 export default function AdminCorsiPage() {
@@ -187,9 +187,9 @@ export default function AdminCorsiPage() {
             className="rounded-md border bg-background px-3 py-2 text-sm"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            aria-label="Filtro categoria corsi"
+            aria-label="Filtro area corsi"
           >
-            <option value="all">Tutte le categorie</option>
+            <option value="all">Tutte le aree</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -205,7 +205,7 @@ export default function AdminCorsiPage() {
             <option value="all">Tutte le visibilita</option>
             <option value="ALL">Tutti</option>
             <option value="SELECTED_CLIENTS">Clienti selezionati</option>
-            <option value="BY_CATEGORY">Per categoria</option>
+            <option value="BY_CATEGORY">Per area</option>
           </select>
           <select
             className="rounded-md border bg-background px-3 py-2 text-sm"
@@ -250,7 +250,7 @@ export default function AdminCorsiPage() {
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3">Titolo</th>
-              <th className="px-4 py-3">Categorie</th>
+              <th className="px-4 py-3">Area</th>
               <th className="px-4 py-3">Ore</th>
               <th className="px-4 py-3">Visibilita</th>
               <th className="px-4 py-3">Edizioni attive</th>

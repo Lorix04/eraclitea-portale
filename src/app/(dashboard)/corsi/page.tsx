@@ -193,7 +193,7 @@ function ClientCorsiContent() {
           value={categoryFilter}
           onChange={(event) => setCategoryFilter(event.target.value)}
         >
-          <option value="">Tutte le categorie</option>
+          <option value="">Tutte le aree</option>
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}

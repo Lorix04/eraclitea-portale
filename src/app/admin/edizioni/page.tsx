@@ -292,7 +292,7 @@ function AdminEdizioniContent() {
               )
             }
           >
-            <option value="all">Tutte le categorie</option>
+            <option value="all">Tutte le aree</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}

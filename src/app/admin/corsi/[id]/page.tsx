@@ -7,7 +7,7 @@ import VisibilityBadgeList from "@/components/admin/VisibilityBadgeList";
 const VISIBILITY_LABELS: Record<string, string> = {
   ALL: "Tutti",
   SELECTED_CLIENTS: "Clienti selezionati",
-  BY_CATEGORY: "Categoria per clienti",
+  BY_CATEGORY: "Area per clienti",
 };
 
 export default async function AdminCourseDetailPage({
@@ -58,7 +58,7 @@ export default async function AdminCourseDetailPage({
   }));
   const selectedCategories = course.visibilityCategories.map((entry) => ({
     id: entry.categoryId,
-    label: entry.category?.name ?? "Categoria",
+    label: entry.category?.name ?? "Area",
     color: entry.category?.color ?? "#6B7280",
   }));
 
