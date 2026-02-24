@@ -3,16 +3,27 @@ import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import type { EmployeeFormRow } from "@/types";
 
+type SaveRegistrationsPayload = {
+  employees: EmployeeFormRow[];
+  removedEmployeeIds?: string[];
+};
+
 export function useSaveRegistrations(courseEditionId?: string, clientId?: string) {
   const queryClient = useQueryClient();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (employees: EmployeeFormRow[]) => {
+    mutationFn: async (payload: SaveRegistrationsPayload) => {
+      const { employees, removedEmployeeIds = [] } = payload;
       const res = await fetch("/api/anagrafiche", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ courseEditionId, clientId, employees }),
+        body: JSON.stringify({
+          courseEditionId,
+          clientId,
+          employees,
+          removedEmployeeIds,
+        }),
       });
       if (!res.ok) {
         const error = await res.json().catch(() => ({}));
@@ -35,23 +46,23 @@ export function useSaveRegistrations(courseEditionId?: string, clientId?: string
   });
 
   const debouncedSave = useCallback(
-    (employees: EmployeeFormRow[]) => {
+    (employees: EmployeeFormRow[], removedEmployeeIds: string[] = []) => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
       debounceRef.current = setTimeout(() => {
-        mutation.mutate(employees);
+        mutation.mutate({ employees, removedEmployeeIds });
       }, 1000);
     },
     [mutation]
   );
 
   const saveNow = useCallback(
-    (employees: EmployeeFormRow[]) => {
+    (employees: EmployeeFormRow[], removedEmployeeIds: string[] = []) => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-      mutation.mutate(employees);
+      mutation.mutate({ employees, removedEmployeeIds });
     },
     [mutation]
   );

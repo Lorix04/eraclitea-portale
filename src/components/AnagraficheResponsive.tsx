@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import ExcelSheet from "@/components/ExcelSheet";
@@ -37,6 +37,14 @@ type AnagraficheResponsiveProps = {
   readOnly?: boolean;
 };
 
+function getRowEmployeeIds(rows: EmployeeFormRow[]) {
+  return rows
+    .map((row) =>
+      typeof row.employeeId === "string" ? row.employeeId.trim() : ""
+    )
+    .filter((id): id is string => id.length > 0);
+}
+
 export default function AnagraficheResponsive({
   initialData,
   courseEditionId,
@@ -45,6 +53,7 @@ export default function AnagraficheResponsive({
 }: AnagraficheResponsiveProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [rows, setRows] = useState<EmployeeFormRow[]>(initialData);
+  const removedEmployeeIdsRef = useRef<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -56,18 +65,42 @@ export default function AnagraficheResponsive({
 
   useEffect(() => {
     setRows(initialData);
+    removedEmployeeIdsRef.current = [];
   }, [initialData]);
 
   const handleSave = () => {
     setStatus(null);
-    saveNow(rows);
+    const currentIds = new Set(getRowEmployeeIds(rows));
+    const removedEmployeeIds = removedEmployeeIdsRef.current.filter(
+      (employeeId) => !currentIds.has(employeeId)
+    );
+    saveNow(rows, removedEmployeeIds);
     setStatus("Salvato");
   };
 
+  const updateRemovedEmployeeIds = (
+    previousRows: EmployeeFormRow[],
+    nextRows: EmployeeFormRow[]
+  ) => {
+    const nextIds = new Set(getRowEmployeeIds(nextRows));
+    const removedFromCurrentRows = getRowEmployeeIds(previousRows).filter(
+      (employeeId) => !nextIds.has(employeeId)
+    );
+    const carriedRemovedIds = removedEmployeeIdsRef.current.filter(
+      (employeeId) => !nextIds.has(employeeId)
+    );
+    const mergedRemovedIds = Array.from(
+      new Set([...carriedRemovedIds, ...removedFromCurrentRows])
+    );
+    removedEmployeeIdsRef.current = mergedRemovedIds;
+    return mergedRemovedIds;
+  };
+
   const handleChange = (nextRows: EmployeeFormRow[]) => {
+    const removedEmployeeIds = updateRemovedEmployeeIds(rows, nextRows);
     setRows(nextRows);
     if (!readOnly) {
-      debouncedSave(nextRows);
+      debouncedSave(nextRows, removedEmployeeIds);
       setStatus("In compilazione");
     }
   };
@@ -89,7 +122,6 @@ export default function AnagraficheResponsive({
     }
 
     const nextRows = [...rows, ...newEmployees];
-    setRows(nextRows);
     handleChange(nextRows);
     setShowAddModal(false);
     toast.success(`${newEmployees.length} dipendente/i aggiunto/i al foglio`);
@@ -102,7 +134,6 @@ export default function AnagraficheResponsive({
     const nextRows = rows.map((row, idx) =>
       idx === rowIndex ? { ...row, ...extraData } : row
     );
-    setRows(nextRows);
     handleChange(nextRows);
     setEditingRowIndex(null);
     toast.success("Dati aggiuntivi salvati");

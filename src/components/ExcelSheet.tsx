@@ -78,6 +78,10 @@ const emptyRow: EmployeeFormRow = {
 function normalizeRow(input: Record<string, unknown> | EmployeeFormRow): EmployeeFormRow {
   const row = input as Partial<EmployeeFormRow>;
   return {
+    employeeId:
+      typeof row.employeeId === "string" && row.employeeId.trim().length > 0
+        ? row.employeeId.trim()
+        : undefined,
     nome: String(row.nome ?? ""),
     cognome: String(row.cognome ?? ""),
     codiceFiscale: String(row.codiceFiscale ?? ""),
@@ -127,6 +131,15 @@ export default function ExcelSheet({
   const activeToastIdRef = useRef<string | number | null>(null);
 
   const selectedCount = selectedRows.size;
+  const filledRowsCount = useMemo(
+    () =>
+      data.filter((row) => {
+        const nome = String(row.nome ?? "").trim();
+        const cognome = String(row.cognome ?? "").trim();
+        return nome.length > 0 || cognome.length > 0;
+      }).length,
+    [data]
+  );
 
   const columns = useMemo(
     () => [
@@ -550,7 +563,9 @@ export default function ExcelSheet({
               ? `Rimuovi selezionate (${selectedCount})`
               : "Rimuovi selezionate"}
           </button>
-          <span className="ml-auto text-xs text-muted-foreground">{data.length} dipendenti</span>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {filledRowsCount} dipendenti
+          </span>
         </div>
       ) : null}
 

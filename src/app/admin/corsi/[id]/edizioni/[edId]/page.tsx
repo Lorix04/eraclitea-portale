@@ -154,6 +154,7 @@ export default function AdminEditionDetailPage({
       ];
     }
     return registrations.map((reg) => ({
+      employeeId: reg.employee.id,
       nome: reg.employee.nome,
       cognome: reg.employee.cognome,
       codiceFiscale: reg.employee.codiceFiscale,

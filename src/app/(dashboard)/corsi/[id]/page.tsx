@@ -163,6 +163,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       ];
     }
     return course.registrations.map((reg) => ({
+      employeeId: reg.employee.id,
       nome: reg.employee.nome,
       cognome: reg.employee.cognome,
       codiceFiscale: reg.employee.codiceFiscale,

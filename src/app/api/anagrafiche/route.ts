@@ -8,6 +8,7 @@ import { getClientIP, logAudit } from "@/lib/audit";
 import { parseItalianDate } from "@/lib/date-utils";
 
 type EmployeeRow = {
+  employeeId?: string;
   nome?: string;
   cognome?: string;
   codiceFiscale?: string;
@@ -63,6 +64,19 @@ export async function POST(request: Request) {
     );
   }
   const rows: EmployeeRow[] = Array.isArray(body.employees) ? body.employees : [];
+  const removedEmployeeIds: string[] = Array.isArray(body.removedEmployeeIds)
+    ? Array.from(
+        new Set(
+          body.removedEmployeeIds
+            .filter((employeeId: unknown): employeeId is string => {
+              return (
+                typeof employeeId === "string" && employeeId.trim().length > 0
+              );
+            })
+            .map((employeeId: string) => employeeId.trim())
+        )
+      )
+    : [];
   const courseEditionId =
     typeof body.courseEditionId === "string" ? body.courseEditionId : undefined;
   if (courseEditionId) {
@@ -139,7 +153,6 @@ export async function POST(request: Request) {
     }))
     .filter((row) => row.codiceFiscale);
 
-  const savedEmployees = [] as typeof filtered;
   const errors: Array<{ codiceFiscale?: string; field?: string; message: string }> = [];
 
   const results = await Promise.all(
@@ -247,7 +260,6 @@ export async function POST(request: Request) {
             note: String(row.note ?? "").trim() || null,
           },
         });
-        savedEmployees.push(row);
         return employee;
       } catch (_error) {
         errors.push({
@@ -259,18 +271,55 @@ export async function POST(request: Request) {
     })
   );
 
-  const savedResults = results.filter(Boolean) as typeof results;
+  const savedResults = results.filter(
+    (employee): employee is NonNullable<(typeof results)[number]> =>
+      employee !== null
+  );
 
   if (courseEditionId) {
-    await prisma.courseRegistration.createMany({
-      data: savedResults.map((employee) => ({
-        clientId,
-        courseEditionId,
-        employeeId: employee!.id,
-        status: "INSERTED",
-      })),
-      skipDuplicates: true,
-    });
+    if (savedResults.length > 0) {
+      await prisma.courseRegistration.createMany({
+        data: savedResults.map((employee) => ({
+          clientId,
+          courseEditionId,
+          employeeId: employee.id,
+          status: "INSERTED",
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    if (removedEmployeeIds.length > 0) {
+      const currentSavedEmployeeIds = new Set<string>(
+        savedResults
+          .map((employee) => String(employee.id ?? "").trim())
+          .filter((employeeId): employeeId is string => employeeId.length > 0)
+      );
+      const candidateIds = removedEmployeeIds.filter(
+        (employeeId) => !currentSavedEmployeeIds.has(employeeId)
+      );
+
+      if (candidateIds.length > 0) {
+        const validEmployees = await prisma.employee.findMany({
+          where: {
+            clientId,
+            id: { in: candidateIds },
+          },
+          select: { id: true },
+        });
+
+        const validEmployeeIds = validEmployees.map((employee) => employee.id);
+        if (validEmployeeIds.length > 0) {
+          await prisma.courseRegistration.deleteMany({
+            where: {
+              clientId,
+              courseEditionId,
+              employeeId: { in: validEmployeeIds },
+            },
+          });
+        }
+      }
+    }
   }
 
   await logAudit({

@@ -23,6 +23,7 @@ export type AttendanceStatus = "PRESENT" | "ABSENT" | "ABSENT_JUSTIFIED";
 
 /** Tipo per i dati dipendente nel foglio Excel e nei form */
 export type EmployeeFormRow = {
+  employeeId?: string;
   nome: string;
   cognome: string;
   codiceFiscale: string;

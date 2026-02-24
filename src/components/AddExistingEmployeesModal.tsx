@@ -40,6 +40,7 @@ function normalizeCF(value?: string | null) {
 
 function mapToRow(employee: EmployeeItem): EmployeeFormRow {
   return {
+    employeeId: employee.id,
     nome: employee.nome,
     cognome: employee.cognome,
     codiceFiscale: employee.codiceFiscale,
