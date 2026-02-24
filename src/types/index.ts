@@ -36,6 +36,12 @@ export type EmployeeFormRow = {
   indirizzo?: string;
   comuneResidenza?: string;
   cap?: string;
+  provincia?: string;
+  regione?: string;
+  emailAziendale?: string;
+  partitaIva?: string;
+  iban?: string;
+  pec?: string;
   mansione?: string;
   note?: string;
 };
@@ -55,6 +61,12 @@ export interface Employee {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
+  pec?: string | null;
   mansione?: string | null;
   note?: string | null;
   createdAt: Date | string;

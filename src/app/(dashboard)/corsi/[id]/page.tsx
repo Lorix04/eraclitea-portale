@@ -43,6 +43,12 @@ type CourseDetail = {
       indirizzo?: string | null;
       comuneResidenza?: string | null;
       cap?: string | null;
+      provincia?: string | null;
+      regione?: string | null;
+      emailAziendale?: string | null;
+      partitaIva?: string | null;
+      iban?: string | null;
+      pec?: string | null;
       mansione?: string | null;
       note?: string | null;
     };
@@ -157,6 +163,12 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           indirizzo: "",
           comuneResidenza: "",
           cap: "",
+          provincia: "",
+          regione: "",
+          emailAziendale: "",
+          partitaIva: "",
+          iban: "",
+          pec: "",
           mansione: "",
           note: "",
         },
@@ -178,6 +190,12 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       indirizzo: reg.employee.indirizzo ?? "",
       comuneResidenza: reg.employee.comuneResidenza ?? "",
       cap: reg.employee.cap ?? "",
+      provincia: reg.employee.provincia ?? "",
+      regione: reg.employee.regione ?? "",
+      emailAziendale: reg.employee.emailAziendale ?? "",
+      partitaIva: reg.employee.partitaIva ?? "",
+      iban: reg.employee.iban ?? "",
+      pec: reg.employee.pec ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
     }));

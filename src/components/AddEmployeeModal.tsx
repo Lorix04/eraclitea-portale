@@ -12,6 +12,7 @@ import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { decodeCF } from "@/lib/codice-fiscale-decoder";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import { useCodiciCatastali } from "@/hooks/useCodiciCatastali";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -37,6 +38,12 @@ type FormState = {
   indirizzo: string;
   comuneResidenza: string;
   cap: string;
+  provincia: string;
+  regione: string;
+  emailAziendale: string;
+  pec: string;
+  partitaIva: string;
+  iban: string;
   mansione: string;
   note: string;
 };
@@ -55,6 +62,12 @@ const initialForm: FormState = {
   indirizzo: "",
   comuneResidenza: "",
   cap: "",
+  provincia: "",
+  regione: "",
+  emailAziendale: "",
+  pec: "",
+  partitaIva: "",
+  iban: "",
   mansione: "",
   note: "",
 };
@@ -83,6 +96,8 @@ export default function AddEmployeeModal({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { data: codiciCatastali } = useCodiciCatastali();
+  const { province, filterProvince, filterRegioni, getRegioneByProvincia } =
+    useProvinceRegioni();
   const lastDecodedCfRef = useRef("");
   const clientComboboxRef = useRef<HTMLDivElement | null>(null);
 
@@ -167,6 +182,35 @@ export default function AddEmployeeModal({
     }
   };
 
+  const handleProvinciaChange = (value: string) => {
+    const trimmed = value.trim();
+    let provinciaValue = trimmed;
+
+    const labelMatch = trimmed.match(/^(.*?)\s*\(([A-Za-z]{2})\)\s*$/);
+    if (labelMatch?.[1]) {
+      provinciaValue = labelMatch[1].trim();
+    } else {
+      const normalized = trimmed.toLowerCase();
+      const bySigla = province.find(
+        (item) => item.sigla.toLowerCase() === normalized
+      );
+      const byNome = province.find(
+        (item) => item.nome.toLowerCase() === normalized
+      );
+      if (bySigla) provinciaValue = bySigla.nome;
+      if (byNome) provinciaValue = byNome.nome;
+    }
+
+    setForm((prev) => {
+      const next = { ...prev, provincia: provinciaValue };
+      const regione = getRegioneByProvincia(provinciaValue);
+      if (regione) {
+        next.regione = regione;
+      }
+      return next;
+    });
+  };
+
   const decodeFromCF = (value: string) => {
     const normalized = value.trim().toUpperCase();
     if (normalized.length !== 16) return;
@@ -242,6 +286,16 @@ export default function AddEmployeeModal({
     );
   }, [clients, clientSearch]);
 
+  const provinciaSuggestions = useMemo(
+    () => filterProvince(form.provincia || "").slice(0, 30),
+    [filterProvince, form.provincia]
+  );
+
+  const regioneSuggestions = useMemo(
+    () => filterRegioni(form.regione || "").slice(0, 30),
+    [filterRegioni, form.regione]
+  );
+
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -264,6 +318,12 @@ export default function AddEmployeeModal({
           indirizzo: form.indirizzo || null,
           comuneResidenza: form.comuneResidenza.trim(),
           cap: form.cap.trim(),
+          provincia: form.provincia.trim() || null,
+          regione: form.regione.trim() || null,
+          emailAziendale: form.emailAziendale.trim() || null,
+          pec: form.pec.trim() || null,
+          partitaIva: form.partitaIva.trim() || null,
+          iban: form.iban.trim() || null,
           mansione: form.mansione || null,
           note: form.note || null,
         }),
@@ -569,6 +629,44 @@ export default function AddEmployeeModal({
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <FormLabel>Provincia</FormLabel>
+                  <input
+                    list="add-employee-province-options"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={form.provincia}
+                    onChange={(event) => handleProvinciaChange(event.target.value)}
+                    placeholder="Es. Catania o CT"
+                    disabled={saving}
+                  />
+                  <datalist id="add-employee-province-options">
+                    {provinciaSuggestions.map((item) => (
+                      <option
+                        key={`${item.sigla}-${item.nome}`}
+                        value={`${item.nome} (${item.sigla})`}
+                      />
+                    ))}
+                  </datalist>
+                </div>
+                <div className="space-y-2">
+                  <FormLabel>Regione</FormLabel>
+                  <input
+                    list="add-employee-region-options"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={form.regione}
+                    onChange={(event) => updateField("regione", event.target.value)}
+                    placeholder="Es. Sicilia"
+                    disabled={saving}
+                  />
+                  <datalist id="add-employee-region-options">
+                    {regioneSuggestions.map((regione) => (
+                      <option key={regione} value={regione} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
               <div className="rounded-md border bg-muted/20 p-3">
                 <button
                   type="button"
@@ -596,10 +694,42 @@ export default function AddEmployeeModal({
                       disabled={saving}
                     />
                     <input
+                      type="email"
+                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="Email Aziendale (email.aziendale@azienda.it)"
+                      value={form.emailAziendale}
+                      onChange={(event) =>
+                        updateField("emailAziendale", event.target.value)
+                      }
+                      disabled={saving}
+                    />
+                    <input
+                      type="email"
+                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="PEC (nome@pec.it)"
+                      value={form.pec}
+                      onChange={(event) => updateField("pec", event.target.value)}
+                      disabled={saving}
+                    />
+                    <input
                       className="md:col-span-2 rounded-md border bg-background px-3 py-2 text-sm"
                       placeholder="Indirizzo"
                       value={form.indirizzo}
                       onChange={(event) => updateField("indirizzo", event.target.value)}
+                      disabled={saving}
+                    />
+                    <input
+                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="Partita IVA"
+                      value={form.partitaIva}
+                      onChange={(event) => updateField("partitaIva", event.target.value)}
+                      disabled={saving}
+                    />
+                    <input
+                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="IBAN"
+                      value={form.iban}
+                      onChange={(event) => updateField("iban", event.target.value)}
                       disabled={saving}
                     />
                     <input

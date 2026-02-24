@@ -18,6 +18,10 @@ type ExtraFieldsState = {
   telefono: string;
   cellulare: string;
   indirizzo: string;
+  emailAziendale: string;
+  pec: string;
+  partitaIva: string;
+  iban: string;
   mansione: string;
   note: string;
 };
@@ -26,6 +30,10 @@ const emptyState: ExtraFieldsState = {
   telefono: "",
   cellulare: "",
   indirizzo: "",
+  emailAziendale: "",
+  pec: "",
+  partitaIva: "",
+  iban: "",
   mansione: "",
   note: "",
 };
@@ -46,6 +54,10 @@ export default function EmployeeExtraFieldsModal({
       telefono: rowData.telefono ?? "",
       cellulare: rowData.cellulare ?? "",
       indirizzo: rowData.indirizzo ?? "",
+      emailAziendale: rowData.emailAziendale ?? "",
+      pec: rowData.pec ?? "",
+      partitaIva: rowData.partitaIva ?? "",
+      iban: rowData.iban ?? "",
       mansione: rowData.mansione ?? "",
       note: rowData.note ?? "",
     });
@@ -123,6 +135,35 @@ export default function EmployeeExtraFieldsModal({
                       disabled={readOnly}
                     />
                   </label>
+                  <label className="space-y-1 text-sm">
+                    <span>Email aziendale</span>
+                    <input
+                      type="email"
+                      placeholder="email.aziendale@azienda.it"
+                      className="w-full rounded-md border bg-background px-3 py-2"
+                      value={form.emailAziendale}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          emailAziendale: event.target.value,
+                        }))
+                      }
+                      disabled={readOnly}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span>PEC</span>
+                    <input
+                      type="email"
+                      placeholder="nome@pec.it"
+                      className="w-full rounded-md border bg-background px-3 py-2"
+                      value={form.pec}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, pec: event.target.value }))
+                      }
+                      disabled={readOnly}
+                    />
+                  </label>
                 </div>
               </section>
 
@@ -139,6 +180,39 @@ export default function EmployeeExtraFieldsModal({
                     disabled={readOnly}
                   />
                 </label>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold">Dati fiscali</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="space-y-1 text-sm">
+                    <span>Partita IVA</span>
+                    <input
+                      placeholder="01234567890"
+                      className="w-full rounded-md border bg-background px-3 py-2"
+                      value={form.partitaIva}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          partitaIva: event.target.value,
+                        }))
+                      }
+                      disabled={readOnly}
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span>IBAN</span>
+                    <input
+                      placeholder="IT60X0542811101000000123456"
+                      className="w-full rounded-md border bg-background px-3 py-2"
+                      value={form.iban}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, iban: event.target.value }))
+                      }
+                      disabled={readOnly}
+                    />
+                  </label>
+                </div>
               </section>
 
               <section className="space-y-3">

@@ -10,6 +10,10 @@ import { toast } from "sonner";
 import { formatItalianDate, isValidItalianDate } from "@/lib/date-utils";
 import { decodeCF } from "@/lib/codice-fiscale-decoder";
 import { isValidCodiceFiscale } from "@/lib/validators";
+import {
+  useProvinceRegioni,
+  type ProvinciaRegione,
+} from "@/hooks/useProvinceRegioni";
 import type { EmployeeFormRow } from "@/types";
 
 registerAllModules();
@@ -42,6 +46,12 @@ type LookupEmployee = {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
+  pec?: string | null;
   mansione?: string | null;
   note?: string | null;
 };
@@ -71,6 +81,12 @@ const emptyRow: EmployeeFormRow = {
   indirizzo: "",
   comuneResidenza: "",
   cap: "",
+  provincia: "",
+  regione: "",
+  emailAziendale: "",
+  partitaIva: "",
+  iban: "",
+  pec: "",
   mansione: "",
   note: "",
 };
@@ -94,6 +110,12 @@ function normalizeRow(input: Record<string, unknown> | EmployeeFormRow): Employe
     indirizzo: String(row.indirizzo ?? ""),
     comuneResidenza: String(row.comuneResidenza ?? ""),
     cap: String(row.cap ?? ""),
+    provincia: String(row.provincia ?? ""),
+    regione: String(row.regione ?? ""),
+    emailAziendale: String(row.emailAziendale ?? ""),
+    partitaIva: String(row.partitaIva ?? ""),
+    iban: String(row.iban ?? ""),
+    pec: String(row.pec ?? ""),
     mansione: String(row.mansione ?? ""),
     note: String(row.note ?? ""),
   };
@@ -106,12 +128,62 @@ function getExtraStatus(row: EmployeeFormRow | null | undefined) {
     String(row.telefono ?? "").trim() ||
       String(row.cellulare ?? "").trim() ||
       String(row.indirizzo ?? "").trim() ||
+      String(row.emailAziendale ?? "").trim() ||
+      String(row.pec ?? "").trim() ||
+      String(row.partitaIva ?? "").trim() ||
+      String(row.iban ?? "").trim() ||
       String(row.mansione ?? "").trim() ||
       String(row.note ?? "").trim()
   );
 
   if (!hasAnyExtra) return "empty" as const;
   return "complete" as const;
+}
+
+function normalizeProvinciaValue(
+  value: string,
+  province: ProvinciaRegione[]
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const labelMatch = trimmed.match(/^(.*?)\s*\(([A-Za-z]{2})\)\s*$/);
+  if (labelMatch?.[1]) {
+    return labelMatch[1].trim();
+  }
+
+  const normalized = trimmed.toLowerCase();
+  const provinceBySigla = province.find(
+    (item) => item.sigla.toLowerCase() === normalized
+  );
+  if (provinceBySigla) return provinceBySigla.nome;
+
+  const provinceByName = province.find(
+    (item) => item.nome.toLowerCase() === normalized
+  );
+  if (provinceByName) return provinceByName.nome;
+
+  const compactQuery = normalized.replace(/\s+/g, "");
+  const matches = province.filter((item) => {
+    if (item.sigla.toLowerCase().startsWith(compactQuery)) {
+      return true;
+    }
+    const words = item.nome.toLowerCase().split(/[\s'-]+/).filter(Boolean);
+    return words.some((word) => word.startsWith(normalized));
+  });
+  if (matches.length === 1) {
+    return matches[0].nome;
+  }
+
+  return trimmed;
+}
+
+function normalizeRegioneValue(value: string, regioni: string[]): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const normalized = trimmed.toLowerCase();
+  const matched = regioni.find((regione) => regione.toLowerCase() === normalized);
+  return matched ?? trimmed;
 }
 
 export default function ExcelSheet({
@@ -129,6 +201,8 @@ export default function ExcelSheet({
   const lastLookupRef = useRef<string>("");
   const lookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeToastIdRef = useRef<string | number | null>(null);
+  const { province, regioni, filterProvince, filterRegioni, getRegioneByProvincia } =
+    useProvinceRegioni();
 
   const selectedCount = selectedRows.size;
   const filledRowsCount = useMemo(
@@ -253,6 +327,42 @@ export default function ExcelSheet({
         },
       },
       {
+        data: "provincia",
+        title: "Provincia *",
+        type: "autocomplete",
+        strict: false,
+        filter: false,
+        source: (
+          query: string,
+          process: (choices: string[]) => void
+        ) => {
+          const suggestions = filterProvince(String(query ?? ""))
+            .slice(0, 50)
+            .map((item) => `${item.nome} (${item.sigla})`);
+          process(suggestions);
+        },
+        validator: (value: string, callback: (valid: boolean) => void) => {
+          callback(Boolean(String(value ?? "").trim()));
+        },
+      },
+      {
+        data: "regione",
+        title: "Regione *",
+        type: "autocomplete",
+        strict: false,
+        filter: false,
+        source: (
+          query: string,
+          process: (choices: string[]) => void
+        ) => {
+          const suggestions = filterRegioni(String(query ?? "")).slice(0, 50);
+          process(suggestions);
+        },
+        validator: (value: string, callback: (valid: boolean) => void) => {
+          callback(Boolean(String(value ?? "").trim()));
+        },
+      },
+      {
         data: "_altro",
         title: "Altro",
         readOnly: true,
@@ -288,7 +398,7 @@ export default function ExcelSheet({
         },
       },
     ],
-    [readOnly, selectedRows]
+    [filterProvince, filterRegioni, readOnly, selectedRows]
   );
 
   const getNormalizedSourceData = () => {
@@ -504,6 +614,37 @@ export default function ExcelSheet({
                     "autocomplete-fill"
                   );
                   hot.setDataAtRowProp(rowIndex, "cap", employee.cap ?? "", "autocomplete-fill");
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "provincia",
+                    employee.provincia ?? "",
+                    "autocomplete-fill"
+                  );
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "regione",
+                    employee.regione ?? "",
+                    "autocomplete-fill"
+                  );
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "emailAziendale",
+                    employee.emailAziendale ?? "",
+                    "autocomplete-fill"
+                  );
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "partitaIva",
+                    employee.partitaIva ?? "",
+                    "autocomplete-fill"
+                  );
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "iban",
+                    employee.iban ?? "",
+                    "autocomplete-fill"
+                  );
+                  hot.setDataAtRowProp(rowIndex, "pec", employee.pec ?? "", "autocomplete-fill");
                   hot.setDataAtRowProp(rowIndex, "mansione", employee.mansione ?? "", "autocomplete-fill");
                   hot.setDataAtRowProp(rowIndex, "note", employee.note ?? "", "autocomplete-fill");
 
@@ -615,24 +756,80 @@ export default function ExcelSheet({
 
           onChange?.(getNormalizedSourceData());
 
-          if (source === "autocomplete-fill" || source === "cf-decode") {
+          if (
+            source === "autocomplete-fill" ||
+            source === "cf-decode" ||
+            source === "province-autofill"
+          ) {
             return;
           }
 
+          const hot = hotRef.current?.hotInstance;
+          if (!hot) return;
+
           changes.forEach((change) => {
             const [rowIndex, prop, oldValue, newValue] = change;
-            if (prop !== "codiceFiscale") return;
             if (typeof newValue !== "string" || newValue === oldValue) return;
 
-            const normalizedCF = newValue.trim().toUpperCase();
-            if (normalizedCF.length < 16) {
-              lastLookupRef.current = "";
+            if (prop === "codiceFiscale") {
+              const normalizedCF = newValue.trim().toUpperCase();
+              if (normalizedCF.length < 16) {
+                lastLookupRef.current = "";
+                return;
+              }
+
+              applyCFDecode(rowIndex, normalizedCF);
+              if (enableAutocomplete) {
+                triggerAutocompleteLookup(rowIndex, normalizedCF);
+              }
               return;
             }
 
-            applyCFDecode(rowIndex, normalizedCF);
-            if (enableAutocomplete) {
-              triggerAutocompleteLookup(rowIndex, normalizedCF);
+            if (prop === "provincia") {
+              const normalizedProvincia = normalizeProvinciaValue(newValue, province);
+              const currentProvincia = String(
+                hot.getDataAtRowProp(rowIndex, "provincia") ?? ""
+              ).trim();
+              if (currentProvincia !== normalizedProvincia) {
+                hot.setDataAtRowProp(
+                  rowIndex,
+                  "provincia",
+                  normalizedProvincia,
+                  "province-autofill"
+                );
+              }
+
+              const regioneFromProvincia =
+                getRegioneByProvincia(normalizedProvincia || newValue) ?? null;
+              if (regioneFromProvincia) {
+                const currentRegione = String(
+                  hot.getDataAtRowProp(rowIndex, "regione") ?? ""
+                ).trim();
+                if (currentRegione !== regioneFromProvincia) {
+                  hot.setDataAtRowProp(
+                    rowIndex,
+                    "regione",
+                    regioneFromProvincia,
+                    "province-autofill"
+                  );
+                }
+              }
+              return;
+            }
+
+            if (prop === "regione") {
+              const normalizedRegione = normalizeRegioneValue(newValue, regioni);
+              const currentRegione = String(
+                hot.getDataAtRowProp(rowIndex, "regione") ?? ""
+              ).trim();
+              if (currentRegione !== normalizedRegione) {
+                hot.setDataAtRowProp(
+                  rowIndex,
+                  "regione",
+                  normalizedRegione,
+                  "province-autofill"
+                );
+              }
             }
           });
         }}

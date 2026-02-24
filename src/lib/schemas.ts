@@ -138,6 +138,12 @@ export const employeeSchema = z.object({
     .min(1, "Comune di residenza obbligatorio")
     .max(100),
   cap: z.string().trim().min(1, "CAP obbligatorio").max(5),
+  provincia: optionalString(100),
+  regione: optionalString(100),
+  emailAziendale: optionalString(255),
+  pec: optionalString(255),
+  partitaIva: optionalString(20),
+  iban: optionalString(50),
   mansione: optionalString(100),
   note: optionalString(500),
 });

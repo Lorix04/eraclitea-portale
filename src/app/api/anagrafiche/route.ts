@@ -21,6 +21,12 @@ type EmployeeRow = {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
+  pec?: string | null;
   mansione?: string | null;
   note?: string | null;
 };
@@ -162,6 +168,12 @@ export async function POST(request: Request) {
       const sessoRaw = String(row.sesso ?? "").trim().toUpperCase();
       const luogoNascita = String(row.luogoNascita ?? "").trim();
       const emailRaw = String(row.email ?? "").trim();
+      const provincia = String(row.provincia ?? "").trim();
+      const regione = String(row.regione ?? "").trim();
+      const emailAziendale = String(row.emailAziendale ?? "").trim();
+      const partitaIva = String(row.partitaIva ?? "").trim();
+      const iban = String(row.iban ?? "").trim();
+      const pec = String(row.pec ?? "").trim();
       const rawDate = row.dataNascita ? String(row.dataNascita).trim() : "";
 
       const missingFields: string[] = [];
@@ -239,6 +251,12 @@ export async function POST(request: Request) {
             indirizzo: String(row.indirizzo ?? "").trim() || null,
             comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
             cap: String(row.cap ?? "").trim() || null,
+            provincia: provincia || null,
+            regione: regione || null,
+            emailAziendale: emailAziendale || null,
+            partitaIva: partitaIva || null,
+            iban: iban || null,
+            pec: pec || null,
             mansione: String(row.mansione ?? "").trim() || null,
             note: String(row.note ?? "").trim() || null,
           },
@@ -256,6 +274,12 @@ export async function POST(request: Request) {
             indirizzo: String(row.indirizzo ?? "").trim() || null,
             comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
             cap: String(row.cap ?? "").trim() || null,
+            provincia: provincia || null,
+            regione: regione || null,
+            emailAziendale: emailAziendale || null,
+            partitaIva: partitaIva || null,
+            iban: iban || null,
+            pec: pec || null,
             mansione: String(row.mansione ?? "").trim() || null,
             note: String(row.note ?? "").trim() || null,
           },

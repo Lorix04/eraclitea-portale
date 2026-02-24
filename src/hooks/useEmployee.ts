@@ -15,6 +15,12 @@ type EmployeeDetail = {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  pec?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
   mansione?: string | null;
   note?: string | null;
   client?: { id: string; ragioneSociale: string };

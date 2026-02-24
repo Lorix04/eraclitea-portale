@@ -26,6 +26,12 @@ const emptyRow: EmployeeFormRow = {
   indirizzo: "",
   comuneResidenza: "",
   cap: "",
+  provincia: "",
+  regione: "",
+  emailAziendale: "",
+  partitaIva: "",
+  iban: "",
+  pec: "",
   mansione: "",
   note: "",
 };

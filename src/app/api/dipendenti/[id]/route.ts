@@ -42,6 +42,12 @@ const updateSchema = z.object({
     .min(1, "Comune di residenza obbligatorio")
     .max(100),
   cap: z.string().trim().min(1, "CAP obbligatorio").max(5),
+  provincia: optionalString(100),
+  regione: optionalString(100),
+  emailAziendale: optionalString(255),
+  pec: optionalString(255),
+  partitaIva: optionalString(20),
+  iban: optionalString(50),
   mansione: optionalString(100),
   note: optionalString(500),
 });
@@ -156,6 +162,14 @@ export async function PUT(
       indirizzo: toNullableField(payload.indirizzo as string | null | undefined),
       comuneResidenza: payload.comuneResidenza,
       cap: payload.cap,
+      provincia: toNullableField(payload.provincia as string | null | undefined),
+      regione: toNullableField(payload.regione as string | null | undefined),
+      emailAziendale: toNullableField(
+        payload.emailAziendale as string | null | undefined
+      ),
+      pec: toNullableField(payload.pec as string | null | undefined),
+      partitaIva: toNullableField(payload.partitaIva as string | null | undefined),
+      iban: toNullableField(payload.iban as string | null | undefined),
       mansione: toNullableField(payload.mansione as string | null | undefined),
       luogoNascita: payload.luogoNascita,
       note: toNullableField(payload.note as string | null | undefined),

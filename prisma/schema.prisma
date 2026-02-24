@@ -208,6 +208,12 @@ model Employee {
   indirizzo     String?
   comuneResidenza String?
   cap           String?
+  provincia     String?
+  regione       String?
+  emailAziendale String?
+  partitaIva    String?
+  iban          String?
+  pec           String?
   mansione      String?
   note          String?
   createdAt     DateTime  @default(now())

@@ -39,6 +39,12 @@ type LookupEmployee = {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
+  pec?: string | null;
   mansione?: string | null;
   note?: string | null;
 };
@@ -56,6 +62,12 @@ const emptyRow: EmployeeFormRow = {
   indirizzo: "",
   comuneResidenza: "",
   cap: "",
+  provincia: "",
+  regione: "",
+  emailAziendale: "",
+  partitaIva: "",
+  iban: "",
+  pec: "",
   mansione: "",
   note: "",
 };
@@ -173,6 +185,13 @@ export default function EmployeeCardForm({
       comuneResidenza:
         lookupSuggestion.comuneResidenza ?? prev.comuneResidenza ?? "",
       cap: lookupSuggestion.cap ?? prev.cap ?? "",
+      provincia: lookupSuggestion.provincia ?? prev.provincia ?? "",
+      regione: lookupSuggestion.regione ?? prev.regione ?? "",
+      emailAziendale:
+        lookupSuggestion.emailAziendale ?? prev.emailAziendale ?? "",
+      partitaIva: lookupSuggestion.partitaIva ?? prev.partitaIva ?? "",
+      iban: lookupSuggestion.iban ?? prev.iban ?? "",
+      pec: lookupSuggestion.pec ?? prev.pec ?? "",
       mansione: lookupSuggestion.mansione ?? prev.mansione ?? "",
       note: lookupSuggestion.note ?? prev.note ?? "",
     }));

@@ -21,6 +21,12 @@ type EmployeeItem = {
   indirizzo?: string | null;
   comuneResidenza?: string | null;
   cap?: string | null;
+  provincia?: string | null;
+  regione?: string | null;
+  emailAziendale?: string | null;
+  partitaIva?: string | null;
+  iban?: string | null;
+  pec?: string | null;
   mansione?: string | null;
   note?: string | null;
 };
@@ -55,6 +61,12 @@ function mapToRow(employee: EmployeeItem): EmployeeFormRow {
     indirizzo: employee.indirizzo ?? "",
     comuneResidenza: employee.comuneResidenza ?? "",
     cap: employee.cap ?? "",
+    provincia: employee.provincia ?? "",
+    regione: employee.regione ?? "",
+    emailAziendale: employee.emailAziendale ?? "",
+    partitaIva: employee.partitaIva ?? "",
+    iban: employee.iban ?? "",
+    pec: employee.pec ?? "",
     mansione: employee.mansione ?? "",
     note: employee.note ?? "",
   };

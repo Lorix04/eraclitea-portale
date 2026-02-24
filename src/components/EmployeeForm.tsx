@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { formatItalianDate } from "@/lib/date-utils";
 import { BrandedButton } from "@/components/BrandedButton";
@@ -8,6 +8,7 @@ import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { isValidCodiceFiscale } from "@/lib/validators";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
 export type EmployeeFormData = {
   nome: string;
@@ -20,6 +21,12 @@ export type EmployeeFormData = {
   indirizzo: string;
   comuneResidenza: string;
   cap: string;
+  provincia: string;
+  regione: string;
+  emailAziendale: string;
+  pec: string;
+  partitaIva: string;
+  iban: string;
   mansione: string;
   luogoNascita: string;
   note: string;
@@ -38,6 +45,12 @@ type EmployeeFormProps = {
     indirizzo?: string | null;
     comuneResidenza?: string | null;
     cap?: string | null;
+    provincia?: string | null;
+    regione?: string | null;
+    emailAziendale?: string | null;
+    pec?: string | null;
+    partitaIva?: string | null;
+    iban?: string | null;
     mansione?: string | null;
     luogoNascita?: string | null;
     note?: string | null;
@@ -60,6 +73,12 @@ function normalizeForm(employee?: EmployeeFormProps["employee"]): EmployeeFormDa
     indirizzo: employee?.indirizzo ?? "",
     comuneResidenza: employee?.comuneResidenza ?? "",
     cap: employee?.cap ?? "",
+    provincia: employee?.provincia ?? "",
+    regione: employee?.regione ?? "",
+    emailAziendale: employee?.emailAziendale ?? "",
+    pec: employee?.pec ?? "",
+    partitaIva: employee?.partitaIva ?? "",
+    iban: employee?.iban ?? "",
     mansione: employee?.mansione ?? "",
     luogoNascita: employee?.luogoNascita ?? "",
     note: employee?.note ?? "",
@@ -79,6 +98,8 @@ export default function EmployeeForm({
 }: EmployeeFormProps) {
   const [form, setForm] = useState<EmployeeFormData>(normalizeForm(employee));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { province, filterProvince, filterRegioni, getRegioneByProvincia } =
+    useProvinceRegioni();
 
   useEffect(() => {
     setForm(normalizeForm(employee));
@@ -90,6 +111,44 @@ export default function EmployeeForm({
       setErrors((prev) => ({ ...prev, [key]: "" }));
     }
   };
+
+  const handleProvinciaChange = (value: string) => {
+    const trimmed = value.trim();
+    let provinciaValue = trimmed;
+
+    const labelMatch = trimmed.match(/^(.*?)\s*\(([A-Za-z]{2})\)\s*$/);
+    if (labelMatch?.[1]) {
+      provinciaValue = labelMatch[1].trim();
+    } else {
+      const normalized = trimmed.toLowerCase();
+      const bySigla = province.find(
+        (item) => item.sigla.toLowerCase() === normalized
+      );
+      const byNome = province.find(
+        (item) => item.nome.toLowerCase() === normalized
+      );
+      if (bySigla) provinciaValue = bySigla.nome;
+      if (byNome) provinciaValue = byNome.nome;
+    }
+
+    setForm((prev) => {
+      const next = { ...prev, provincia: provinciaValue };
+      const regione = getRegioneByProvincia(provinciaValue);
+      if (regione) {
+        next.regione = regione;
+      }
+      return next;
+    });
+  };
+
+  const provinciaSuggestions = useMemo(
+    () => filterProvince(form.provincia || "").slice(0, 30),
+    [filterProvince, form.provincia]
+  );
+  const regioneSuggestions = useMemo(
+    () => filterRegioni(form.regione || "").slice(0, 30),
+    [filterRegioni, form.regione]
+  );
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -264,6 +323,42 @@ export default function EmployeeForm({
         </label>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Provincia</FormLabel>
+          <input
+            list="employee-form-province-options"
+            className="rounded-md border bg-background px-3 py-2"
+            value={form.provincia}
+            onChange={(event) => handleProvinciaChange(event.target.value)}
+            placeholder="Es. Catania o CT"
+          />
+          <datalist id="employee-form-province-options">
+            {provinciaSuggestions.map((item) => (
+              <option
+                key={`${item.sigla}-${item.nome}`}
+                value={`${item.nome} (${item.sigla})`}
+              />
+            ))}
+          </datalist>
+        </label>
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Regione</FormLabel>
+          <input
+            list="employee-form-region-options"
+            className="rounded-md border bg-background px-3 py-2"
+            value={form.regione}
+            onChange={(event) => updateField("regione", event.target.value)}
+            placeholder="Es. Sicilia"
+          />
+          <datalist id="employee-form-region-options">
+            {regioneSuggestions.map((regione) => (
+              <option key={regione} value={regione} />
+            ))}
+          </datalist>
+        </label>
+      </div>
+
       <div className="space-y-3 rounded-md border bg-muted/20 p-4">
         <h3 className="text-sm font-semibold">Contatti</h3>
         <div className="grid gap-4 md:grid-cols-2">
@@ -283,6 +378,28 @@ export default function EmployeeForm({
               onChange={(event) => updateField("cellulare", event.target.value)}
             />
           </label>
+          <label className="flex flex-col gap-2 text-sm">
+            <FormLabel>Email Aziendale</FormLabel>
+            <input
+              type="email"
+              className="rounded-md border bg-background px-3 py-2"
+              value={form.emailAziendale}
+              onChange={(event) =>
+                updateField("emailAziendale", event.target.value)
+              }
+              placeholder="email.aziendale@azienda.it"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm">
+            <FormLabel>PEC</FormLabel>
+            <input
+              type="email"
+              className="rounded-md border bg-background px-3 py-2"
+              value={form.pec}
+              onChange={(event) => updateField("pec", event.target.value)}
+              placeholder="nome@pec.it"
+            />
+          </label>
         </div>
       </div>
 
@@ -296,6 +413,30 @@ export default function EmployeeForm({
             onChange={(event) => updateField("indirizzo", event.target.value)}
           />
         </label>
+      </div>
+
+      <div className="space-y-3 rounded-md border bg-muted/20 p-4">
+        <h3 className="text-sm font-semibold">Dati fiscali</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex flex-col gap-2 text-sm">
+            <FormLabel>Partita IVA</FormLabel>
+            <input
+              className="rounded-md border bg-background px-3 py-2"
+              value={form.partitaIva}
+              onChange={(event) => updateField("partitaIva", event.target.value)}
+              placeholder="01234567890"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm">
+            <FormLabel>IBAN</FormLabel>
+            <input
+              className="rounded-md border bg-background px-3 py-2"
+              value={form.iban}
+              onChange={(event) => updateField("iban", event.target.value)}
+              placeholder="IT60X0542811101000000123456"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="space-y-3 rounded-md border bg-muted/20 p-4">
