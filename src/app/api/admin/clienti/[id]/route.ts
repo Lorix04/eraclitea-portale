@@ -141,7 +141,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions);
@@ -149,23 +149,95 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.client.update({
-      where: { id: context.params.id },
-      data: { isActive: false },
-    });
-
-    await tx.user.updateMany({
-      where: { clientId: context.params.id, role: "CLIENT" },
-      data: { isActive: false },
-    });
+  const client = await prisma.client.findUnique({
+    where: { id: context.params.id },
+    select: {
+      id: true,
+      ragioneSociale: true,
+      _count: {
+        select: {
+          employees: true,
+          editions: true,
+          registrations: true,
+          certificates: true,
+        },
+      },
+    },
   });
+
+  if (!client) {
+    return NextResponse.json({ error: "Cliente non trovato" }, { status: 404 });
+  }
+
+  if (client._count.employees > 0 || client._count.editions > 0) {
+    return NextResponse.json(
+      {
+        error: `Impossibile eliminare: il cliente ha ${client._count.employees} dipendenti e ${client._count.editions} corsi associati`,
+      },
+      { status: 409 }
+    );
+  }
+
+  if (client._count.registrations > 0 || client._count.certificates > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "Impossibile eliminare: il cliente ha registrazioni o attestati associati",
+      },
+      { status: 409 }
+    );
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const users = await tx.user.findMany({
+        where: { clientId: context.params.id },
+        select: { id: true },
+      });
+      const userIds = users.map((user) => user.id);
+
+      if (userIds.length > 0) {
+        await tx.auditLog.deleteMany({
+          where: { userId: { in: userIds } },
+        });
+        await tx.user.deleteMany({
+          where: { id: { in: userIds } },
+        });
+      }
+
+      await tx.clientCategory.deleteMany({
+        where: { clientId: context.params.id },
+      });
+
+      await tx.courseVisibility.deleteMany({
+        where: { clientId: context.params.id },
+      });
+
+      await tx.notificationRead.deleteMany({
+        where: { clientId: context.params.id },
+      });
+
+      await tx.client.delete({
+        where: { id: context.params.id },
+      });
+    });
+  } catch (error) {
+    console.error("[ADMIN_CLIENT_DELETE] Error:", error);
+    return NextResponse.json(
+      {
+        error:
+          "Impossibile eliminare il cliente: sono presenti dati collegati",
+      },
+      { status: 409 }
+    );
+  }
 
   await logAudit({
     userId: session.user.id,
     action: "CLIENT_TOGGLE_STATUS",
     entityType: "Client",
     entityId: context.params.id,
+    ipAddress: getClientIP(request),
   });
 
   return NextResponse.json({ ok: true });

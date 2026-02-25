@@ -113,14 +113,26 @@ export default function AdminClientiPage() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/admin/clienti/${id}`, { method: "DELETE" });
-    loadClients();
+    const res = await fetch(`/api/clienti/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || "Errore durante l'eliminazione del cliente");
+    }
+    await loadClients();
   };
 
   const handleConfirmDelete = async () => {
     if (!confirmClient) return;
-    await handleDelete(confirmClient.id);
-    setConfirmClient(null);
+    try {
+      await handleDelete(confirmClient.id);
+      setConfirmClient(null);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Errore durante l'eliminazione del cliente";
+      window.alert(message);
+    }
   };
 
   const handleImpersonate = async (client: ClientRow) => {
@@ -369,11 +381,11 @@ export default function AdminClientiPage() {
               <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
                 <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Vuoi eliminare il cliente{" "}
+                  Sei sicuro di voler eliminare il cliente{" "}
                   <span className="font-medium text-foreground">
                     {confirmClient.ragioneSociale}
                   </span>
-                  ? L&apos;azione disattiva il cliente e l&apos;utente associato.
+                  ? Questa azione è irreversibile.
                 </p>
                 <div className="mt-6 flex justify-end gap-3">
                   <button
