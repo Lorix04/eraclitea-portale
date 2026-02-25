@@ -41,7 +41,7 @@ function ClientDipendentiContent() {
   const initialSearch = searchParams.get("search") ?? "";
   const initialEdition = searchParams.get("editionId") ?? "";
   const initialCertStatus = searchParams.get("certStatus") ?? "all";
-  const initialSortOrder = searchParams.get("sortOrder") ?? "desc";
+  const initialSortOrder = searchParams.get("sortOrder") ?? "asc";
   const initialPage = Math.max(1, Number(searchParams.get("page") ?? "1"));
 
   const [search, setSearch] = useState(initialSearch);
@@ -68,7 +68,7 @@ function ClientDipendentiContent() {
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (editionId) params.set("editionId", editionId);
     if (certStatus && certStatus !== "all") params.set("certStatus", certStatus);
-    if (sortOrder && sortOrder !== "desc") params.set("sortOrder", sortOrder);
+    if (sortOrder && sortOrder !== "asc") params.set("sortOrder", sortOrder);
     if (page > 1) params.set("page", String(page));
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
@@ -151,9 +151,22 @@ function ClientDipendentiContent() {
     }
 
     const sorted = [...items].sort((a, b) => {
-      const dateA = new Date(a.createdAt ?? 0).getTime();
-      const dateB = new Date(b.createdAt ?? 0).getTime();
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      const cognomeA = (a.cognome ?? "").trim();
+      const cognomeB = (b.cognome ?? "").trim();
+      const nomeA = (a.nome ?? "").trim();
+      const nomeB = (b.nome ?? "").trim();
+
+      const byCognome = cognomeA.localeCompare(cognomeB, "it", {
+        sensitivity: "base",
+      });
+      if (byCognome !== 0) {
+        return sortOrder === "asc" ? byCognome : -byCognome;
+      }
+
+      const byNome = nomeA.localeCompare(nomeB, "it", {
+        sensitivity: "base",
+      });
+      return sortOrder === "asc" ? byNome : -byNome;
     });
 
     return sorted;
@@ -178,7 +191,7 @@ function ClientDipendentiContent() {
     setSearch("");
     setEditionId("");
     setCertStatus("all");
-    setSortOrder("desc");
+    setSortOrder("asc");
     setPage(1);
   };
 
@@ -308,8 +321,8 @@ function ClientDipendentiContent() {
             onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
             aria-label="Ordinamento dipendenti"
           >
-            <option value="desc">Piu recenti</option>
-            <option value="asc">Piu vecchi</option>
+            <option value="asc">Nome A-Z</option>
+            <option value="desc">Nome Z-A</option>
           </select>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-muted-foreground">
