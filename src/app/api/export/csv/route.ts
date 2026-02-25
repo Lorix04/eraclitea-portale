@@ -8,6 +8,30 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { Prisma, RegistrationStatus } from "@prisma/client";
 import * as XLSX from "xlsx";
 
+const EMPLOYEE_EXPORT_COLUMNS = [
+  "cognome",
+  "nome",
+  "sesso",
+  "nascita",
+  "comune_nasc",
+  "indirizzo",
+  "regione",
+  "provincia",
+  "comune",
+  "cap",
+  "cod_fiscale",
+  "professione",
+  "telefono",
+  "cellulare",
+  "email",
+  "email_aziendale",
+  "partita_IVA",
+  "IBAN",
+  "ndipendenti",
+  "fondo_interprof",
+  "pec",
+] as const;
+
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
@@ -104,21 +128,54 @@ export async function GET(request: Request) {
 
     const employees = await prisma.employee.findMany({
       where,
-      include: { client: true, _count: { select: { registrations: true } } },
+      select: {
+        cognome: true,
+        nome: true,
+        sesso: true,
+        dataNascita: true,
+        luogoNascita: true,
+        indirizzo: true,
+        regione: true,
+        provincia: true,
+        comuneResidenza: true,
+        cap: true,
+        codiceFiscale: true,
+        mansione: true,
+        telefono: true,
+        cellulare: true,
+        email: true,
+        emailAziendale: true,
+        partitaIva: true,
+        iban: true,
+        pec: true,
+      },
       orderBy: { cognome: "asc" },
       take: preview ? limit : undefined,
     });
 
+    const toValue = (value: string | null | undefined) => value ?? "";
     rows = employees.map((employee) => ({
-      Nome: employee.nome,
-      Cognome: employee.cognome,
-      "Codice Fiscale": employee.codiceFiscale,
-      Email: employee.email || "",
-      Mansione: employee.mansione || "",
-      Cliente: employee.client?.ragioneSociale || "",
-      "Data Nascita": formatItalianDate(employee.dataNascita),
-      "Numero Corsi": employee._count?.registrations ?? 0,
-      "Creato Il": formatItalianDate(employee.createdAt),
+      cognome: toValue(employee.cognome),
+      nome: toValue(employee.nome),
+      sesso: toValue(employee.sesso),
+      nascita: formatItalianDate(employee.dataNascita),
+      comune_nasc: toValue(employee.luogoNascita),
+      indirizzo: toValue(employee.indirizzo),
+      regione: toValue(employee.regione),
+      provincia: toValue(employee.provincia),
+      comune: toValue(employee.comuneResidenza),
+      cap: toValue(employee.cap),
+      cod_fiscale: toValue(employee.codiceFiscale),
+      professione: toValue(employee.mansione),
+      telefono: toValue(employee.telefono),
+      cellulare: toValue(employee.cellulare),
+      email: toValue(employee.email),
+      email_aziendale: toValue(employee.emailAziendale),
+      partita_IVA: toValue(employee.partitaIva),
+      IBAN: toValue(employee.iban),
+      ndipendenti: "",
+      fondo_interprof: "",
+      pec: toValue(employee.pec),
     }));
   } else if (exportType === "certificates") {
     const where: Prisma.CertificateWhereInput = {
@@ -222,13 +279,14 @@ export async function GET(request: Request) {
     });
   }
 
-  const BOM = "\uFEFF";
-  const csv =
-    BOM +
-    stringify(rows, {
-      header: includeHeader,
-      delimiter: separator,
-    });
+  const isEmployeesExport = exportType === "employees";
+  const csvRaw = stringify(rows, {
+    header: includeHeader,
+    delimiter: isEmployeesExport ? ";" : separator,
+    record_delimiter: isEmployeesExport ? "\r\n" : undefined,
+    columns: isEmployeesExport ? EMPLOYEE_EXPORT_COLUMNS : undefined,
+  });
+  const csv = isEmployeesExport ? csvRaw : `\uFEFF${csvRaw}`;
 
   await logAudit({
     userId: session.user.id,

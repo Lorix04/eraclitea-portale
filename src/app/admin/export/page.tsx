@@ -16,6 +16,16 @@ type Client = {
   ragioneSociale: string;
 };
 
+const EMPLOYEE_PREVIEW_COLUMNS = [
+  "cognome",
+  "nome",
+  "cod_fiscale",
+  "email",
+  "nascita",
+  "comune_nasc",
+  "sesso",
+] as const;
+
 export default function AdminExportPage() {
   const [editions, setEditions] = useState<Edition[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -25,6 +35,7 @@ export default function AdminExportPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [format, setFormat] = useState("csv");
+  const [previewLimit, setPreviewLimit] = useState(10);
   const [rows, setRows] = useState<Record<string, string | number>[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
@@ -53,9 +64,9 @@ export default function AdminExportPage() {
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     params.set("preview", "1");
-    params.set("limit", "10");
+    params.set("limit", String(previewLimit));
     return `/api/export/csv?${params.toString()}`;
-  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo]);
+  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo, previewLimit]);
 
   const downloadUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -128,6 +139,12 @@ export default function AdminExportPage() {
     exportType
   );
   const showEditionFilter = ["registrations", "certificates"].includes(exportType);
+  const previewColumns = useMemo(() => {
+    if (exportType === "employees") return [...EMPLOYEE_PREVIEW_COLUMNS];
+    return rows[0] ? Object.keys(rows[0]) : [];
+  }, [exportType, rows]);
+  const previewColumnCount = Math.max(previewColumns.length, 1);
+  const shownPreviewCount = loadingPreview ? previewLimit : rows.length;
 
   return (
     <div className="space-y-6">
@@ -234,25 +251,50 @@ export default function AdminExportPage() {
       ) : null}
 
       <div className="rounded-lg border bg-card p-4">
-        <p className="text-sm font-medium">Anteprima (ultimi 10 record)</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-sm font-medium">Anteprima (ultimi {shownPreviewCount} record)</p>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Mostra:</span>
+              <select
+                className="rounded-md border bg-background px-2 py-1 text-xs"
+                value={previewLimit}
+                onChange={(event) => setPreviewLimit(Number(event.target.value))}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>record</span>
+            </label>
+          </div>
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+            onClick={handleExport}
+            disabled={loadingExport}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {loadingExport ? "Esportazione..." : "Esporta"}
+          </button>
+        </div>
         <div className="mt-3 overflow-auto">
           <table className="min-w-full text-xs">
             <thead>
               <tr>
-                {rows[0]
-                  ? Object.keys(rows[0]).map((key) => (
-                      <th key={key} className="px-2 py-1 text-left text-muted-foreground">
-                        {key}
-                      </th>
-                    ))
-                  : null}
+                {previewColumns.map((key) => (
+                  <th key={key} className="px-2 py-1 text-left text-muted-foreground">
+                    {key}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loadingPreview ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <tr key={`preview-skeleton-${index}`} className="border-t">
-                    {Array.from({ length: 6 }).map((__, col) => (
+                    {Array.from({ length: previewColumnCount }).map((__, col) => (
                       <td key={col} className="px-2 py-2">
                         <Skeleton className="h-3 w-full" />
                       </td>
@@ -261,16 +303,16 @@ export default function AdminExportPage() {
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-2 py-3 text-muted-foreground" colSpan={6}>
+                  <td className="px-2 py-3 text-muted-foreground" colSpan={previewColumnCount}>
                     Nessun dato.
                   </td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr key={idx} className="border-t">
-                    {Object.values(row).map((value, cidx) => (
-                      <td key={cidx} className="px-2 py-1">
-                        {value}
+                    {previewColumns.map((columnKey) => (
+                      <td key={columnKey} className="px-2 py-1">
+                        {row[columnKey] ?? ""}
                       </td>
                     ))}
                   </tr>
@@ -280,16 +322,6 @@ export default function AdminExportPage() {
           </table>
         </div>
       </div>
-
-      <button
-        type="button"
-        className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        onClick={handleExport}
-        disabled={loadingExport}
-      >
-        <Download className="mr-2 h-4 w-4" />
-        {loadingExport ? "Esportazione..." : "Esporta"}
-      </button>
     </div>
   );
 }
