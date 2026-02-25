@@ -106,9 +106,15 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               alt="Sapienta"
               width={80}
               height={80}
-              className="glow-pulse mx-auto mb-4"
+              className="glow-pulse mx-auto"
             />
           </Link>
+          <p
+            className="mt-2 text-xl font-semibold uppercase tracking-[0.3em] text-gray-900 dark:text-gray-100"
+            style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}
+          >
+            SAPIENTA
+          </p>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-[#1A1A1A] dark:shadow-black/50">
