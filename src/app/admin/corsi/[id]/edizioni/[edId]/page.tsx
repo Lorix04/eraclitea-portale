@@ -15,6 +15,7 @@ import {
   Plus,
   Save,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BrandedTabs } from "@/components/BrandedTabs";
@@ -31,6 +32,7 @@ import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
 const AnagraficheResponsive = dynamic(
   () => import("@/components/AnagraficheResponsive"),
@@ -137,6 +139,7 @@ export default function AdminEditionDetailPage({
   const [lessonDeleting, setLessonDeleting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const registryRows = useMemo(() => {
     if (registrations.length === 0) {
@@ -238,20 +241,20 @@ export default function AdminEditionDetailPage({
     loadLessons();
   }, [edition, loadLessons]);
 
-  useEffect(() => {
-    const loadRegistrations = async () => {
-      if (!edition?.client?.id) return;
-      setRegistrationsLoading(true);
-      const res = await fetch(
-        `/api/corsi/${params.edId}/registrazioni?clientId=${edition.client.id}`
-      );
-      const json = await res.json().catch(() => ({}));
-      setRegistrations(json.data ?? []);
-      setRegistrationsLoading(false);
-    };
-
-    loadRegistrations();
+  const loadRegistrations = useCallback(async () => {
+    if (!edition?.client?.id) return;
+    setRegistrationsLoading(true);
+    const res = await fetch(
+      `/api/corsi/${params.edId}/registrazioni?clientId=${edition.client.id}`
+    );
+    const json = await res.json().catch(() => ({}));
+    setRegistrations(json.data ?? []);
+    setRegistrationsLoading(false);
   }, [edition?.client?.id, params.edId]);
+
+  useEffect(() => {
+    loadRegistrations();
+  }, [loadRegistrations]);
 
   useEffect(() => {
     const loadCertificates = async () => {
@@ -719,6 +722,16 @@ export default function AdminEditionDetailPage({
             <p className="text-sm text-muted-foreground">
               {registrations.length} dipendenti registrati
             </p>
+            {!isArchived ? (
+              <button
+                type="button"
+                className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+                onClick={() => setImportModalOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importa CSV/Excel
+              </button>
+            ) : null}
           </div>
 
           {registrationsLoading ? (
@@ -825,6 +838,18 @@ export default function AdminEditionDetailPage({
           onClose={() => setDeleteModalOpen(false)}
           onDeleted={() => {
             router.push(`/admin/corsi/${params.id}`);
+          }}
+        />
+      ) : null}
+
+      {!isArchived ? (
+        <ImportEmployeesModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          clientId={edition.client.id}
+          editionId={edition.id}
+          onImportComplete={async () => {
+            await Promise.all([loadRegistrations(), loadEdition()]);
           }}
         />
       ) : null}

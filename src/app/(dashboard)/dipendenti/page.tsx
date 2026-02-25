@@ -3,12 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, Upload, X } from "lucide-react";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BrandedButton } from "@/components/BrandedButton";
 import AddEmployeeModal from "@/components/AddEmployeeModal";
+import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
@@ -52,6 +53,7 @@ function ClientDipendentiContent() {
   const [page, setPage] = useState(initialPage);
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const { data: session } = useSession();
   const sessionClientId = session?.user?.clientId ?? undefined;
 
@@ -237,6 +239,20 @@ function ClientDipendentiContent() {
             Esporta CSV
           </a>
           <BrandedButton
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!sessionClientId) {
+                toast.error("Cliente non disponibile");
+                return;
+              }
+              setImportModalOpen(true);
+            }}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Importa CSV/Excel
+          </BrandedButton>
+          <BrandedButton
             size="sm"
             onClick={() => {
               if (!sessionClientId) {
@@ -380,6 +396,17 @@ function ClientDipendentiContent() {
           setAddModalOpen(false);
         }}
       />
+
+      {sessionClientId ? (
+        <ImportEmployeesModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          clientId={sessionClientId}
+          onImportComplete={() => {
+            refetch();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

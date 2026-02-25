@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useSubmitRegistrations } from "@/hooks/useSubmitRegistrations";
@@ -11,6 +12,8 @@ import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import { Upload } from "lucide-react";
+import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
 type CourseDetail = {
   id: string;
@@ -103,11 +106,13 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [selectedCerts, setSelectedCerts] = useState<string[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<AttendanceSummary | null>(
     null
   );
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const submitMutation = useSubmitRegistrations(params.id);
+  const { data: session } = useSession();
 
   const loadCourse = useCallback(async () => {
     setLoading(true);
@@ -313,6 +318,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     return <p className="text-sm text-muted-foreground">Corso non trovato.</p>;
   }
 
+  const resolvedClientId = session?.user?.clientId ?? course.clientId ?? "";
+
   return (
     <div className="space-y-6">
       <div>
@@ -431,6 +438,25 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             clientId={course.clientId}
             readOnly={isAnagraficheReadOnly}
           />
+
+          {!isAnagraficheReadOnly ? (
+            <div className="flex justify-end">
+              <BrandedButton
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!resolvedClientId) {
+                    toast.error("Cliente non disponibile");
+                    return;
+                  }
+                  setImportModalOpen(true);
+                }}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importa CSV/Excel
+              </BrandedButton>
+            </div>
+          ) : null}
 
           {!isSubmitted && !isEditionLocked ? (
             <BrandedButton
@@ -628,6 +654,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             document.body
           )
         : null}
+
+      {resolvedClientId ? (
+        <ImportEmployeesModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          clientId={resolvedClientId}
+          editionId={params.id}
+          onImportComplete={async () => {
+            await loadCourse();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

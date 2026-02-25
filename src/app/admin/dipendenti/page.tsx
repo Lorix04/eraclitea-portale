@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, UserPlus, X } from "lucide-react";
+import { Search, Upload, UserPlus, X } from "lucide-react";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -11,6 +11,7 @@ import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import AddEmployeeModal from "@/components/AddEmployeeModal";
+import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -66,6 +67,7 @@ function AdminDipendentiContent() {
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -342,6 +344,20 @@ function AdminDipendentiContent() {
           </select>
           <button
             type="button"
+            className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+            onClick={() => {
+              if (!clientId) {
+                toast.error("Seleziona un cliente specifico prima di importare");
+                return;
+              }
+              setImportModalOpen(true);
+            }}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Importa CSV/Excel
+          </button>
+          <button
+            type="button"
             className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
             onClick={() => setAddModalOpen(true)}
           >
@@ -430,6 +446,17 @@ function AdminDipendentiContent() {
           refetch();
         }}
       />
+
+      {clientId ? (
+        <ImportEmployeesModal
+          isOpen={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          clientId={clientId}
+          onImportComplete={() => {
+            refetch();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
