@@ -17,6 +17,7 @@ model User {
   clientId     String?
   client       Client?   @relation(fields: [clientId], references: [id])
   isActive     Boolean   @default(true)
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
   resetToken   String?   @unique

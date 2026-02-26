@@ -58,6 +58,7 @@ export async function POST(
       passwordHash,
       resetToken: null,
       resetTokenExpiry: null,
+      mustChangePassword: false,
     },
   });
 

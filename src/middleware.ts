@@ -41,6 +41,8 @@ export async function middleware(req: NextRequest) {
     hasImpersonationCookies &&
     isImpersonationOwnerMatch;
   const effectiveRole = isImpersonatingClient ? "CLIENT" : token?.role;
+  const mustChangePassword = token?.mustChangePassword === true;
+  const forcedChangePasswordPath = "/profilo/cambia-password";
 
   if (pathname.startsWith("/api/")) {
     const ip =
@@ -68,6 +70,7 @@ export async function middleware(req: NextRequest) {
     const isReadOnlyMethod = !["GET", "HEAD", "OPTIONS"].includes(req.method);
     const isImpersonateStopRoute = pathname === "/api/admin/impersonate/stop";
     const isAuthApiRoute = pathname.startsWith("/api/auth/");
+    const isForceChangePasswordApi = pathname === "/api/profilo/cambia-password";
     const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
       req.method
     );
@@ -88,6 +91,17 @@ export async function middleware(req: NextRequest) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
       }
+    }
+
+    if (
+      mustChangePassword &&
+      !isAuthApiRoute &&
+      !isForceChangePasswordApi
+    ) {
+      return NextResponse.json(
+        { error: "Cambio password obbligatorio" },
+        { status: 403 }
+      );
     }
 
     if (
@@ -117,6 +131,13 @@ export async function middleware(req: NextRequest) {
     const response = NextResponse.next();
     response.headers.set("X-RateLimit-Remaining", String(remaining));
     return response;
+  }
+
+  if (mustChangePassword) {
+    if (pathname !== forcedChangePasswordPath) {
+      return NextResponse.redirect(new URL(forcedChangePasswordPath, req.url));
+    }
+    return NextResponse.next();
   }
 
   if (pathname === "/") {

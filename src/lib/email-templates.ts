@@ -149,6 +149,28 @@ export function passwordResetTemplate(tempPassword: string) {
   });
 }
 
+export function adminResetPasswordTemplate(params: {
+  clientName: string;
+  email: string;
+  newPassword: string;
+}) {
+  return buildEmailHtml({
+    title: "La tua password è stata reimpostata — Sapienta",
+    greeting: `Ciao ${params.clientName},`,
+    bodyHtml: `
+      ${emailParagraph("La tua password per accedere al Portale Sapienta è stata reimpostata dall'amministratore.")}
+      ${emailInfoBox(`
+        <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Email:</strong> ${params.email}</p>
+        <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Password:</strong> ${params.newPassword}</p>
+      `)}
+      ${emailParagraph("Per la tua sicurezza, ti verrà chiesto di cambiare la password al primo accesso.")}
+      ${emailParagraph("Se non hai richiesto questa modifica, contatta il supporto.")}
+    `,
+    ctaText: "Accedi al Portale",
+    ctaUrl: `${PORTAL_URL}/login`,
+  });
+}
+
 export function passwordResetRequestTemplate(resetUrl: string): string {
   return buildEmailHtml({
     title: "Reset Password",

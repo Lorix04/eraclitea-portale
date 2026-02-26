@@ -10,6 +10,7 @@ const mockSession: Session = {
     email: "test@example.com",
     role: "CLIENT",
     clientId: "test-client-id",
+    mustChangePassword: false,
   },
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 };
@@ -20,6 +21,7 @@ const mockAdminSession: Session = {
     email: "admin@example.com",
     role: "ADMIN",
     clientId: null,
+    mustChangePassword: false,
   },
   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
 };

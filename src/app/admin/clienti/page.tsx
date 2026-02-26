@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { LogIn, Search, X } from "lucide-react";
+import { Check, Copy, LogIn, Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -20,6 +20,12 @@ type ClientRow = {
   user?: { id: string; email: string; isActive: boolean } | null;
 };
 
+type ResetPasswordResult = {
+  clientName: string;
+  email: string;
+  newPassword: string;
+};
+
 export default function AdminClientiPage() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
@@ -32,6 +38,10 @@ export default function AdminClientiPage() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [confirmClient, setConfirmClient] = useState<ClientRow | null>(null);
+  const [confirmResetClient, setConfirmResetClient] = useState<ClientRow | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<ResetPasswordResult | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
   const [impersonatingClientId, setImpersonatingClientId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -102,13 +112,53 @@ export default function AdminClientiPage() {
     loadClients();
   };
 
-  const handleResetPassword = async (id: string) => {
-    const res = await fetch(`/api/admin/clienti/${id}/reset-password`, {
-      method: "POST",
-    });
-    const json = await res.json();
-    if (json.tempPassword) {
-      window.alert(`Password temporanea: ${json.tempPassword}`);
+  const handleResetPassword = async () => {
+    if (!confirmResetClient) return;
+
+    setIsResettingPassword(true);
+    try {
+      const res = await fetch(`/api/admin/clienti/${confirmResetClient.id}/reset-password`, {
+        method: "POST",
+      });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Errore durante il reset password");
+      }
+
+      if (!json?.newPassword) {
+        throw new Error("Nuova password non disponibile nella risposta");
+      }
+
+      setConfirmResetClient(null);
+      setCopySuccess(false);
+      setResetPasswordResult({
+        clientName: json.clientName || confirmResetClient.ragioneSociale,
+        email:
+          json.email ||
+          confirmResetClient.user?.email ||
+          confirmResetClient.referenteEmail,
+        newPassword: json.newPassword,
+      });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Errore durante il reset password"
+      );
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (!resetPasswordResult?.newPassword) return;
+    try {
+      await navigator.clipboard.writeText(resetPasswordResult.newPassword);
+      setCopySuccess(true);
+      window.setTimeout(() => setCopySuccess(false), 1500);
+    } catch {
+      window.alert("Impossibile copiare la password");
     }
   };
 
@@ -354,7 +404,7 @@ export default function AdminClientiPage() {
                       <button
                         type="button"
                         className="inline-flex min-h-[44px] items-center text-primary"
-                        onClick={() => handleResetPassword(client.id)}
+                        onClick={() => setConfirmResetClient(client)}
                       >
                         Reset password
                       </button>
@@ -401,6 +451,110 @@ export default function AdminClientiPage() {
                     onClick={handleConfirmDelete}
                   >
                     Elimina
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {confirmResetClient && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+                <h2 className="text-lg font-semibold">Reset Password</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Sei sicuro di voler reimpostare la password di{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmResetClient.ragioneSociale}
+                  </span>
+                  ? Verrà generata una nuova password e inviata via email a{" "}
+                  <span className="font-medium text-foreground">
+                    {confirmResetClient.user?.email || confirmResetClient.referenteEmail}
+                  </span>
+                  .
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    className="rounded-md border px-4 py-2 text-sm"
+                    onClick={() => setConfirmResetClient(null)}
+                    disabled={isResettingPassword}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+                    onClick={handleResetPassword}
+                    disabled={isResettingPassword}
+                  >
+                    {isResettingPassword ? "Reimpostazione..." : "Reimposta Password"}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {resetPasswordResult && mounted
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
+                <h2 className="text-lg font-semibold">Password Reimpostata</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  La password di{" "}
+                  <span className="font-medium text-foreground">
+                    {resetPasswordResult.clientName}
+                  </span>{" "}
+                  è stata reimpostata con successo.
+                </p>
+                <div className="mt-4 rounded-md border bg-muted/30 p-3">
+                  <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    Nuova password
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="rounded bg-background px-2 py-1 font-mono text-sm">
+                      {resetPasswordResult.newPassword}
+                    </code>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                      onClick={handleCopyPassword}
+                    >
+                      {copySuccess ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          Copiata
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          Copia
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Un&apos;email con le nuove credenziali è stata inviata a{" "}
+                  <span className="font-medium text-foreground">
+                    {resetPasswordResult.email}
+                  </span>
+                  . Il cliente dovrà cambiare la password al primo accesso.
+                </p>
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    className="rounded-md border px-4 py-2 text-sm"
+                    onClick={() => {
+                      setResetPasswordResult(null);
+                      setCopySuccess(false);
+                    }}
+                  >
+                    Chiudi
                   </button>
                 </div>
               </div>

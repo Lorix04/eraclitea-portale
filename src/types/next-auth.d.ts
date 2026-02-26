@@ -7,6 +7,7 @@ declare module "next-auth" {
       id: string;
       role: "ADMIN" | "CLIENT";
       clientId: string | null;
+      mustChangePassword: boolean;
       email?: string | null;
       name?: string | null;
     };
@@ -18,5 +19,6 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: "ADMIN" | "CLIENT";
     clientId?: string | null;
+    mustChangePassword?: boolean;
   }
 }
