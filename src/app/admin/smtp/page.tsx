@@ -15,6 +15,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 
 type EmailAccount = {
   id: string;
@@ -103,6 +104,8 @@ export default function EmailSettingsPage() {
   const [checkingImportEnv, setCheckingImportEnv] = useState(true);
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<EmailAccount | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     const res = await fetch("/api/admin/email-accounts", { cache: "no-store" });
@@ -296,9 +299,12 @@ export default function EmailSettingsPage() {
     setMessage(null);
   }, []);
 
-  const handleDelete = useCallback(
-    async (id: string, isDefault: boolean) => {
-      if (isDefault) {
+  const handleDelete = useCallback(async () => {
+      if (!accountToDelete) {
+        return;
+      }
+
+      if (accountToDelete.isDefault) {
         setMessage({
           type: "error",
           text: "Non puoi eliminare l'account predefinito",
@@ -306,13 +312,9 @@ export default function EmailSettingsPage() {
         return;
       }
 
-      const confirmed = window.confirm(
-        "Vuoi davvero eliminare questo account email?"
-      );
-      if (!confirmed) return;
-
+      setDeleteLoading(true);
       try {
-        const res = await fetch(`/api/admin/email-accounts/${id}`, {
+        const res = await fetch(`/api/admin/email-accounts/${accountToDelete.id}`, {
           method: "DELETE",
         });
         const payload = await res.json().catch(() => null);
@@ -324,7 +326,7 @@ export default function EmailSettingsPage() {
           return;
         }
 
-        if (editingId === id) {
+        if (editingId === accountToDelete.id) {
           resetForm();
         }
 
@@ -332,18 +334,21 @@ export default function EmailSettingsPage() {
           type: "success",
           text: "Account eliminato con successo",
         });
+        setAccountToDelete(null);
         await loadData();
       } catch (error) {
         setMessage({
           type: "error",
           text:
             error instanceof Error
-              ? error.message
-              : "Errore eliminazione account",
+            ? error.message
+            : "Errore eliminazione account",
         });
+      } finally {
+        setDeleteLoading(false);
       }
     },
-    [editingId, loadData, resetForm]
+    [accountToDelete, editingId, loadData, resetForm]
   );
 
   const handleSetDefault = useCallback(async (id: string) => {
@@ -897,7 +902,7 @@ export default function EmailSettingsPage() {
 
                           <button
                             type="button"
-                            onClick={() => handleDelete(account.id, account.isDefault)}
+                            onClick={() => setAccountToDelete(account)}
                             disabled={account.isDefault}
                             className="rounded p-1.5 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30"
                             title={
@@ -1038,6 +1043,23 @@ export default function EmailSettingsPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmModal
+        isOpen={Boolean(accountToDelete)}
+        onClose={() => {
+          if (!deleteLoading) {
+            setAccountToDelete(null);
+          }
+        }}
+        onConfirm={handleDelete}
+        title="Elimina account SMTP"
+        description={
+          accountToDelete
+            ? `Sei sicuro di voler eliminare l'account [${accountToDelete.name}]? Questa azione è irreversibile.`
+            : ""
+        }
+        isDeleting={deleteLoading}
+      />
     </div>
   );
 }
