@@ -4,6 +4,7 @@ import { Outfit, Playfair_Display, Sora, Source_Sans_3 } from "next/font/google"
 import Providers from "@/app/providers";
 import Toaster from "@/components/Toaster";
 import WebVitals from "@/app/web-vitals";
+import CookieBanner from "@/components/CookieBanner";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -76,6 +77,7 @@ export default function RootLayout({
         className={`${bodyFont.variable} ${displayFont.variable} ${landingBodyFont.variable} ${landingDisplayFont.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
       >
         <Providers>{children}</Providers>
+        <CookieBanner />
         <Toaster />
         <WebVitals />
         <Analytics />
