@@ -79,6 +79,8 @@ export async function GET(
       startDate: edition.startDate,
       endDate: edition.endDate,
       deadlineRegistry: edition.deadlineRegistry,
+      presenzaMinimaType: edition.presenzaMinimaType,
+      presenzaMinimaValue: edition.presenzaMinimaValue,
       notes: edition.notes,
       title: edition.course.title,
       categories: edition.course.categories.map((entry) => ({

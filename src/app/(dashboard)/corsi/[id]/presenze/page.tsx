@@ -77,7 +77,11 @@ export default function CourseAttendanceClientPage({
               — Non registrato
             </span>
           </div>
-          <AttendanceStats stats={data.stats} />
+          <AttendanceStats
+            stats={data.stats}
+            minRequirementType={data.presenzaMinimaType}
+            minRequirementValue={data.presenzaMinimaValue}
+          />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Nessun dato disponibile.</p>

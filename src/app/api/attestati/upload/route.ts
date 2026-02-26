@@ -22,6 +22,18 @@ type Association = {
   employeeId: string;
 };
 
+type PresenceRequirementType = "percentage" | "days";
+
+function normalizePresenceRequirement(
+  type: string | null | undefined,
+  value: number | null | undefined
+): { type: PresenceRequirementType | null; value: number | null } {
+  if ((type === "percentage" || type === "days") && typeof value === "number") {
+    return { type, value };
+  }
+  return { type: null, value: null };
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
@@ -106,6 +118,8 @@ export async function POST(request: Request) {
           id: true,
           clientId: true,
           editionNumber: true,
+          presenzaMinimaType: true,
+          presenzaMinimaValue: true,
           status: true,
           course: { select: { title: true } },
         },
@@ -179,6 +193,83 @@ export async function POST(request: Request) {
       { error: "Associazione mancante", files: missing },
       { status: 400 }
     );
+  }
+
+  if (hasCourseEdition && edition) {
+    const presenceRequirement = normalizePresenceRequirement(
+      edition.presenzaMinimaType,
+      edition.presenzaMinimaValue
+    );
+
+    if (presenceRequirement.type && presenceRequirement.value !== null) {
+      const employeeIdsToUpload = Array.from(
+        new Set(pending.map((item) => item.employeeId))
+      );
+      const lessons = await prisma.lesson.findMany({
+        where: { courseEditionId: edition.id },
+        select: { id: true },
+      });
+      const lessonIds = lessons.map((lesson) => lesson.id);
+      const attendanceCounts = new Map<string, number>();
+
+      if (lessonIds.length && employeeIdsToUpload.length) {
+        const attendances = await prisma.attendance.findMany({
+          where: {
+            lessonId: { in: lessonIds },
+            employeeId: { in: employeeIdsToUpload },
+            status: { in: ["PRESENT", "ABSENT_JUSTIFIED"] },
+          },
+          select: { employeeId: true },
+        });
+
+        for (const entry of attendances) {
+          attendanceCounts.set(
+            entry.employeeId,
+            (attendanceCounts.get(entry.employeeId) ?? 0) + 1
+          );
+        }
+      }
+
+      const totalLessons = lessonIds.length;
+      const blockedEmployees = employeeIdsToUpload
+        .map((employeeId) => {
+          const attendedLessons = attendanceCounts.get(employeeId) ?? 0;
+          if (presenceRequirement.type === "percentage") {
+            const percentage = totalLessons
+              ? (attendedLessons / totalLessons) * 100
+              : 0;
+            return {
+              employeeId,
+              blocked: percentage < presenceRequirement.value!,
+            };
+          }
+          return {
+            employeeId,
+            blocked: attendedLessons < presenceRequirement.value!,
+          };
+        })
+        .filter((entry) => entry.blocked)
+        .map((entry) => {
+          const employee = employees.find((item) => item.id === entry.employeeId);
+          return employee
+            ? `${employee.cognome} ${employee.nome}`
+            : entry.employeeId;
+        });
+
+      if (blockedEmployees.length > 0) {
+        const requirementLabel =
+          presenceRequirement.type === "percentage"
+            ? `${presenceRequirement.value}%`
+            : `${presenceRequirement.value} giorni`;
+        return NextResponse.json(
+          {
+            error: `I seguenti dipendenti non raggiungono la presenza minima (${requirementLabel}) e non possono ricevere l'attestato: ${blockedEmployees.join(", ")}`,
+            blockedEmployees,
+          },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const savedFiles = [] as Array<{ filePath: string; employeeId: string }>;

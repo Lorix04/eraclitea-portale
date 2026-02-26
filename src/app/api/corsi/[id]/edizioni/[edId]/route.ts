@@ -109,6 +109,18 @@ export async function PUT(
   }
 
   const data = validation.data;
+  const presenzaMinimaType =
+    data.presenzaMinimaType === "percentage" || data.presenzaMinimaType === "days"
+      ? data.presenzaMinimaType
+      : data.presenzaMinimaType === null
+        ? null
+        : undefined;
+  const presenzaMinimaValue =
+    presenzaMinimaType === null
+      ? null
+      : typeof data.presenzaMinimaValue === "number"
+        ? data.presenzaMinimaValue
+        : undefined;
   const oldStatus = existing.status;
   const nextStartDate = data.startDate ?? existing.startDate;
   const nextEndDate = data.endDate ?? existing.endDate;
@@ -139,6 +151,8 @@ export async function PUT(
       endDate: data.endDate ?? undefined,
       deadlineRegistry: data.deadlineRegistry ?? undefined,
       status: data.status ?? undefined,
+      presenzaMinimaType,
+      presenzaMinimaValue,
       notes: data.notes ?? undefined,
     },
     include: {

@@ -166,7 +166,11 @@ export default function AdminCourseAttendancePage({
           <p className="text-xs text-muted-foreground">
             Legenda: P = Presente, A = Assente, G = Assente giustificato.
           </p>
-          <AttendanceStats stats={data.stats} />
+          <AttendanceStats
+            stats={data.stats}
+            minRequirementType={data.presenzaMinimaType}
+            minRequirementValue={data.presenzaMinimaValue}
+          />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Nessun dato disponibile.</p>

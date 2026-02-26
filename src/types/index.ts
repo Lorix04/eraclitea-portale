@@ -197,6 +197,8 @@ export interface CourseEdition {
   startDate?: Date | string | null;
   endDate?: Date | string | null;
   deadlineRegistry?: Date | string | null;
+  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaValue?: number | null;
   status: CourseStatus;
   notes?: string | null;
   createdAt: Date | string;

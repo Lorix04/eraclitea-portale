@@ -24,6 +24,7 @@ type FieldErrors = {
   startDate?: string;
   endDate?: string;
   deadlineRegistry?: string;
+  presenzaMinimaValue?: string;
 };
 
 type CreateEditionModalProps = {
@@ -81,6 +82,11 @@ export default function CreateEditionModal({
   const [endDate, setEndDate] = useState("");
   const [deadlineRegistry, setDeadlineRegistry] = useState("");
   const [notes, setNotes] = useState("");
+  const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
+  const [presenzaMinimaType, setPresenzaMinimaType] = useState<
+    "percentage" | "days"
+  >("percentage");
+  const [presenzaMinimaValue, setPresenzaMinimaValue] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const resetForm = () => {
@@ -94,6 +100,9 @@ export default function CreateEditionModal({
     setEndDate("");
     setDeadlineRegistry("");
     setNotes("");
+    setHasPresenzaMinima(false);
+    setPresenzaMinimaType("percentage");
+    setPresenzaMinimaValue("");
   };
 
   useEffect(() => {
@@ -197,6 +206,21 @@ export default function CreateEditionModal({
         "La deadline anagrafiche deve essere precedente alla data di inizio";
     }
 
+    if (hasPresenzaMinima) {
+      if (!presenzaMinimaValue.trim()) {
+        errors.presenzaMinimaValue = "Inserisci il valore minimo richiesto";
+      } else {
+        const parsedValue = Number(presenzaMinimaValue);
+        if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+          errors.presenzaMinimaValue =
+            "Il valore minimo deve essere un numero intero positivo";
+        } else if (presenzaMinimaType === "percentage" && parsedValue > 100) {
+          errors.presenzaMinimaValue =
+            "La percentuale minima deve essere tra 1 e 100";
+        }
+      }
+    }
+
     return errors;
   };
 
@@ -218,6 +242,8 @@ export default function CreateEditionModal({
           startDate,
           endDate,
           deadlineRegistry: deadlineRegistry || null,
+          presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
+          presenzaMinimaValue: hasPresenzaMinima ? Number(presenzaMinimaValue) : null,
           notes: notes.trim() || undefined,
           status: "DRAFT",
         }),
@@ -414,6 +440,82 @@ export default function CreateEditionModal({
               </div>
 
               <div className="space-y-2">
+                <div className="rounded-md border bg-muted/20 p-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={hasPresenzaMinima}
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setHasPresenzaMinima(checked);
+                        if (!checked) {
+                          setPresenzaMinimaValue("");
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            presenzaMinimaValue: undefined,
+                          }));
+                        }
+                      }}
+                    />
+                    Richiedi presenza minima
+                  </label>
+
+                  {hasPresenzaMinima ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <label className="flex flex-col gap-2 text-sm">
+                        <FormLabel>Tipo requisito</FormLabel>
+                        <select
+                          className="rounded-md border bg-background px-3 py-2 text-sm"
+                          value={presenzaMinimaType}
+                          onChange={(event) =>
+                            setPresenzaMinimaType(
+                              event.target.value as "percentage" | "days"
+                            )
+                          }
+                        >
+                          <option value="percentage">Percentuale</option>
+                          <option value="days">Numero di giorni</option>
+                        </select>
+                      </label>
+
+                      <label className="flex flex-col gap-2 text-sm">
+                        <FormLabel required>Valore minimo</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            max={presenzaMinimaType === "percentage" ? 100 : undefined}
+                            value={presenzaMinimaValue}
+                            onChange={(event) => {
+                              setPresenzaMinimaValue(event.target.value);
+                              if (fieldErrors.presenzaMinimaValue) {
+                                setFieldErrors((prev) => ({
+                                  ...prev,
+                                  presenzaMinimaValue: undefined,
+                                }));
+                              }
+                            }}
+                            placeholder={
+                              presenzaMinimaType === "percentage" ? "Es. 75" : "Es. 6"
+                            }
+                            className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
+                              fieldErrors.presenzaMinimaValue ? "border-red-500" : ""
+                            }`}
+                          />
+                          <span className="min-w-[48px] text-xs text-muted-foreground">
+                            {presenzaMinimaType === "percentage" ? "%" : "giorni"}
+                          </span>
+                        </div>
+                        <FormFieldError message={fieldErrors.presenzaMinimaValue} />
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Nessun requisito di presenza minima impostato.
+                    </p>
+                  )}
+                </div>
+
                 <FormLabel>Note</FormLabel>
                 <textarea
                   value={notes}

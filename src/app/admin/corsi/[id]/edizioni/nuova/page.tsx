@@ -31,6 +31,11 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
   const [deadlineRegistry, setDeadlineRegistry] = useState("");
   const [status, setStatus] = useState("DRAFT");
   const [notes, setNotes] = useState("");
+  const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
+  const [presenzaMinimaType, setPresenzaMinimaType] = useState<
+    "percentage" | "days"
+  >("percentage");
+  const [presenzaMinimaValue, setPresenzaMinimaValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -120,6 +125,20 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
     if (!deadlineRegistry) {
       fieldErrors.deadlineRegistry = "Questo campo e obbligatorio";
     }
+    if (hasPresenzaMinima) {
+      if (!presenzaMinimaValue.trim()) {
+        fieldErrors.presenzaMinimaValue = "Inserisci il valore minimo richiesto";
+      } else {
+        const parsedValue = Number(presenzaMinimaValue);
+        if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+          fieldErrors.presenzaMinimaValue =
+            "Il valore minimo deve essere un numero intero positivo";
+        } else if (presenzaMinimaType === "percentage" && parsedValue > 100) {
+          fieldErrors.presenzaMinimaValue =
+            "La percentuale minima deve essere tra 1 e 100";
+        }
+      }
+    }
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length > 0) return;
 
@@ -133,6 +152,8 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
         endDate,
         deadlineRegistry,
         status,
+        presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
+        presenzaMinimaValue: hasPresenzaMinima ? Number(presenzaMinimaValue) : null,
         notes,
       }),
     });
@@ -271,6 +292,78 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
             onChange={(event) => setNotes(event.target.value)}
           />
         </label>
+
+        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={hasPresenzaMinima}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setHasPresenzaMinima(checked);
+                if (!checked) {
+                  setPresenzaMinimaValue("");
+                  setErrors((prev) => ({ ...prev, presenzaMinimaValue: "" }));
+                }
+              }}
+            />
+            Richiedi presenza minima
+          </label>
+
+          {hasPresenzaMinima ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="flex flex-col gap-2 text-sm">
+                <FormLabel>Tipo requisito</FormLabel>
+                <select
+                  className="rounded-md border bg-background px-3 py-2"
+                  value={presenzaMinimaType}
+                  onChange={(event) =>
+                    setPresenzaMinimaType(
+                      event.target.value as "percentage" | "days"
+                    )
+                  }
+                >
+                  <option value="percentage">Percentuale</option>
+                  <option value="days">Numero di giorni</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm">
+                <FormLabel required>Valore minimo</FormLabel>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={presenzaMinimaType === "percentage" ? 100 : undefined}
+                    className={`w-full rounded-md border bg-background px-3 py-2 ${
+                      errors.presenzaMinimaValue
+                        ? "border-red-500 focus-visible:outline-red-500"
+                        : ""
+                    }`}
+                    value={presenzaMinimaValue}
+                    onChange={(event) => {
+                      setPresenzaMinimaValue(event.target.value);
+                      if (errors.presenzaMinimaValue) {
+                        setErrors((prev) => ({ ...prev, presenzaMinimaValue: "" }));
+                      }
+                    }}
+                    placeholder={
+                      presenzaMinimaType === "percentage" ? "Es. 75" : "Es. 6"
+                    }
+                  />
+                  <span className="min-w-[48px] text-xs text-muted-foreground">
+                    {presenzaMinimaType === "percentage" ? "%" : "giorni"}
+                  </span>
+                </div>
+                <FormFieldError message={errors.presenzaMinimaValue} />
+              </label>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Nessun requisito di presenza minima impostato.
+            </p>
+          )}
+        </div>
 
         <div className="flex gap-2">
           <Link

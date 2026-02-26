@@ -26,6 +26,8 @@ type CourseDetail = {
   startDate?: string | null;
   endDate?: string | null;
   deadlineRegistry?: string | null;
+  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaValue?: number | null;
   status?: string | null;
   notes?: string | null;
   luoghi?: string[];
@@ -73,6 +75,8 @@ type CourseDetail = {
 type AttendanceSummary = {
   totalLessons: number;
   totalHours: number;
+  presenzaMinimaType: "percentage" | "days" | null;
+  presenzaMinimaValue: number | null;
   stats: Array<{
     employeeId: string;
     employeeName: string;
@@ -154,6 +158,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       setAttendanceSummary({
         totalLessons: json.totalLessons ?? 0,
         totalHours: json.totalHours ?? 0,
+        presenzaMinimaType: json.presenzaMinimaType ?? null,
+        presenzaMinimaValue:
+          typeof json.presenzaMinimaValue === "number"
+            ? json.presenzaMinimaValue
+            : null,
         stats: json.stats ?? [],
       });
       setAttendanceLoading(false);
@@ -329,6 +338,13 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   }
 
   const resolvedClientId = session?.user?.clientId ?? course.clientId ?? "";
+  const coursePresenceRequirementLabel =
+    course.presenzaMinimaType &&
+    typeof course.presenzaMinimaValue === "number"
+      ? course.presenzaMinimaType === "percentage"
+        ? `${course.presenzaMinimaValue}%`
+        : `${course.presenzaMinimaValue} giorni`
+      : null;
 
   return (
     <div className="space-y-6">
@@ -373,6 +389,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         <p className="text-sm text-muted-foreground">
           Luogo: {course.luoghi && course.luoghi.length > 0 ? course.luoghi.join(", ") : "-"}
         </p>
+        {coursePresenceRequirementLabel ? (
+          <p className="text-sm text-muted-foreground">
+            Presenza minima richiesta: {coursePresenceRequirementLabel}
+          </p>
+        ) : null}
         {course.status ? (
           <div className="mt-2">
             <EditionStatusBadge status={course.status} className="text-xs" />
@@ -549,6 +570,15 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               Vedi dettaglio
             </Link>
           </div>
+          {attendanceSummary?.presenzaMinimaType &&
+          typeof attendanceSummary?.presenzaMinimaValue === "number" ? (
+            <p className="text-sm text-muted-foreground">
+              Presenza minima richiesta:{" "}
+              {attendanceSummary.presenzaMinimaType === "percentage"
+                ? `${attendanceSummary.presenzaMinimaValue}%`
+                : `${attendanceSummary.presenzaMinimaValue} giorni`}
+            </p>
+          ) : null}
           <div className="rounded-lg border bg-card">
             {attendanceLoading ? (
               <div className="p-4">
@@ -598,13 +628,21 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                         </td>
                         <td className="px-4 py-3">{stat.percentage}%</td>
                         <td className="px-4 py-3">
-                          {stat.belowMinimum ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-amber-700">
-                              ⚠️ Minimo
-                            </span>
+                          {attendanceSummary.presenzaMinimaType &&
+                          typeof attendanceSummary.presenzaMinimaValue ===
+                            "number" ? (
+                            stat.belowMinimum ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-red-700">
+                                Non raggiunto
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-700">
+                                Raggiunto
+                              </span>
+                            )
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-700">
-                              ✅ OK
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-700">
+                              Nessun requisito
                             </span>
                           )}
                         </td>

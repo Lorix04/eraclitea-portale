@@ -96,6 +96,8 @@ model CourseEdition {
   endDate          DateTime?
   deadlineRegistry DateTime?
   status           CourseStatus  @default(DRAFT)
+  presenzaMinimaType  String?
+  presenzaMinimaValue Int?
   notes            String?
   registrations    CourseRegistration[]
   lessons          Lesson[]

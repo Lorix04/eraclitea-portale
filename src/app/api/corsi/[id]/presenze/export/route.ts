@@ -20,6 +20,38 @@ type AttendanceEntry = {
   notes?: string | null;
 };
 
+type PresenceRequirementType = "percentage" | "days";
+
+function normalizePresenceRequirement(
+  type: string | null | undefined,
+  value: number | null | undefined
+): { type: PresenceRequirementType | null; value: number | null } {
+  if ((type === "percentage" || type === "days") && typeof value === "number") {
+    return { type, value };
+  }
+  return { type: null, value: null };
+}
+
+function isBelowPresenceMinimum(
+  requirementType: PresenceRequirementType | null,
+  requirementValue: number | null,
+  attendedLessons: number,
+  totalLessons: number
+) {
+  if (!requirementType || requirementValue === null) {
+    return false;
+  }
+
+  if (requirementType === "percentage") {
+    const percentage = totalLessons
+      ? (attendedLessons / totalLessons) * 100
+      : 0;
+    return percentage < requirementValue;
+  }
+
+  return attendedLessons < requirementValue;
+}
+
 async function getAttendanceMatrix(
   courseEditionId: string,
   role: "ADMIN" | "CLIENT",
@@ -31,6 +63,8 @@ async function getAttendanceMatrix(
       id: true,
       clientId: true,
       editionNumber: true,
+      presenzaMinimaType: true,
+      presenzaMinimaValue: true,
       course: { select: { id: true, title: true } },
     },
   });
@@ -97,6 +131,10 @@ async function getAttendanceMatrix(
     (acc, lesson) => acc + (lesson.durationHours ?? 0),
     0
   );
+  const presenceRequirement = normalizePresenceRequirement(
+    edition.presenzaMinimaType,
+    edition.presenzaMinimaValue
+  );
 
   const stats = employees.map((employee) => {
     let present = 0;
@@ -118,8 +156,9 @@ async function getAttendanceMatrix(
       }
     }
 
+    const attendedLessons = present + justified;
     const percentage = totalLessons
-      ? Math.round(((present + justified) / totalLessons) * 100)
+      ? Math.round((attendedLessons / totalLessons) * 100)
       : 0;
 
     return {
@@ -132,7 +171,12 @@ async function getAttendanceMatrix(
       percentage,
       totalHours,
       attendedHours,
-      belowMinimum: totalLessons ? percentage < 75 : false,
+      belowMinimum: isBelowPresenceMinimum(
+        presenceRequirement.type,
+        presenceRequirement.value,
+        attendedLessons,
+        totalLessons
+      ),
     };
   });
 
@@ -144,6 +188,8 @@ async function getAttendanceMatrix(
     stats,
     totalLessons,
     totalHours,
+    presenzaMinimaType: presenceRequirement.type,
+    presenzaMinimaValue: presenceRequirement.value,
   };
 }
 

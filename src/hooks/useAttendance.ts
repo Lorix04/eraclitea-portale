@@ -10,6 +10,7 @@ type AttendanceResponse = {
     endTime?: string | null;
     durationHours: number;
     title?: string | null;
+    luogo?: string | null;
   }>;
   employees: Array<{
     id: string;
@@ -40,6 +41,8 @@ type AttendanceResponse = {
   }>;
   totalLessons: number;
   totalHours: number;
+  presenzaMinimaType: "percentage" | "days" | null;
+  presenzaMinimaValue: number | null;
 };
 
 export function useAttendance(courseEditionId: string) {

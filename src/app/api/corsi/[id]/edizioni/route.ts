@@ -137,6 +137,14 @@ export async function POST(
     });
 
     const editionNumber = (lastEdition?.editionNumber ?? 0) + 1;
+    const presenzaMinimaType =
+      data.presenzaMinimaType === "percentage" || data.presenzaMinimaType === "days"
+        ? data.presenzaMinimaType
+        : null;
+    const presenzaMinimaValue =
+      presenzaMinimaType && typeof data.presenzaMinimaValue === "number"
+        ? data.presenzaMinimaValue
+        : null;
 
     const created = await prisma.courseEdition.create({
       data: {
@@ -147,6 +155,8 @@ export async function POST(
         endDate: (data.endDate as Date | null | undefined) ?? null,
         deadlineRegistry: (data.deadlineRegistry as Date | null | undefined) ?? null,
         status: data.status ?? "DRAFT",
+        presenzaMinimaType,
+        presenzaMinimaValue,
         notes: data.notes ?? null,
       },
       include: {

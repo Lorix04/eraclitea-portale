@@ -20,6 +20,38 @@ const attendanceSchema = z.object({
     .max(2000),
 });
 
+type PresenceRequirementType = "percentage" | "days";
+
+function normalizePresenceRequirement(
+  type: string | null | undefined,
+  value: number | null | undefined
+): { type: PresenceRequirementType | null; value: number | null } {
+  if ((type === "percentage" || type === "days") && typeof value === "number") {
+    return { type, value };
+  }
+  return { type: null, value: null };
+}
+
+function isBelowPresenceMinimum(
+  requirementType: PresenceRequirementType | null,
+  requirementValue: number | null,
+  attendedLessons: number,
+  totalLessons: number
+) {
+  if (!requirementType || requirementValue === null) {
+    return false;
+  }
+
+  if (requirementType === "percentage") {
+    const percentage = totalLessons
+      ? (attendedLessons / totalLessons) * 100
+      : 0;
+    return percentage < requirementValue;
+  }
+
+  return attendedLessons < requirementValue;
+}
+
 export async function GET(
   _request: Request,
   context: { params: { id: string } }
@@ -46,6 +78,8 @@ export async function GET(
       id: true,
       clientId: true,
       editionNumber: true,
+      presenzaMinimaType: true,
+      presenzaMinimaValue: true,
       course: { select: { id: true, title: true } },
     },
   });
@@ -100,6 +134,10 @@ export async function GET(
     (acc, lesson) => acc + (lesson.durationHours ?? 0),
     0
   );
+  const presenceRequirement = normalizePresenceRequirement(
+    edition.presenzaMinimaType,
+    edition.presenzaMinimaValue
+  );
 
   const stats = employees.map((employee) => {
     let present = 0;
@@ -121,8 +159,9 @@ export async function GET(
       }
     }
 
+    const attendedLessons = present + justified;
     const percentage = totalLessons
-      ? Math.round(((present + justified) / totalLessons) * 100)
+      ? Math.round((attendedLessons / totalLessons) * 100)
       : 0;
 
     return {
@@ -135,7 +174,12 @@ export async function GET(
       percentage,
       totalHours,
       attendedHours,
-      belowMinimum: totalLessons ? percentage < 75 : false,
+      belowMinimum: isBelowPresenceMinimum(
+        presenceRequirement.type,
+        presenceRequirement.value,
+        attendedLessons,
+        totalLessons
+      ),
     };
   });
 
@@ -164,6 +208,8 @@ export async function GET(
     stats,
     totalLessons,
     totalHours,
+    presenzaMinimaType: presenceRequirement.type,
+    presenzaMinimaValue: presenceRequirement.value,
   });
 }
 

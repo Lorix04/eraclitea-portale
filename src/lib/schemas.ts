@@ -72,6 +72,18 @@ const courseEditionBaseSchema = z.object({
   endDate: optionalDate,
   deadlineRegistry: optionalDate,
   status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
+  presenzaMinimaType: z
+    .preprocess(
+      (value) => (value === "" ? null : value),
+      z.enum(["percentage", "days"]).nullable().optional()
+    ),
+  presenzaMinimaValue: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) return null;
+      return value;
+    },
+    z.coerce.number().int().nullable().optional()
+  ),
   notes: z.string().max(2000).optional().nullable().or(z.literal("")),
 });
 
@@ -80,6 +92,8 @@ function validateEditionDates(
     startDate?: Date;
     endDate?: Date;
     deadlineRegistry?: Date;
+    presenzaMinimaType?: "percentage" | "days" | null;
+    presenzaMinimaValue?: number | null;
   },
   ctx: z.RefinementCtx
 ) {
@@ -102,6 +116,49 @@ function validateEditionDates(
         "La deadline anagrafiche deve essere precedente alla data di inizio",
       path: ["deadlineRegistry"],
     });
+  }
+
+  const hasType = data.presenzaMinimaType !== null && data.presenzaMinimaType !== undefined;
+  const hasValue =
+    data.presenzaMinimaValue !== null && data.presenzaMinimaValue !== undefined;
+
+  if (!hasType && hasValue) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "Per impostare la presenza minima devi selezionare anche il tipo di requisito",
+      path: ["presenzaMinimaType"],
+    });
+  }
+
+  if (hasType && !hasValue) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Per impostare la presenza minima devi indicare anche il valore",
+      path: ["presenzaMinimaValue"],
+    });
+  }
+
+  if (data.presenzaMinimaType === "percentage" && hasValue) {
+    const value = data.presenzaMinimaValue as number;
+    if (value < 1 || value > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La presenza minima in percentuale deve essere tra 1 e 100",
+        path: ["presenzaMinimaValue"],
+      });
+    }
+  }
+
+  if (data.presenzaMinimaType === "days" && hasValue) {
+    const value = data.presenzaMinimaValue as number;
+    if (value < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La presenza minima in giorni deve essere almeno 1",
+        path: ["presenzaMinimaValue"],
+      });
+    }
   }
 }
 

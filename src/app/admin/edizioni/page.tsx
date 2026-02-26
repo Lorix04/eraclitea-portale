@@ -16,6 +16,8 @@ type EditionRow = {
   startDate?: string | null;
   endDate?: string | null;
   deadlineRegistry?: string | null;
+  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaValue?: number | null;
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
   course?: { id: string; title: string } | null;
   client?: { id: string; ragioneSociale: string } | null;
@@ -236,6 +238,22 @@ function AdminEdizioniContent() {
     return luoghiUnici.length > 0 ? luoghiUnici.join(", ") : "-";
   };
 
+  const getPresenzaMinimaDisplay = (edition: EditionRow) => {
+    if (
+      edition.presenzaMinimaType === "percentage" &&
+      typeof edition.presenzaMinimaValue === "number"
+    ) {
+      return `${edition.presenzaMinimaValue}%`;
+    }
+    if (
+      edition.presenzaMinimaType === "days" &&
+      typeof edition.presenzaMinimaValue === "number"
+    ) {
+      return `${edition.presenzaMinimaValue} gg`;
+    }
+    return "-";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -370,6 +388,7 @@ function AdminEdizioniContent() {
                   </button>
                 </th>
               ))}
+              <th className="px-4 py-3">Presenza min.</th>
               <th className="px-4 py-3">Luogo</th>
               <th className="px-4 py-3">Azioni</th>
             </tr>
@@ -378,7 +397,7 @@ function AdminEdizioniContent() {
             {loading ? (
               Array.from({ length: 6 }).map((_, row) => (
                 <tr key={`edition-skel-${row}`} className="border-t">
-                  {Array.from({ length: 10 }).map((__, col) => (
+                  {Array.from({ length: 11 }).map((__, col) => (
                     <td key={col} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -387,7 +406,7 @@ function AdminEdizioniContent() {
               ))
             ) : editions.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={11} className="px-4 py-6 text-center text-muted-foreground">
                   Nessuna edizione trovata.
                 </td>
               </tr>
@@ -422,6 +441,7 @@ function AdminEdizioniContent() {
                   <td className="px-4 py-3">
                     {edition._count?.registrations ?? 0}
                   </td>
+                  <td className="px-4 py-3">{getPresenzaMinimaDisplay(edition)}</td>
                   <td className="px-4 py-3">{getLuoghiDisplay(edition)}</td>
                   <td className="px-4 py-3">
                     {edition.course?.id ? (

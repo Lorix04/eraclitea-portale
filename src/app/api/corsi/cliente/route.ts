@@ -100,6 +100,8 @@ export async function GET(request: Request) {
         startDate: edition.startDate,
         endDate: edition.endDate,
         deadlineRegistry: edition.deadlineRegistry,
+        presenzaMinimaType: edition.presenzaMinimaType,
+        presenzaMinimaValue: edition.presenzaMinimaValue,
         status,
         editionStatus: edition.status,
         isSubmitted,
