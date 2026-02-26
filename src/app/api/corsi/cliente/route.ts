@@ -49,6 +49,9 @@ export async function GET(request: Request) {
           categories: { include: { category: true } },
         },
       },
+      lessons: {
+        select: { luogo: true },
+      },
       registrations: {
         select: { status: true, updatedAt: true },
       },
@@ -82,6 +85,14 @@ export async function GET(request: Request) {
       const isNew =
         (Date.now() - edition.createdAt.getTime()) / (1000 * 60 * 60 * 24) <= 7;
 
+      const luoghiUnici = Array.from(
+        new Set(
+          (edition.lessons ?? [])
+            .map((lesson) => lesson.luogo?.trim())
+            .filter((luogo): luogo is string => Boolean(luogo))
+        )
+      );
+
       return {
         id: edition.id,
         courseId: edition.courseId,
@@ -96,6 +107,7 @@ export async function GET(request: Request) {
         registrationsCount,
         completedCount,
         isNew,
+        luoghi: luoghiUnici,
         course: {
           id: edition.course.id,
           title: edition.course.title,

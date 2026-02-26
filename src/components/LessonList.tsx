@@ -43,6 +43,7 @@ export function LessonList({
             <th className="px-4 py-3">Data</th>
             <th className="px-4 py-3">Orario</th>
             <th className="px-4 py-3">Durata</th>
+            <th className="px-4 py-3">Luogo</th>
             <th className="px-4 py-3">Argomento</th>
             <th className="px-4 py-3">Presenze</th>
             {!readonly ? <th className="px-4 py-3">Azioni</th> : null}
@@ -65,6 +66,7 @@ export function LessonList({
                   {lesson.endTime ? ` - ${lesson.endTime}` : ""}
                 </td>
                 <td className="px-4 py-3">{lesson.durationHours}h</td>
+                <td className="px-4 py-3">{lesson.luogo || "-"}</td>
                 <td className="px-4 py-3">{lesson.title || "-"}</td>
                 <td className="px-4 py-3">
                   {total ? `${presentCount}/${total}` : "-"}

@@ -36,6 +36,7 @@ interface AttendanceMatrixProps {
     startTime?: string | null;
     endTime?: string | null;
     durationHours: number;
+    luogo?: string | null;
     title?: string | null;
   }>;
   employees: Array<{
@@ -131,6 +132,9 @@ export function AttendanceMatrix({
                   </div>
                   <div className="text-[10px] text-muted-foreground">
                     {lesson.durationHours}h
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {lesson.luogo || "-"}
                   </div>
                 </th>
               ))}

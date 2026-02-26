@@ -17,6 +17,18 @@ export async function GET(
       course: {
         include: { categories: { include: { category: true } } },
       },
+      lessons: {
+        orderBy: { date: "asc" },
+        select: {
+          id: true,
+          date: true,
+          startTime: true,
+          endTime: true,
+          durationHours: true,
+          title: true,
+          luogo: true,
+        },
+      },
       registrations: {
         include: { employee: true },
       },
@@ -50,6 +62,13 @@ export async function GET(
   const completed = edition.registrations.filter(
     (reg) => reg.status === "TRAINED"
   ).length;
+  const luoghiUnici = Array.from(
+    new Set(
+      (edition.lessons ?? [])
+        .map((lesson) => lesson.luogo?.trim())
+        .filter((luogo): luogo is string => Boolean(luogo))
+    )
+  );
 
   return NextResponse.json({
     data: {
@@ -69,6 +88,16 @@ export async function GET(
       })),
       durationHours: edition.course.durationHours,
       description: edition.course.description,
+      luoghi: luoghiUnici,
+      lessons: edition.lessons.map((lesson) => ({
+        id: lesson.id,
+        date: lesson.date,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+        durationHours: lesson.durationHours,
+        title: lesson.title,
+        luogo: lesson.luogo,
+      })),
       registrations: edition.registrations.map((reg) => ({
         id: reg.id,
         status: reg.status,

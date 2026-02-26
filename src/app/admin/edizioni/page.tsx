@@ -19,6 +19,7 @@ type EditionRow = {
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
   course?: { id: string; title: string } | null;
   client?: { id: string; ragioneSociale: string } | null;
+  lessons?: Array<{ luogo?: string | null }>;
   _count?: { registrations: number };
 };
 
@@ -224,6 +225,17 @@ function AdminEdizioniContent() {
     [sortBy]
   );
 
+  const getLuoghiDisplay = (edition: EditionRow) => {
+    const luoghiUnici = Array.from(
+      new Set(
+        (edition.lessons ?? [])
+          .map((lesson) => lesson.luogo?.trim())
+          .filter((luogo): luogo is string => Boolean(luogo))
+      )
+    );
+    return luoghiUnici.length > 0 ? luoghiUnici.join(", ") : "-";
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -358,6 +370,7 @@ function AdminEdizioniContent() {
                   </button>
                 </th>
               ))}
+              <th className="px-4 py-3">Luogo</th>
               <th className="px-4 py-3">Azioni</th>
             </tr>
           </thead>
@@ -365,7 +378,7 @@ function AdminEdizioniContent() {
             {loading ? (
               Array.from({ length: 6 }).map((_, row) => (
                 <tr key={`edition-skel-${row}`} className="border-t">
-                  {Array.from({ length: 9 }).map((__, col) => (
+                  {Array.from({ length: 10 }).map((__, col) => (
                     <td key={col} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -374,7 +387,7 @@ function AdminEdizioniContent() {
               ))
             ) : editions.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-6 text-center text-muted-foreground">
                   Nessuna edizione trovata.
                 </td>
               </tr>
@@ -409,6 +422,7 @@ function AdminEdizioniContent() {
                   <td className="px-4 py-3">
                     {edition._count?.registrations ?? 0}
                   </td>
+                  <td className="px-4 py-3">{getLuoghiDisplay(edition)}</td>
                   <td className="px-4 py-3">
                     {edition.course?.id ? (
                       <div className="flex items-center gap-3">

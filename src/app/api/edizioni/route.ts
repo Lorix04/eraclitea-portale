@@ -153,6 +153,9 @@ export async function GET(request: Request) {
       include: {
         course: { select: { id: true, title: true } },
         client: { select: { id: true, ragioneSociale: true } },
+        lessons: {
+          select: { luogo: true },
+        },
         _count: { select: { registrations: true } },
       },
       orderBy,

@@ -34,6 +34,7 @@ type EditionItem = {
   registrationsCount: number;
   completedCount: number;
   isNew: boolean;
+  luoghi?: string[];
 };
 
 type CourseGroup = {
@@ -329,6 +330,12 @@ function ClientCorsiContent() {
                           )}
                           <span>
                             {edition.registrationsCount} dipendenti
+                          </span>
+                          <span>
+                            Luogo:{" "}
+                            {edition.luoghi && edition.luoghi.length > 0
+                              ? edition.luoghi.join(", ")
+                              : "-"}
                           </span>
                           {edition.isNew ? (
                             <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">

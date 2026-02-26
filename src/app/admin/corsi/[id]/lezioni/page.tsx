@@ -39,6 +39,7 @@ export default function AdminCourseLessonsPage({
     startTime?: string;
     endTime?: string;
     durationHours: number;
+    luogo: string;
     title?: string;
     notes?: string;
   }) => {

@@ -17,6 +17,7 @@ const lessonSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   durationHours: z.coerce.number().positive("Durata obbligatoria"),
+  luogo: z.string().trim().min(1, "Luogo obbligatorio"),
   title: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -124,7 +125,7 @@ export async function POST(
     return validation.error;
   }
 
-  const { date, startTime, endTime, durationHours, title, notes } =
+  const { date, startTime, endTime, durationHours, luogo, title, notes } =
     validation.data;
 
   const parsedDate = parseItalianDate(date);
@@ -156,6 +157,7 @@ export async function POST(
         startTime: startTime || null,
         endTime: endTime || null,
         durationHours,
+        luogo: luogo || null,
         title: title || null,
         notes: notes || null,
       },

@@ -11,6 +11,7 @@ const lessonUpdateSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   durationHours: z.coerce.number().positive().optional(),
+  luogo: z.string().trim().min(1).optional(),
   title: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -53,7 +54,7 @@ export async function PUT(
     return NextResponse.json({ error: "Lezione non trovata" }, { status: 404 });
   }
 
-  const { date, startTime, endTime, durationHours, title, notes } =
+  const { date, startTime, endTime, durationHours, luogo, title, notes } =
     validation.data;
 
   const parsedDate = date ? parseItalianDate(date) : null;
@@ -68,6 +69,7 @@ export async function PUT(
       startTime: startTime !== undefined ? (startTime || null) : undefined,
       endTime: endTime !== undefined ? (endTime || null) : undefined,
       durationHours: durationHours ?? undefined,
+      luogo: luogo !== undefined ? (luogo || null) : undefined,
       title: title !== undefined ? (title || null) : undefined,
       notes: notes !== undefined ? (notes || null) : undefined,
     },

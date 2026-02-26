@@ -121,6 +121,7 @@ export interface Lesson {
   startTime?: string | null;
   endTime?: string | null;
   durationHours: number;
+  luogo?: string | null;
   title?: string | null;
   notes?: string | null;
   createdAt: Date | string;
@@ -133,6 +134,7 @@ export interface LessonFormData {
   startTime?: string;
   endTime?: string;
   durationHours: number;
+  luogo: string;
   title?: string;
   notes?: string;
 }

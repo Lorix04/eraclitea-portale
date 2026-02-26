@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
@@ -26,9 +26,47 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [durationHours, setDurationHours] = useState<number | "">("");
+  const [luogo, setLuogo] = useState("");
+  const [knownLuoghi, setKnownLuoghi] = useState<string[]>([]);
+  const [luogoInputFocused, setLuogoInputFocused] = useState(false);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const filteredLuoghi = useMemo(() => {
+    const query = luogo.trim().toLowerCase();
+    if (!query) {
+      return knownLuoghi.slice(0, 8);
+    }
+    return knownLuoghi
+      .filter((entry) =>
+        entry
+          .toLowerCase()
+          .split(/\s+/)
+          .some((word) => word.startsWith(query))
+      )
+      .slice(0, 8);
+  }, [knownLuoghi, luogo]);
+
+  useEffect(() => {
+    const loadLuoghi = async () => {
+      try {
+        const res = await fetch("/api/lezioni/luoghi");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (Array.isArray(json)) {
+          setKnownLuoghi(
+            json
+              .map((entry) => String(entry).trim())
+              .filter((entry) => entry.length > 0)
+          );
+        }
+      } catch {
+        setKnownLuoghi([]);
+      }
+    };
+    loadLuoghi();
+  }, []);
 
   useEffect(() => {
     if (lesson) {
@@ -36,6 +74,7 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
       setStartTime(lesson.startTime ?? "");
       setEndTime(lesson.endTime ?? "");
       setDurationHours(lesson.durationHours ?? "");
+      setLuogo(lesson.luogo ?? "");
       setTitle(lesson.title ?? "");
       setNotes(lesson.notes ?? "");
       return;
@@ -44,6 +83,7 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
     setStartTime("");
     setEndTime("");
     setDurationHours("");
+    setLuogo("");
     setTitle("");
     setNotes("");
   }, [lesson]);
@@ -87,6 +127,9 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
     if (durationHours === "" || Number(durationHours) <= 0) {
       fieldErrors.durationHours = "Inserisci una durata valida";
     }
+    if (!luogo.trim()) {
+      fieldErrors.luogo = "Questo campo e obbligatorio";
+    }
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length > 0) return;
 
@@ -95,6 +138,7 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
       startTime: startTime || undefined,
       endTime: endTime || undefined,
       durationHours: Number(durationHours),
+      luogo: luogo.trim(),
       title: title || undefined,
       notes: notes || undefined,
     });
@@ -175,6 +219,51 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
           }}
         />
         <FormFieldError message={errors.durationHours} />
+      </label>
+
+      <label className="relative flex flex-col gap-2 text-sm">
+        <FormLabel required>Luogo</FormLabel>
+        <input
+          type="text"
+          className={`rounded-md border bg-background px-3 py-2 ${
+            errors.luogo ? "border-red-500 focus-visible:outline-red-500" : ""
+          }`}
+          placeholder="Es. Aula A - Roma"
+          value={luogo}
+          onFocus={() => setLuogoInputFocused(true)}
+          onBlur={() => {
+            window.setTimeout(() => setLuogoInputFocused(false), 120);
+          }}
+          onChange={(event) => {
+            setLuogo(event.target.value);
+            if (errors.luogo) {
+              setErrors((prev) => ({ ...prev, luogo: "" }));
+            }
+          }}
+        />
+        {luogoInputFocused && filteredLuoghi.length > 0 ? (
+          <ul className="absolute left-0 right-0 top-full z-20 max-h-44 overflow-auto rounded-md border bg-popover py-1 shadow-md">
+            {filteredLuoghi.map((suggestion) => (
+              <li key={suggestion}>
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    setLuogo(suggestion);
+                    setLuogoInputFocused(false);
+                    if (errors.luogo) {
+                      setErrors((prev) => ({ ...prev, luogo: "" }));
+                    }
+                  }}
+                >
+                  {suggestion}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <FormFieldError message={errors.luogo} />
       </label>
 
       <label className="flex flex-col gap-2 text-sm">

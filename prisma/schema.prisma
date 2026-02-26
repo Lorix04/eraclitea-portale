@@ -119,6 +119,7 @@ model Lesson {
   startTime     String?
   endTime       String?
   durationHours Float
+  luogo         String?
   title         String?
   notes         String?
   attendances   Attendance[]

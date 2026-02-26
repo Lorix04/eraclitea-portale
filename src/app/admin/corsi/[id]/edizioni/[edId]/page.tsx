@@ -360,6 +360,7 @@ export default function AdminEditionDetailPage({
     startTime?: string;
     endTime?: string;
     durationHours: number;
+    luogo: string;
     title?: string;
     notes?: string;
   }) => {
@@ -634,6 +635,7 @@ export default function AdminEditionDetailPage({
                     <th className="px-4 py-3">Ora inizio</th>
                     <th className="px-4 py-3">Ora fine</th>
                     <th className="px-4 py-3">Durata</th>
+                    <th className="px-4 py-3">Luogo</th>
                     <th className="px-4 py-3">Titolo</th>
                     <th className="px-4 py-3">Azioni</th>
                   </tr>
@@ -647,6 +649,7 @@ export default function AdminEditionDetailPage({
                       <td className="px-4 py-3">{lessonItem.startTime || "-"}</td>
                       <td className="px-4 py-3">{lessonItem.endTime || "-"}</td>
                       <td className="px-4 py-3">{lessonItem.durationHours}h</td>
+                      <td className="px-4 py-3">{lessonItem.luogo || "-"}</td>
                       <td className="px-4 py-3">{lessonItem.title || "-"}</td>
                       <td className="px-4 py-3">
                         {!isArchived ? (

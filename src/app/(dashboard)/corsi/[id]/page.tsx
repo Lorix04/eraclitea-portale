@@ -28,6 +28,16 @@ type CourseDetail = {
   deadlineRegistry?: string | null;
   status?: string | null;
   notes?: string | null;
+  luoghi?: string[];
+  lessons?: Array<{
+    id: string;
+    date: string | Date;
+    startTime?: string | null;
+    endTime?: string | null;
+    durationHours?: number | null;
+    title?: string | null;
+    luogo?: string | null;
+  }>;
   registrations: Array<{
     id: string;
     status: string;
@@ -360,6 +370,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             Deadline: {formatItalianDate(course.deadlineRegistry)}
           </p>
         ) : null}
+        <p className="text-sm text-muted-foreground">
+          Luogo: {course.luoghi && course.luoghi.length > 0 ? course.luoghi.join(", ") : "-"}
+        </p>
         {course.status ? (
           <div className="mt-2">
             <EditionStatusBadge status={course.status} className="text-xs" />
@@ -606,7 +619,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       ) : null}
 
       {tab === "info" ? (
-        <div className="rounded-lg border bg-card p-6">
+        <div className="space-y-4 rounded-lg border bg-card p-6">
           {course.durationHours ? (
             <p className="text-sm text-muted-foreground">
               Durata: {course.durationHours} ore
@@ -620,6 +633,31 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           <p className="text-sm text-muted-foreground">
             {course.description || "Nessuna descrizione disponibile."}
           </p>
+          {course.lessons && course.lessons.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-left">
+                  <tr>
+                    <th className="px-4 py-2">Data</th>
+                    <th className="px-4 py-2">Orario</th>
+                    <th className="px-4 py-2">Luogo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {course.lessons.map((lesson) => (
+                    <tr key={lesson.id} className="border-t">
+                      <td className="px-4 py-2">{formatItalianDate(lesson.date)}</td>
+                      <td className="px-4 py-2">
+                        {lesson.startTime || "-"}
+                        {lesson.endTime ? ` - ${lesson.endTime}` : ""}
+                      </td>
+                      <td className="px-4 py-2">{lesson.luogo || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
