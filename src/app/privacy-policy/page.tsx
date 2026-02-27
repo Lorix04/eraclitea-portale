@@ -48,13 +48,17 @@ export default function PrivacyPolicyPage() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Titolare del trattamento</h2>
               <p className="mt-2">
-                Sapienta — Portale Formazione
+                Accademia Eraclitea S.R.L.
                 <br />
-                Indirizzo: [inserire indirizzo completo]
+                Indirizzo: Viale della Libertà, 106, 95129 Catania (CT)
                 <br />
-                Email: [inserire email privacy]
+                Email: segreteria@eraclitea.it
                 <br />
-                P.IVA: [inserire P.IVA]
+                PEC: eraclitea@pec.it
+                <br />
+                P.IVA: 04255790877
+                <br />
+                Telefono: +39 095 449778
               </p>
             </div>
 
@@ -121,7 +125,7 @@ export default function PrivacyPolicyPage() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Contatti</h2>
               <p className="mt-2">
-                Per richieste relative ai dati personali e all’esercizio dei diritti: [inserire email dedicata privacy].
+                Per richieste relative ai dati personali e all’esercizio dei diritti: segreteria@eraclitea.it (PEC: eraclitea@pec.it).
               </p>
             </div>
 
@@ -152,4 +156,3 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-
