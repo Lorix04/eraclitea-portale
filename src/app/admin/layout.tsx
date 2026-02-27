@@ -5,6 +5,7 @@ import SkipLink from "@/components/SkipLink";
 import UserDropdown from "@/components/UserDropdown";
 import NotificationBell from "@/components/NotificationBell";
 import DisableDarkMode from "@/components/DisableDarkMode";
+import LogoutSync from "@/components/LogoutSync";
 
 export default function AdminLayout({
   children,
@@ -13,6 +14,7 @@ export default function AdminLayout({
 }) {
   return (
     <>
+      <LogoutSync />
       <DisableDarkMode />
       <div className="app-shell flex min-h-screen">
         <SkipLink />
