@@ -57,16 +57,18 @@ export async function POST(request: Request) {
       to: data.testRecipient,
       subject: "Test Configurazione Email - Sapienta",
       html: buildEmailHtml({
-        title: "Configurazione Email Funzionante",
+        title: "Test Configurazione SMTP",
         greeting: "Gentile amministratore,",
         bodyHtml: `
-          ${emailParagraph("Se stai leggendo questa email, la configurazione SMTP e corretta.")}
+          ${emailParagraph("Se stai leggendo questa email, la configurazione SMTP è corretta.")}
           ${emailInfoBox(`
             <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Host:</strong> ${data.smtpHost}:${data.smtpPort}</p>
             <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Mittente:</strong> ${from}</p>
             <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Data:</strong> ${new Date().toLocaleString("it-IT")}</p>
           `)}
         `,
+        ctaText: "Vai al Portale",
+        ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/smtp`,
       }),
     });
 

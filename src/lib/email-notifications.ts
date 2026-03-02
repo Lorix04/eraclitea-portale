@@ -1,7 +1,7 @@
 import { buildEmailHtml, emailInfoBox, emailParagraph } from "@/lib/email-templates";
 import { sendAutoEmail } from "@/lib/email-service";
 
-const PORTAL_URL = process.env.NEXTAUTH_URL || "https://portale.example.com";
+const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
 function safeName(name: string | null | undefined, fallback: string): string {
   const value = (name || "").trim();
@@ -21,7 +21,6 @@ export async function sendWelcomeEmail(params: {
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Email:</strong> ${params.clientEmail}</p>
         <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Password temporanea:</strong> ${params.tempPassword}</p>
       `)}
-      ${emailParagraph("Ti consigliamo di cambiare la password al primo accesso.")}
     `
     : `
       ${emailInfoBox(`
@@ -31,14 +30,16 @@ export async function sendWelcomeEmail(params: {
     `;
 
   const html = buildEmailHtml({
-    title: "Benvenuto nel Portale Formazione",
+    title: "Benvenuto su Sapienta",
     greeting: `Gentile ${clientName},`,
     bodyHtml: `
-      ${emailParagraph("Il tuo account cliente e stato creato sul portale formazione.")}
+      ${emailParagraph("Il tuo account cliente è stato creato sul Portale Sapienta.")}
       ${credentialsHtml}
     `,
     ctaText: "Accedi al Portale",
     ctaUrl: `${PORTAL_URL}/login`,
+    afterCtaHtml:
+      '<p style="margin:8px 0 0; font-size:13px; line-height:1.5; color:#666666; font-style:italic;">ℹ️ Ti consigliamo di cambiare la password al primo accesso.</p>',
     footerNote: "Se non hai richiesto questo account, ignora questa email.",
   });
 
@@ -47,7 +48,7 @@ export async function sendWelcomeEmail(params: {
     recipientEmail: params.clientEmail,
     recipientName: clientName,
     recipientId: params.clientId,
-    subject: "Benvenuto nel Portale Formazione - Le tue credenziali",
+    subject: "Benvenuto su Sapienta - Le tue credenziali",
     html,
   });
 }
@@ -69,7 +70,7 @@ export async function sendNewEditionEmail(params: {
     title: "Nuova Edizione Disponibile",
     greeting: `Gentile ${clientName},`,
     bodyHtml: `
-      ${emailParagraph("Una nuova edizione del corso e stata attivata per la tua azienda:")}
+      ${emailParagraph("Una nuova edizione del corso è stata attivata per la tua azienda:")}
       ${emailInfoBox(`
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${params.courseName}</p>
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Edizione:</strong> #${params.editionNumber}</p>
@@ -113,7 +114,7 @@ export async function sendDeadlineReminderEmail(params: {
     title: `${urgent ? "ATTENZIONE - " : ""}Promemoria Deadline Anagrafiche`,
     greeting: `Gentile ${clientName},`,
     bodyHtml: `
-      ${emailParagraph(`Ti ricordiamo che la deadline per l'inserimento delle anagrafiche e tra <strong>${params.daysRemaining} giorni</strong> (${params.deadlineDate}).`)}
+      ${emailParagraph(`Ti ricordiamo che la deadline per l'inserimento delle anagrafiche è tra <strong>${params.daysRemaining} giorni</strong> (${params.deadlineDate}).`)}
       ${emailInfoBox(`
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${params.courseName} (Ed. #${params.editionNumber})</p>
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Deadline:</strong> ${params.deadlineDate}</p>
@@ -193,7 +194,7 @@ export async function sendCertificateExpiringEmail(params: {
     title: `${urgent ? "ATTENZIONE - " : ""}Attestato in Scadenza`,
     greeting: `Gentile ${clientName},`,
     bodyHtml: `
-      ${emailParagraph(`Un attestato di un tuo dipendente e in scadenza tra <strong>${params.daysRemaining} giorni</strong>:`)}
+      ${emailParagraph(`Un attestato di un tuo dipendente è in scadenza tra <strong>${params.daysRemaining} giorni</strong>:`)}
       ${emailInfoBox(`
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Dipendente:</strong> ${params.employeeName}</p>
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${params.courseName}</p>
@@ -275,7 +276,7 @@ export async function sendRegistryReceivedEmail(params: {
       `)}
       ${emailParagraph("Le anagrafiche saranno verificate dal nostro team.")}
     `,
-    footerNote: "Questa e una conferma automatica di ricezione.",
+    footerNote: "Questa è una conferma automatica di ricezione.",
   });
 
   return sendAutoEmail({
@@ -356,7 +357,7 @@ export async function sendEditionCancelledEmail(params: {
     title: "Edizione Cancellata",
     greeting: `Gentile ${clientName},`,
     bodyHtml: `
-      ${emailParagraph("Ti informiamo che la seguente edizione e stata cancellata:")}
+      ${emailParagraph("Ti informiamo che la seguente edizione è stata cancellata:")}
       ${emailInfoBox(`
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${params.courseName} (Ed. #${params.editionNumber})</p>
         ${params.reason ? `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Motivo:</strong> ${params.reason}</p>` : ""}
@@ -431,7 +432,7 @@ export async function sendAdminDeadlineExpiredEmail(params: {
     title: "ATTENZIONE - Deadline Scaduta",
     greeting: `Ciao ${adminName},`,
     bodyHtml: `
-      ${emailParagraph(`La deadline per le anagrafiche e scaduta e il cliente <strong>${params.clientName}</strong> non ha completato l'inserimento.`)}
+      ${emailParagraph(`La deadline per le anagrafiche è scaduta e il cliente <strong>${params.clientName}</strong> non ha completato l'inserimento.`)}
       ${emailInfoBox(`
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${params.courseName} (Ed. #${params.editionNumber})</p>
         <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Deadline:</strong> ${params.deadlineDate}</p>

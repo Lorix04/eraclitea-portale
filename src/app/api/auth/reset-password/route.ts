@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password/${resetToken}`;
     await send({
       to: payload.email,
-      subject: "Reset Password - Portale Formazione",
+      subject: "Reimposta la tua password — Sapienta",
       html: passwordResetRequestTemplate(resetUrl),
     });
   }
