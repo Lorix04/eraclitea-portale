@@ -174,6 +174,7 @@ export default function AdminExportPage() {
             <option value="courses">Corsi</option>
             <option value="clients">Clienti</option>
             <option value="employees">Dipendenti</option>
+            <option value="teachers">Docenti</option>
             <option value="editions">Edizioni</option>
             <option value="course-areas">Aree corsi</option>
             <option value="tickets">Ticket</option>

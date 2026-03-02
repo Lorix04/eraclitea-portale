@@ -125,12 +125,62 @@ model Lesson {
   title         String?
   notes         String?
   attendances   Attendance[]
+  teacherAssignments TeacherAssignment[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([courseEditionId])
   @@index([date])
   @@unique([courseEditionId, date, startTime])
+}
+
+model Teacher {
+  id              String   @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  specialization  String?
+  bio             String?
+  cvPath          String?
+  cvOriginalName  String?
+  notes           String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  assignments      TeacherAssignment[]
+  unavailabilities TeacherUnavailability[]
+  categories       Category[]
+}
+
+model TeacherAssignment {
+  id        String   @id @default(cuid())
+  teacherId String
+  lessonId  String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, lessonId])
+  @@index([lessonId])
+}
+
+model TeacherUnavailability {
+  id        String   @id @default(cuid())
+  teacherId String
+  date      DateTime
+  reason    String?
+  allDay    Boolean  @default(true)
+  startTime String?
+  endTime   String?
+  createdAt DateTime @default(now())
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, date])
 }
 
 model Category {
@@ -144,6 +194,7 @@ model Category {
   courses     CourseCategory[]
   clients     ClientCategory[]
   visibleCourses CourseVisibilityCategory[]
+  teachers    Teacher[]
 }
 
 model CourseCategory {

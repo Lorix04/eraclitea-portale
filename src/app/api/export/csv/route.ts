@@ -177,6 +177,41 @@ export async function GET(request: Request) {
       fondo_interprof: "",
       pec: toValue(employee.pec),
     }));
+  } else if (exportType === "teachers") {
+    const where: Prisma.TeacherWhereInput = {
+      ...(dateRange ? { createdAt: dateRange } : {}),
+    };
+
+    const teachers = await prisma.teacher.findMany({
+      where,
+      include: {
+        categories: {
+          select: {
+            name: true,
+          },
+          orderBy: { name: "asc" },
+        },
+        _count: {
+          select: {
+            assignments: true,
+          },
+        },
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      take: preview ? limit : undefined,
+    });
+
+    rows = teachers.map((teacher) => ({
+      Nome: teacher.firstName,
+      Cognome: teacher.lastName,
+      Email: teacher.email ?? "",
+      Telefono: teacher.phone ?? "",
+      Specializzazione: teacher.specialization ?? "",
+      Aree: teacher.categories.map((category) => category.name).join(", "),
+      Stato: teacher.active ? "Attivo" : "Inattivo",
+      "Lezioni assegnate": teacher._count.assignments,
+      Note: teacher.notes ?? "",
+    }));
   } else if (exportType === "editions") {
     const where: Prisma.CourseEditionWhereInput = {
       ...(clientId ? { clientId } : {}),

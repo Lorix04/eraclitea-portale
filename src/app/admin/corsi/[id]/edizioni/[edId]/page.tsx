@@ -32,6 +32,7 @@ import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
+import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
@@ -43,6 +44,7 @@ const AnagraficheResponsive = dynamic(
 const TABS = [
   { id: "info", label: "Info" },
   { id: "lezioni", label: "Lezioni" },
+  { id: "docenti", label: "Docenti" },
   { id: "anagrafiche", label: "Anagrafiche" },
   { id: "presenze", label: "Presenze" },
   { id: "attestati", label: "Attestati" },
@@ -807,6 +809,14 @@ export default function AdminEditionDetailPage({
             </div>
           )}
         </div>
+      ) : null}
+
+      {tab === "docenti" ? (
+        <EditionTeachersTab
+          editionId={edition.id}
+          lessons={lessons}
+          readOnly={isArchived}
+        />
       ) : null}
 
       {tab === "anagrafiche" ? (

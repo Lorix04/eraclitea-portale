@@ -33,9 +33,9 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi e area
 - Prisma migrate prod: `npm run db:migrate:prod`
 - Seed: `npm run db:seed`
 - Studio: `npm run db:studio`
-- Docker up: `docker-compose up -d --build`
-- Docker logs app: `docker-compose logs -f app`
-- Docker migrate prod: `docker-compose exec app npx prisma migrate deploy`
+- Docker up: `docker compose up -d --build`
+- Docker logs app: `docker compose logs -f app`
+- Docker migrate prod: `docker compose exec app npx prisma migrate deploy`
 ## Database
 - `User` (ADMIN/CLIENT) -> opzionale `clientId`, `mustChangePassword`, reset token
 - `Client` -> branding, utenti, dipendenti, edizioni, registrazioni, certificati
@@ -62,9 +62,9 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi e area
 - Volumi: `postgres_data` (DB), `app_storage` (upload)
 - Flusso consigliato:
   1. impostare `.env` produzione
-  2. `docker-compose up -d --build`
-  3. `docker-compose exec app npx prisma migrate deploy`
-  4. (opzionale) `docker-compose exec app npm run db:seed`
+  2. `docker compose up -d --build`
+  3. `docker compose exec app npx prisma migrate deploy`
+  4. (opzionale) `docker compose exec app npm run db:seed`
   5. verifica `GET /api/health`
 - Script utili: `scripts/pre-deploy.sh`, `scripts/post-deploy.sh`
 ### VPS Info
@@ -74,15 +74,15 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi e area
 - Path progetto: `/root/eraclitea-portale`
 - Reverse proxy: Nginx (sistema, porta 80/443) -> Docker app (porta 3000)
 - SSL: Let's Encrypt (`sapienta.it` + `www.sapienta.it`) - rinnovo: `certbot renew`
-- Process manager: Docker (`docker-compose`)
+- Process manager: Docker (`docker compose`)
 ### Comandi VPS frequenti
 - SSH: `ssh root@srv1302407`
 - Vai al progetto: `cd /root/eraclitea-portale`
-- Restart app: `docker-compose up -d --build`
-- Restart veloce (no rebuild): `docker-compose restart app`
-- Logs app: `docker-compose logs -f app`
-- Logs DB: `docker-compose logs -f db`
-- Stato servizi: `docker-compose ps`
+- Restart app: `docker compose up -d --build`
+- Restart veloce (no rebuild): `docker compose restart app`
+- Logs app: `docker compose logs -f app`
+- Logs DB: `docker compose logs -f db`
+- Stato servizi: `docker compose ps`
 - Config Nginx: `nano /etc/nginx/sites-available/default` (o `sites-enabled/`)
 - Test Nginx: `nginx -t && systemctl reload nginx`
 - Rinnovo SSL: `certbot renew`
