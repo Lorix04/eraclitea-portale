@@ -197,8 +197,8 @@ export default function CreateEditionModal({
     if (!startDate) errors.startDate = "Data inizio obbligatoria";
     if (!endDate) errors.endDate = "Data fine obbligatoria";
 
-    if (parsedStart && parsedEnd && parsedEnd <= parsedStart) {
-      errors.endDate = "La data di fine deve essere successiva alla data di inizio";
+    if (parsedStart && parsedEnd && parsedEnd < parsedStart) {
+      errors.endDate = "La data di fine non può essere precedente alla data di inizio";
     }
 
     if (parsedStart && parsedDeadline && parsedDeadline >= parsedStart) {

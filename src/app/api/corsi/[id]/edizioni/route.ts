@@ -109,9 +109,9 @@ export async function POST(
 
     const data = validation.data;
 
-    if (data.startDate && data.endDate && data.endDate <= data.startDate) {
+    if (data.startDate && data.endDate && data.endDate < data.startDate) {
       return NextResponse.json(
-        { error: "La data di fine deve essere successiva alla data di inizio" },
+        { error: "La data di fine non può essere precedente alla data di inizio" },
         { status: 400 }
       );
     }

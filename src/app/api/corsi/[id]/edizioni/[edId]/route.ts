@@ -126,9 +126,9 @@ export async function PUT(
   const nextEndDate = data.endDate ?? existing.endDate;
   const nextDeadline = data.deadlineRegistry ?? existing.deadlineRegistry;
 
-  if (nextStartDate && nextEndDate && nextEndDate <= nextStartDate) {
+  if (nextStartDate && nextEndDate && nextEndDate < nextStartDate) {
     return NextResponse.json(
-      { error: "La data di fine deve essere successiva alla data di inizio" },
+      { error: "La data di fine non può essere precedente alla data di inizio" },
       { status: 400 }
     );
   }

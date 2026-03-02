@@ -97,10 +97,10 @@ function validateEditionDates(
   },
   ctx: z.RefinementCtx
 ) {
-  if (data.startDate && data.endDate && data.endDate <= data.startDate) {
+  if (data.startDate && data.endDate && data.endDate < data.startDate) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "La data di fine deve essere successiva alla data di inizio",
+      message: "La data di fine non può essere precedente alla data di inizio",
       path: ["endDate"],
     });
   }
