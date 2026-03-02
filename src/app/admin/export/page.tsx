@@ -80,7 +80,11 @@ export default function AdminExportPage() {
   }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo]);
 
   useEffect(() => {
-    if (!["employees", "certificates", "registrations"].includes(exportType)) {
+    if (
+      !["employees", "certificates", "registrations", "editions", "tickets"].includes(
+        exportType
+      )
+    ) {
       setClientId("");
     }
     if (!["registrations", "certificates"].includes(exportType)) {
@@ -135,9 +139,13 @@ export default function AdminExportPage() {
     }
   };
 
-  const showClientFilter = ["employees", "certificates", "registrations"].includes(
-    exportType
-  );
+  const showClientFilter = [
+    "employees",
+    "certificates",
+    "registrations",
+    "editions",
+    "tickets",
+  ].includes(exportType);
   const showEditionFilter = ["registrations", "certificates"].includes(exportType);
   const previewColumns = useMemo(() => {
     if (exportType === "employees") return [...EMPLOYEE_PREVIEW_COLUMNS];
@@ -166,6 +174,9 @@ export default function AdminExportPage() {
             <option value="courses">Corsi</option>
             <option value="clients">Clienti</option>
             <option value="employees">Dipendenti</option>
+            <option value="editions">Edizioni</option>
+            <option value="course-areas">Aree corsi</option>
+            <option value="tickets">Ticket</option>
             <option value="certificates">Attestati</option>
             <option value="registrations">Iscrizioni</option>
           </select>

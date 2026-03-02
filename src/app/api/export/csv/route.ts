@@ -177,6 +177,118 @@ export async function GET(request: Request) {
       fondo_interprof: "",
       pec: toValue(employee.pec),
     }));
+  } else if (exportType === "editions") {
+    const where: Prisma.CourseEditionWhereInput = {
+      ...(clientId ? { clientId } : {}),
+      ...(dateRange ? { startDate: dateRange } : {}),
+    };
+
+    const editions = await prisma.courseEdition.findMany({
+      where,
+      include: {
+        course: { select: { title: true } },
+        client: { select: { ragioneSociale: true } },
+        lessons: { select: { luogo: true } },
+        _count: { select: { registrations: true } },
+      },
+      orderBy: [{ startDate: "desc" }, { editionNumber: "desc" }],
+      take: preview ? limit : undefined,
+    });
+
+    rows = editions.map((edition) => {
+      const uniqueLocations = Array.from(
+        new Set(
+          edition.lessons
+            .map((lesson) => lesson.luogo?.trim())
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+
+      // NOTE: maxParticipants is not present in current Prisma model.
+      // Placeholder kept to preserve requested export shape.
+      return {
+        "Codice edizione": edition.id,
+        "Nome corso": edition.course.title,
+        Cliente: edition.client.ragioneSociale,
+        "Data inizio": formatItalianDate(edition.startDate),
+        "Data fine": formatItalianDate(edition.endDate),
+        Locazione: uniqueLocations.join(", "),
+        "Numero partecipanti previsti": "",
+        "Numero iscrizioni": edition._count.registrations,
+        "Fase/Stato": edition.status,
+        Note: edition.notes ?? "",
+      };
+    });
+  } else if (exportType === "course-areas") {
+    const where: Prisma.CategoryWhereInput = {
+      ...(dateRange ? { createdAt: dateRange } : {}),
+    };
+
+    const categories = await prisma.category.findMany({
+      where,
+      include: {
+        _count: { select: { courses: true } },
+      },
+      orderBy: { name: "asc" },
+      take: preview ? limit : undefined,
+    });
+
+    rows = categories.map((category) => ({
+      "Nome area/categoria": category.name,
+      Descrizione: category.description ?? "",
+      "Numero corsi associati": category._count.courses,
+      // NOTE: no isActive flag exists in current Category schema.
+      Attiva: "Si",
+    }));
+  } else if (exportType === "tickets") {
+    const where: Prisma.TicketWhereInput = {
+      ...(clientId
+        ? {
+            client: {
+              is: {
+                clientId,
+              },
+            },
+          }
+        : {}),
+      ...(dateRange ? { createdAt: dateRange } : {}),
+    };
+
+    const tickets = await prisma.ticket.findMany({
+      where,
+      include: {
+        client: {
+          select: {
+            email: true,
+            client: { select: { ragioneSociale: true } },
+          },
+        },
+        messages: {
+          select: { createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        _count: {
+          select: { messages: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: preview ? limit : undefined,
+    });
+
+    rows = tickets.map((ticket) => ({
+      "ID / Numero ticket": ticket.id,
+      "Oggetto/Titolo": ticket.subject,
+      Cliente: ticket.client.client?.ragioneSociale ?? "",
+      "Utente che ha aperto": ticket.client.email,
+      Stato: ticket.status,
+      Priorita: ticket.priority,
+      "Data apertura": formatItalianDate(ticket.createdAt),
+      "Data ultima risposta": formatItalianDate(
+        ticket.messages[0]?.createdAt ?? ticket.updatedAt
+      ),
+      "Numero messaggi": ticket._count.messages,
+    }));
   } else if (exportType === "certificates") {
     const where: Prisma.CertificateWhereInput = {
       ...(clientId ? { clientId } : {}),
