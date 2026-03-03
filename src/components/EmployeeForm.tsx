@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { formatItalianDate } from "@/lib/date-utils";
 import { BrandedButton } from "@/components/BrandedButton";
@@ -34,6 +35,9 @@ export type EmployeeFormData = {
 };
 
 type EmployeeFormProps = {
+  employeeId?: string;
+  role: "ADMIN" | "CLIENT";
+  clientId?: string | null;
   employee?: {
     nome?: string;
     cognome?: string;
@@ -91,6 +95,9 @@ function isValidEmail(email: string) {
 }
 
 export default function EmployeeForm({
+  employeeId,
+  role,
+  clientId,
   employee,
   onSubmit,
   isLoading,
@@ -98,11 +105,37 @@ export default function EmployeeForm({
 }: EmployeeFormProps) {
   const [form, setForm] = useState<EmployeeFormData>(normalizeForm(employee));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [cfValidation, setCfValidation] = useState<{
+    loading: boolean;
+    valid: boolean | null;
+    mismatches: string[];
+    warnings: string[];
+    duplicate: boolean;
+    duplicateEmployee: { id: string; fullName: string; fiscalCode: string } | null;
+  }>({
+    loading: false,
+    valid: null,
+    mismatches: [],
+    warnings: [],
+    duplicate: false,
+    duplicateEmployee: null,
+  });
+  const [submitBlockMessage, setSubmitBlockMessage] = useState<string | null>(null);
   const { province, filterProvince, filterRegioni, getRegioneByProvincia } =
     useProvinceRegioni();
+  const initialCF = (employee?.codiceFiscale ?? "").trim().toUpperCase();
 
   useEffect(() => {
     setForm(normalizeForm(employee));
+    setCfValidation({
+      loading: false,
+      valid: null,
+      mismatches: [],
+      warnings: [],
+      duplicate: false,
+      duplicateEmployee: null,
+    });
+    setSubmitBlockMessage(null);
   }, [employee]);
 
   const updateField = (key: keyof EmployeeFormData, value: string) => {
@@ -149,6 +182,104 @@ export default function EmployeeForm({
     () => filterRegioni(form.regione || "").slice(0, 30),
     [filterRegioni, form.regione]
   );
+  const normalizedCF = form.codiceFiscale.trim().toUpperCase();
+  const cfLength = normalizedCF.length;
+  const hasChangedCF = normalizedCF !== initialCF;
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (!hasChangedCF || cfLength < 16) {
+      setCfValidation((prev) => ({
+        ...prev,
+        loading: false,
+        valid: null,
+        mismatches: [],
+        warnings: [],
+        duplicate: false,
+        duplicateEmployee: null,
+      }));
+      return () => controller.abort();
+    }
+
+    if (!isValidCodiceFiscale(normalizedCF)) {
+      setCfValidation({
+        loading: false,
+        valid: false,
+        mismatches: [],
+        warnings: [],
+        duplicate: false,
+        duplicateEmployee: null,
+      });
+      return () => controller.abort();
+    }
+
+    setCfValidation((prev) => ({ ...prev, loading: true }));
+
+    fetch("/api/dipendenti/validate-cf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fiscalCode: normalizedCF,
+        employeeId,
+        clientId,
+        firstName: form.nome,
+        lastName: form.cognome,
+        birthDate: form.dataNascita,
+        gender: form.sesso,
+        birthPlace: form.luogoNascita,
+      }),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error("Validation failed");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setCfValidation({
+          loading: false,
+          valid: Boolean(data.valid),
+          mismatches: Array.isArray(data.mismatches) ? data.mismatches : [],
+          warnings: Array.isArray(data.warnings) ? data.warnings : [],
+          duplicate: Boolean(data.duplicate),
+          duplicateEmployee: data.duplicateEmployee ?? null,
+        });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setCfValidation({
+          loading: false,
+          valid: null,
+          mismatches: [],
+          warnings: ["Impossibile verificare il codice fiscale in questo momento"],
+          duplicate: false,
+          duplicateEmployee: null,
+        });
+      });
+
+    return () => controller.abort();
+  }, [
+    hasChangedCF,
+    cfLength,
+    normalizedCF,
+    employeeId,
+    clientId,
+    form.nome,
+    form.cognome,
+    form.dataNascita,
+    form.sesso,
+    form.luogoNascita,
+  ]);
+
+  const hasClientBlockingIssues =
+    role === "CLIENT" &&
+    hasChangedCF &&
+    cfLength === 16 &&
+    (cfValidation.valid === false ||
+      cfValidation.mismatches.length > 0 ||
+      cfValidation.duplicate);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -185,7 +316,22 @@ export default function EmployeeForm({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSubmitBlockMessage(null);
     if (!validate()) return;
+    if (hasClientBlockingIssues) {
+      const parts = [
+        cfValidation.mismatches.length > 0
+          ? "il codice fiscale presenta incongruenze con i dati anagrafici"
+          : null,
+        cfValidation.duplicate
+          ? "il codice fiscale è già assegnato a un altro dipendente"
+          : null,
+      ].filter(Boolean);
+      setSubmitBlockMessage(
+        `Impossibile salvare: ${parts.join(" e ")}.`
+      );
+      return;
+    }
     await onSubmit(form);
   };
 
@@ -223,12 +369,59 @@ export default function EmployeeForm({
         <input
           className={`rounded-md border px-3 py-2 ${
             errors.codiceFiscale ? "border-red-500 focus-visible:outline-red-500" : ""
-          } ${employee?.codiceFiscale ? "bg-muted text-muted-foreground" : "bg-background"}`}
+          } bg-background`}
           value={form.codiceFiscale}
-          onChange={(event) => updateField("codiceFiscale", event.target.value.toUpperCase())}
-          readOnly={Boolean(employee?.codiceFiscale)}
+          onChange={(event) =>
+            updateField(
+              "codiceFiscale",
+              event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16)
+            )
+          }
+          maxLength={16}
         />
         <FormFieldError message={errors.codiceFiscale} />
+        <p className="text-xs text-muted-foreground">{cfLength}/16 caratteri</p>
+        {cfValidation.loading ? (
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Verifica codice fiscale...
+          </p>
+        ) : null}
+        {hasChangedCF && cfLength === 16 && cfValidation.valid === true ? (
+          <p className="inline-flex items-center gap-1 text-xs text-emerald-600">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Codice fiscale valido
+          </p>
+        ) : null}
+        {hasChangedCF && cfLength === 16 && cfValidation.valid === false ? (
+          <p className="inline-flex items-center gap-1 text-xs text-red-600">
+            <XCircle className="h-3.5 w-3.5" />
+            Formato codice fiscale non valido
+          </p>
+        ) : null}
+        {hasChangedCF && cfLength === 16
+          ? cfValidation.mismatches.map((message) => (
+              <p key={message} className="inline-flex items-center gap-1 text-xs text-amber-600">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {message}
+              </p>
+            ))
+          : null}
+        {hasChangedCF && cfLength === 16 && cfValidation.duplicate ? (
+          <p className="inline-flex items-center gap-1 text-xs text-red-600">
+            <XCircle className="h-3.5 w-3.5" />
+            Codice fiscale già presente per il dipendente{" "}
+            {cfValidation.duplicateEmployee?.fullName ?? "esistente"}
+          </p>
+        ) : null}
+        {hasChangedCF && cfLength === 16
+          ? cfValidation.warnings.map((message) => (
+              <p key={message} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {message}
+              </p>
+            ))
+          : null}
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -459,15 +652,21 @@ export default function EmployeeForm({
         </label>
       </div>
 
+      {submitBlockMessage ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {submitBlockMessage}
+        </div>
+      ) : null}
+
       {useBranding ? (
-        <BrandedButton type="submit" disabled={isLoading}>
+        <BrandedButton type="submit" disabled={isLoading || hasClientBlockingIssues}>
           {isLoading ? "Salvataggio..." : "Salva modifiche"}
         </BrandedButton>
       ) : (
         <button
           type="submit"
           className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
-          disabled={isLoading}
+          disabled={isLoading || hasClientBlockingIssues}
         >
           {isLoading ? "Salvataggio..." : "Salva modifiche"}
         </button>

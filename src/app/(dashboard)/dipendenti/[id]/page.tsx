@@ -29,6 +29,7 @@ export default function ClientEmployeeDetailPage() {
     const updatePayload = {
       nome: payload.nome,
       cognome: payload.cognome,
+      codiceFiscale: payload.codiceFiscale,
       sesso: payload.sesso,
       email: payload.email,
       telefono: payload.telefono,
@@ -52,9 +53,10 @@ export default function ClientEmployeeDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatePayload),
     });
+    const json = await res.json().catch(() => ({}));
     setSaving(false);
     if (!res.ok) {
-      toast.error("Errore durante il salvataggio");
+      toast.error(json?.error || "Errore durante il salvataggio");
       return;
     }
     toast.success("Dipendente aggiornato");
@@ -131,6 +133,9 @@ export default function ClientEmployeeDetailPage() {
         </p>
         <div className="mt-6">
           <EmployeeForm
+            employeeId={employee.id}
+            role="CLIENT"
+            clientId={employee.clientId}
             employee={employee}
             onSubmit={handleSubmit}
             isLoading={saving}
