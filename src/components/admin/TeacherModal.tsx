@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
@@ -62,12 +62,14 @@ export default function TeacherModal({
   const [specialization, setSpecialization] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [categorySearch, setCategorySearch] = useState("");
   const [bio, setBio] = useState("");
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(true);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const categorySearchInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = Boolean(teacher?.id);
 
@@ -79,12 +81,23 @@ export default function TeacherModal({
     setPhone(teacher?.phone ?? "");
     setSpecialization(teacher?.specialization ?? "");
     setSelectedCategoryIds((teacher?.categories ?? []).map((category) => category.id));
+    setCategorySearch("");
     setBio(teacher?.bio ?? "");
     setNotes(teacher?.notes ?? "");
     setActive(teacher?.active ?? true);
     setCvFile(null);
     setErrors({});
   }, [open, teacher]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const timeout = window.setTimeout(() => {
+      categorySearchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -125,6 +138,15 @@ export default function TeacherModal({
     if (title) return title;
     return isEdit ? "Modifica docente" : "Nuovo docente";
   }, [isEdit, title]);
+
+  const filteredCategories = useMemo(() => {
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return categories;
+
+    return categories.filter((category) =>
+      category.name.toLowerCase().includes(query)
+    );
+  }, [categories, categorySearch]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -318,13 +340,27 @@ export default function TeacherModal({
             ) : (
               <p className="text-xs text-muted-foreground">Nessuna area selezionata.</p>
             )}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                ref={categorySearchInputRef}
+                value={categorySearch}
+                onChange={(event) => setCategorySearch(event.target.value)}
+                placeholder="Cerca area..."
+                className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+              />
+            </div>
             <div className="max-h-32 space-y-1 overflow-auto rounded-md border bg-background p-2">
               {categories.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   Nessuna area disponibile.
                 </p>
+              ) : filteredCategories.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Nessuna area trovata.
+                </p>
               ) : (
-                categories.map((category) => {
+                filteredCategories.map((category) => {
                   const checked = selectedCategoryIds.includes(category.id);
                   return (
                     <label
