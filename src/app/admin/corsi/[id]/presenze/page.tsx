@@ -2,18 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Save } from "lucide-react";
+import { Download, Save, Search } from "lucide-react";
 import { toast } from "sonner";
 import { AttendanceMatrix } from "@/components/AttendanceMatrix";
 import { AttendanceStats } from "@/components/AttendanceStats";
 import { useAttendance } from "@/hooks/useAttendance";
 import { AttendanceStatus } from "@/types";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { calculateAttendanceStats } from "@/lib/attendance-utils";
 
 type AttendanceEntry = {
   lessonId: string;
   employeeId: string;
   status: AttendanceStatus;
+  hoursAttended?: number | null;
   notes?: string;
 };
 
@@ -29,6 +31,7 @@ export default function AdminCourseAttendancePage({
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, AttendanceEntry>>(
     new Map()
   );
+  const [employeeFilter, setEmployeeFilter] = useState("");
 
   useEffect(() => {
     if (!data) return;
@@ -38,6 +41,7 @@ export default function AdminCourseAttendancePage({
         lessonId: entry.lessonId,
         employeeId: entry.employeeId,
         status: entry.status,
+        hoursAttended: entry.hoursAttended ?? null,
         notes: entry.notes,
       });
     });
@@ -49,17 +53,18 @@ export default function AdminCourseAttendancePage({
     lessonId: string,
     employeeId: string,
     status: AttendanceStatus,
-    notes?: string
+    notes?: string,
+    hoursAttended?: number | null
   ) => {
     const key = `${lessonId}:${employeeId}`;
     setAttendanceMap((prev) => {
       const next = new Map(prev);
-      next.set(key, { lessonId, employeeId, status, notes });
+      next.set(key, { lessonId, employeeId, status, notes, hoursAttended });
       return next;
     });
     setPendingUpdates((prev) => {
       const next = new Map(prev);
-      next.set(key, { lessonId, employeeId, status, notes });
+      next.set(key, { lessonId, employeeId, status, notes, hoursAttended });
       return next;
     });
   };
@@ -96,6 +101,29 @@ export default function AdminCourseAttendancePage({
   const matrixAttendances = useMemo(() => {
     return Array.from(attendanceMap.values());
   }, [attendanceMap]);
+
+  const localStats = useMemo(() => {
+    if (!data) return null;
+    return calculateAttendanceStats({
+      employees: data.employees.map((employee) => ({
+        id: employee.id,
+        nome: employee.nome,
+        cognome: employee.cognome,
+      })),
+      lessons: data.lessons.map((lesson) => ({
+        id: lesson.id,
+        durationHours: lesson.durationHours ?? 0,
+      })),
+      attendances: matrixAttendances.map((entry) => ({
+        lessonId: entry.lessonId,
+        employeeId: entry.employeeId,
+        status: entry.status,
+        hoursAttended: entry.hoursAttended ?? null,
+      })),
+      presenzaMinimaType: data.presenzaMinimaType,
+      presenzaMinimaValue: data.presenzaMinimaValue,
+    });
+  }, [data, matrixAttendances]);
 
   return (
     <div className="space-y-6">
@@ -135,6 +163,16 @@ export default function AdminCourseAttendancePage({
             <Download className="mr-2 h-4 w-4" />
             Esporta PDF
           </button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={employeeFilter}
+              onChange={(event) => setEmployeeFilter(event.target.value)}
+              placeholder="Cerca dipendente..."
+              className="h-10 rounded-md border bg-background pl-9 pr-3 text-sm"
+            />
+          </div>
           <button
             type="button"
             className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
@@ -159,15 +197,15 @@ export default function AdminCourseAttendancePage({
             lessons={data.lessons}
             employees={data.employees}
             attendances={matrixAttendances}
-            stats={data.stats}
             onUpdate={handleUpdate}
             isAdmin
+            minRequirementType={data.presenzaMinimaType}
+            minRequirementValue={data.presenzaMinimaValue}
+            employeeFilter={employeeFilter}
+            onEmployeeFilterChange={setEmployeeFilter}
           />
-          <p className="text-xs text-muted-foreground">
-            Legenda: P = Presente, A = Assente, G = Assente giustificato.
-          </p>
           <AttendanceStats
-            stats={data.stats}
+            stats={localStats?.stats ?? data.stats}
             minRequirementType={data.presenzaMinimaType}
             minRequirementValue={data.presenzaMinimaValue}
           />

@@ -26,7 +26,7 @@ type CourseDetail = {
   startDate?: string | null;
   endDate?: string | null;
   deadlineRegistry?: string | null;
-  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   status?: string | null;
   notes?: string | null;
@@ -75,7 +75,7 @@ type CourseDetail = {
 type AttendanceSummary = {
   totalLessons: number;
   totalHours: number;
-  presenzaMinimaType: "percentage" | "days" | null;
+  presenzaMinimaType: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue: number | null;
   stats: Array<{
     employeeId: string;
@@ -343,7 +343,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     typeof course.presenzaMinimaValue === "number"
       ? course.presenzaMinimaType === "percentage"
         ? `${course.presenzaMinimaValue}%`
-        : `${course.presenzaMinimaValue} giorni`
+        : course.presenzaMinimaType === "hours"
+          ? `${course.presenzaMinimaValue}h`
+          : `${course.presenzaMinimaValue} lezioni`
       : null;
 
   return (
@@ -576,7 +578,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               Presenza minima richiesta:{" "}
               {attendanceSummary.presenzaMinimaType === "percentage"
                 ? `${attendanceSummary.presenzaMinimaValue}%`
-                : `${attendanceSummary.presenzaMinimaValue} giorni`}
+                : attendanceSummary.presenzaMinimaType === "hours"
+                  ? `${attendanceSummary.presenzaMinimaValue}h`
+                  : `${attendanceSummary.presenzaMinimaValue} lezioni`}
             </p>
           ) : null}
           <div className="rounded-lg border bg-card">
@@ -611,10 +615,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 <table className="w-full min-w-[640px] text-sm">
                   <thead className="bg-muted/40 text-left">
                     <tr>
-                      <th className="px-4 py-3">Dipendente</th>
-                      <th className="px-4 py-3">Presenze</th>
-                      <th className="px-4 py-3">Percentuale</th>
-                      <th className="px-4 py-3">Stato</th>
+                        <th className="px-4 py-3">Dipendente</th>
+                        <th className="px-4 py-3">Ore frequentate</th>
+                        <th className="px-4 py-3">Percentuale</th>
+                        <th className="px-4 py-3">Stato</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -623,9 +627,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                         <td className="max-w-[220px] truncate px-4 py-3 font-medium" title={stat.employeeName}>
                           {stat.employeeName}
                         </td>
-                        <td className="px-4 py-3">
-                          {stat.present + stat.justified}/{stat.totalLessons}
-                        </td>
+                          <td className="px-4 py-3">
+                            {stat.attendedHours}/{stat.totalHours}h
+                          </td>
                         <td className="px-4 py-3">{stat.percentage}%</td>
                         <td className="px-4 py-3">
                           {attendanceSummary.presenzaMinimaType &&

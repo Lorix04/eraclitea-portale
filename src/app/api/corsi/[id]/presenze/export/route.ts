@@ -8,6 +8,11 @@ import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { formatItalianDate } from "@/lib/date-utils";
+import {
+  calculateAttendanceStats,
+  getEffectiveHours,
+  type AttendanceStatus,
+} from "@/lib/attendance-utils";
 
 export const runtime = "nodejs";
 
@@ -16,40 +21,19 @@ const querySchema = z.object({
 });
 
 type AttendanceEntry = {
-  status: string;
+  status: AttendanceStatus;
+  hoursAttended?: number | null;
   notes?: string | null;
 };
 
-type PresenceRequirementType = "percentage" | "days";
-
-function normalizePresenceRequirement(
-  type: string | null | undefined,
-  value: number | null | undefined
-): { type: PresenceRequirementType | null; value: number | null } {
-  if ((type === "percentage" || type === "days") && typeof value === "number") {
-    return { type, value };
-  }
-  return { type: null, value: null };
+function formatHours(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
-function isBelowPresenceMinimum(
-  requirementType: PresenceRequirementType | null,
-  requirementValue: number | null,
-  attendedLessons: number,
-  totalLessons: number
-) {
-  if (!requirementType || requirementValue === null) {
-    return false;
-  }
-
-  if (requirementType === "percentage") {
-    const percentage = totalLessons
-      ? (attendedLessons / totalLessons) * 100
-      : 0;
-    return percentage < requirementValue;
-  }
-
-  return attendedLessons < requirementValue;
+function getStatusLabel(status: AttendanceStatus) {
+  if (status === "PRESENT") return "P";
+  if (status === "ABSENT_JUSTIFIED") return "G";
+  return "A";
 }
 
 async function getAttendanceMatrix(
@@ -74,7 +58,17 @@ async function getAttendanceMatrix(
   }
 
   if (role === "CLIENT" && edition.clientId !== clientId) {
-    return { edition, lessons: [], employees: [], attendances: [], stats: [] };
+    return {
+      edition,
+      lessons: [],
+      employees: [],
+      attendances: [],
+      stats: [],
+      totalLessons: 0,
+      totalHours: 0,
+      presenzaMinimaType: null,
+      presenzaMinimaValue: null,
+    };
   }
 
   const registrationWhere =
@@ -97,6 +91,8 @@ async function getAttendanceMatrix(
       stats: [],
       totalLessons: 0,
       totalHours: 0,
+      presenzaMinimaType: null,
+      presenzaMinimaValue: null,
     };
   }
 
@@ -118,66 +114,24 @@ async function getAttendanceMatrix(
       })
     : [];
 
-  const attendanceMap = new Map<string, AttendanceEntry>();
-  for (const attendance of attendances) {
-    attendanceMap.set(`${attendance.lessonId}:${attendance.employeeId}`, {
-      status: attendance.status,
-      notes: attendance.notes,
-    });
-  }
-
-  const totalLessons = lessons.length;
-  const totalHours = lessons.reduce(
-    (acc, lesson) => acc + (lesson.durationHours ?? 0),
-    0
-  );
-  const presenceRequirement = normalizePresenceRequirement(
-    edition.presenzaMinimaType,
-    edition.presenzaMinimaValue
-  );
-
-  const stats = employees.map((employee) => {
-    let present = 0;
-    let justified = 0;
-    let absent = 0;
-    let attendedHours = 0;
-
-    for (const lesson of lessons) {
-      const entry = attendanceMap.get(`${lesson.id}:${employee.id}`);
-      const status = entry?.status ?? "ABSENT";
-      if (status === "PRESENT") {
-        present += 1;
-        attendedHours += lesson.durationHours ?? 0;
-      } else if (status === "ABSENT_JUSTIFIED") {
-        justified += 1;
-        attendedHours += lesson.durationHours ?? 0;
-      } else {
-        absent += 1;
-      }
-    }
-
-    const attendedLessons = present + justified;
-    const percentage = totalLessons
-      ? Math.round((attendedLessons / totalLessons) * 100)
-      : 0;
-
-    return {
-      employeeId: employee.id,
-      employeeName: `${employee.cognome} ${employee.nome}`,
-      totalLessons,
-      present,
-      absent,
-      justified,
-      percentage,
-      totalHours,
-      attendedHours,
-      belowMinimum: isBelowPresenceMinimum(
-        presenceRequirement.type,
-        presenceRequirement.value,
-        attendedLessons,
-        totalLessons
-      ),
-    };
+  const calculated = calculateAttendanceStats({
+    employees: employees.map((employee) => ({
+      id: employee.id,
+      nome: employee.nome,
+      cognome: employee.cognome,
+    })),
+    lessons: lessons.map((lesson) => ({
+      id: lesson.id,
+      durationHours: lesson.durationHours ?? 0,
+    })),
+    attendances: attendances.map((attendance) => ({
+      lessonId: attendance.lessonId,
+      employeeId: attendance.employeeId,
+      status: attendance.status as AttendanceStatus,
+      hoursAttended: attendance.hoursAttended,
+    })),
+    presenzaMinimaType: edition.presenzaMinimaType,
+    presenzaMinimaValue: edition.presenzaMinimaValue,
   });
 
   return {
@@ -185,56 +139,67 @@ async function getAttendanceMatrix(
     lessons,
     employees,
     attendances,
-    stats,
-    totalLessons,
-    totalHours,
-    presenzaMinimaType: presenceRequirement.type,
-    presenzaMinimaValue: presenceRequirement.value,
+    stats: calculated.stats,
+    totalLessons: calculated.totalLessons,
+    totalHours: calculated.totalHours,
+    presenzaMinimaType: calculated.presenzaMinimaType,
+    presenzaMinimaValue: calculated.presenzaMinimaValue,
   };
 }
 
 function buildCsv(
   matrix: NonNullable<Awaited<ReturnType<typeof getAttendanceMatrix>>>
 ) {
-  const lessonLabels = matrix.lessons.map((lesson) =>
-    formatItalianDate(lesson.date)
-  );
+  const lessonHeaders = matrix.lessons.flatMap((lesson) => {
+    const label = formatItalianDate(lesson.date);
+    return [`${label} (Stato)`, `${label} (Ore frequentate)`];
+  });
+
   const header = [
     "Dipendente",
-    ...lessonLabels,
+    ...lessonHeaders,
     "Presenti",
     "Assenti",
     "Giustificati",
-    "Percentuale",
-    "Ore Totali",
-    "Ore Frequentate",
+    "Ore totali",
+    "Ore frequentate totali",
+    "% ore",
   ];
 
-  const attendanceMap = new Map<string, string>();
+  const attendanceMap = new Map<string, AttendanceEntry>();
   matrix.attendances.forEach((attendance) => {
-    attendanceMap.set(
-      `${attendance.lessonId}:${attendance.employeeId}`,
-      attendance.status
-    );
+    attendanceMap.set(`${attendance.lessonId}:${attendance.employeeId}`, {
+      status: attendance.status as AttendanceStatus,
+      hoursAttended: attendance.hoursAttended,
+      notes: attendance.notes,
+    });
   });
 
   const rows = matrix.employees.map((employee) => {
     const stat = matrix.stats.find((item) => item.employeeId === employee.id);
-    const cells = matrix.lessons.map((lesson) => {
-      const status = attendanceMap.get(`${lesson.id}:${employee.id}`) ?? "ABSENT";
-      if (status === "PRESENT") return "P";
-      if (status === "ABSENT_JUSTIFIED") return "G";
-      return "A";
+    const lessonCells = matrix.lessons.flatMap((lesson) => {
+      const entry = attendanceMap.get(`${lesson.id}:${employee.id}`);
+      const status = entry?.status ?? "ABSENT";
+      const effectiveHours = getEffectiveHours(
+        {
+          status,
+          hoursAttended: entry?.hoursAttended ?? null,
+        },
+        lesson.durationHours ?? 0
+      );
+
+      return [getStatusLabel(status), formatHours(effectiveHours)];
     });
+
     return [
       `${employee.cognome} ${employee.nome}`,
-      ...cells,
+      ...lessonCells,
       stat?.present ?? 0,
       stat?.absent ?? 0,
       stat?.justified ?? 0,
+      formatHours(stat?.totalHours ?? 0),
+      formatHours(stat?.attendedHours ?? 0),
       `${stat?.percentage ?? 0}%`,
-      stat?.totalHours ?? 0,
-      stat?.attendedHours ?? 0,
     ];
   });
 
@@ -268,44 +233,45 @@ async function buildPdf(
     const last = formatItalianDate(matrix.lessons[matrix.lessons.length - 1].date);
     doc.text(`Periodo: ${first} - ${last}`);
   }
-  doc.text(`Totale ore: ${matrix.totalHours}`);
+  doc.text(`Totale ore edizione: ${formatHours(matrix.totalHours)}h`);
   doc.moveDown(0.5);
 
   const lessonLabels = matrix.lessons.map((lesson) =>
     formatItalianDate(lesson.date)
   );
-
-  const header = [
-    "Dipendente",
-    ...lessonLabels,
-    "%", 
-    "Ore"
-  ];
+  const header = ["Dipendente", ...lessonLabels, "% ore", "Ore"];
 
   doc.fontSize(9).font("Courier");
   doc.text(header.join(" | "));
 
-  const attendanceMap = new Map<string, string>();
+  const attendanceMap = new Map<string, AttendanceEntry>();
   matrix.attendances.forEach((attendance) => {
-    attendanceMap.set(
-      `${attendance.lessonId}:${attendance.employeeId}`,
-      attendance.status
-    );
+    attendanceMap.set(`${attendance.lessonId}:${attendance.employeeId}`, {
+      status: attendance.status as AttendanceStatus,
+      hoursAttended: attendance.hoursAttended,
+      notes: attendance.notes,
+    });
   });
 
   matrix.employees.forEach((employee) => {
     const stat = matrix.stats.find((item) => item.employeeId === employee.id);
     const cells = matrix.lessons.map((lesson) => {
-      const status = attendanceMap.get(`${lesson.id}:${employee.id}`) ?? "ABSENT";
-      if (status === "PRESENT") return "P";
-      if (status === "ABSENT_JUSTIFIED") return "G";
-      return "A";
+      const entry = attendanceMap.get(`${lesson.id}:${employee.id}`);
+      const status = entry?.status ?? "ABSENT";
+      const effectiveHours = getEffectiveHours(
+        {
+          status,
+          hoursAttended: entry?.hoursAttended ?? null,
+        },
+        lesson.durationHours ?? 0
+      );
+      return `${getStatusLabel(status)}(${formatHours(effectiveHours)}h)`;
     });
     const row = [
       `${employee.cognome} ${employee.nome}`,
       ...cells,
       `${stat?.percentage ?? 0}%`,
-      `${stat?.attendedHours ?? 0}/${stat?.totalHours ?? 0}`,
+      `${formatHours(stat?.attendedHours ?? 0)}/${formatHours(stat?.totalHours ?? 0)}h`,
     ];
     doc.text(row.join(" | "));
   });
@@ -360,7 +326,7 @@ export async function GET(
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="presenze_${context.params.id}.pdf"`,
+        "Content-Disposition": `attachment; filename=\"presenze_${context.params.id}.pdf\"`,
       },
     });
   }
@@ -369,7 +335,7 @@ export async function GET(
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="presenze_${context.params.id}.csv"`,
+      "Content-Disposition": `attachment; filename=\"presenze_${context.params.id}.csv\"`,
     },
   });
 }

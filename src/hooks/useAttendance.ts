@@ -23,6 +23,7 @@ type AttendanceResponse = {
     lessonId: string;
     employeeId: string;
     status: "PRESENT" | "ABSENT" | "ABSENT_JUSTIFIED";
+    hoursAttended?: number | null;
     notes?: string;
     recordedBy?: string;
     recordedAt?: string;
@@ -34,6 +35,7 @@ type AttendanceResponse = {
     present: number;
     absent: number;
     justified: number;
+    attendedLessons: number;
     percentage: number;
     totalHours: number;
     attendedHours: number;
@@ -41,7 +43,7 @@ type AttendanceResponse = {
   }>;
   totalLessons: number;
   totalHours: number;
-  presenzaMinimaType: "percentage" | "days" | null;
+  presenzaMinimaType: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue: number | null;
 };
 

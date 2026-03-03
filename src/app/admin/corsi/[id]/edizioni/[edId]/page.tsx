@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   Save,
+  Search,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
+import { calculateAttendanceStats } from "@/lib/attendance-utils";
 
 const AnagraficheResponsive = dynamic(
   () => import("@/components/AnagraficheResponsive"),
@@ -57,7 +59,7 @@ type EditionDetail = {
   endDate?: string | null;
   deadlineRegistry?: string | null;
   status: string;
-  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   notes?: string | null;
   registrySentAt?: string | null;
@@ -113,6 +115,7 @@ type AttendanceEntry = {
   lessonId: string;
   employeeId: string;
   status: AttendanceStatus;
+  hoursAttended?: number | null;
   notes?: string;
 };
 
@@ -133,7 +136,7 @@ export default function AdminEditionDetailPage({
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
-    "percentage" | "days"
+    "percentage" | "days" | "hours"
   >("percentage");
   const [presenzaMinimaValue, setPresenzaMinimaValue] = useState("");
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
@@ -223,10 +226,15 @@ export default function AdminEditionDetailPage({
     setNotes(data.notes ?? "");
     const hasMinimum =
       (data.presenzaMinimaType === "percentage" ||
-        data.presenzaMinimaType === "days") &&
+        data.presenzaMinimaType === "days" ||
+        data.presenzaMinimaType === "hours") &&
       typeof data.presenzaMinimaValue === "number";
     setHasPresenzaMinima(hasMinimum);
-    setPresenzaMinimaType(data.presenzaMinimaType === "days" ? "days" : "percentage");
+    setPresenzaMinimaType(
+      data.presenzaMinimaType === "days" || data.presenzaMinimaType === "hours"
+        ? data.presenzaMinimaType
+        : "percentage"
+    );
     setPresenzaMinimaValue(
       hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
     );
@@ -392,10 +400,15 @@ export default function AdminEditionDetailPage({
     setNotes(data.notes ?? "");
     const hasMinimum =
       (data.presenzaMinimaType === "percentage" ||
-        data.presenzaMinimaType === "days") &&
+        data.presenzaMinimaType === "days" ||
+        data.presenzaMinimaType === "hours") &&
       typeof data.presenzaMinimaValue === "number";
     setHasPresenzaMinima(hasMinimum);
-    setPresenzaMinimaType(data.presenzaMinimaType === "days" ? "days" : "percentage");
+    setPresenzaMinimaType(
+      data.presenzaMinimaType === "days" || data.presenzaMinimaType === "hours"
+        ? data.presenzaMinimaType
+        : "percentage"
+    );
     setPresenzaMinimaValue(
       hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
     );
@@ -643,17 +656,18 @@ export default function AdminEditionDetailPage({
                   <select
                     className="rounded-md border bg-background px-3 py-2"
                     value={presenzaMinimaType}
-                    onChange={(event) =>
-                      setPresenzaMinimaType(
-                        event.target.value as "percentage" | "days"
-                      )
-                    }
-                    disabled={isArchived}
-                  >
-                    <option value="percentage">Percentuale</option>
-                    <option value="days">Numero di giorni</option>
-                  </select>
-                </label>
+                      onChange={(event) =>
+                        setPresenzaMinimaType(
+                          event.target.value as "percentage" | "days" | "hours"
+                        )
+                      }
+                      disabled={isArchived}
+                    >
+                      <option value="percentage">Percentuale</option>
+                      <option value="days">Numero di lezioni</option>
+                      <option value="hours">Ore</option>
+                    </select>
+                  </label>
 
                 <label className="flex flex-col gap-2 text-sm">
                   <FormLabel required>Valore minimo</FormLabel>
@@ -675,15 +689,23 @@ export default function AdminEditionDetailPage({
                         }
                       }}
                       placeholder={
-                        presenzaMinimaType === "percentage" ? "Es. 75" : "Es. 6"
+                        presenzaMinimaType === "percentage"
+                          ? "Es. 75"
+                          : presenzaMinimaType === "hours"
+                            ? "Es. 24"
+                            : "Es. 6"
                       }
                       disabled={isArchived}
                     />
-                    <span className="min-w-[48px] text-xs text-muted-foreground">
-                      {presenzaMinimaType === "percentage" ? "%" : "giorni"}
-                    </span>
-                  </div>
-                  <FormFieldError message={errors.presenzaMinimaValue} />
+                      <span className="min-w-[48px] text-xs text-muted-foreground">
+                      {presenzaMinimaType === "percentage"
+                        ? "%"
+                        : presenzaMinimaType === "hours"
+                          ? "h"
+                          : "lezioni"}
+                      </span>
+                    </div>
+                    <FormFieldError message={errors.presenzaMinimaValue} />
                 </label>
               </div>
             ) : (
@@ -1004,18 +1026,20 @@ function PresenzeTab({
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, AttendanceEntry>>(
     new Map()
   );
+  const [employeeFilter, setEmployeeFilter] = useState("");
 
   useEffect(() => {
     if (!data) return;
     const map = new Map<string, AttendanceEntry>();
-    data.attendances.forEach((entry) => {
-      map.set(`${entry.lessonId}:${entry.employeeId}`, {
-        lessonId: entry.lessonId,
-        employeeId: entry.employeeId,
-        status: entry.status,
-        notes: entry.notes,
+      data.attendances.forEach((entry) => {
+        map.set(`${entry.lessonId}:${entry.employeeId}`, {
+          lessonId: entry.lessonId,
+          employeeId: entry.employeeId,
+          status: entry.status,
+          hoursAttended: entry.hoursAttended ?? null,
+          notes: entry.notes,
+        });
       });
-    });
     setAttendanceMap(map);
     setPendingUpdates(new Map());
   }, [data]);
@@ -1024,18 +1048,19 @@ function PresenzeTab({
     lessonId: string,
     employeeId: string,
     status: AttendanceStatus,
-    notes?: string
+    notes?: string,
+    hoursAttended?: number | null
   ) => {
     if (readOnly) return;
     const key = `${lessonId}:${employeeId}`;
     setAttendanceMap((prev) => {
       const next = new Map(prev);
-      next.set(key, { lessonId, employeeId, status, notes });
+      next.set(key, { lessonId, employeeId, status, notes, hoursAttended });
       return next;
     });
     setPendingUpdates((prev) => {
       const next = new Map(prev);
-      next.set(key, { lessonId, employeeId, status, notes });
+      next.set(key, { lessonId, employeeId, status, notes, hoursAttended });
       return next;
     });
   };
@@ -1074,6 +1099,29 @@ function PresenzeTab({
     return Array.from(attendanceMap.values());
   }, [attendanceMap]);
 
+  const localStats = useMemo(() => {
+    if (!data) return null;
+    return calculateAttendanceStats({
+      employees: data.employees.map((employee) => ({
+        id: employee.id,
+        nome: employee.nome,
+        cognome: employee.cognome,
+      })),
+      lessons: data.lessons.map((lesson) => ({
+        id: lesson.id,
+        durationHours: lesson.durationHours ?? 0,
+      })),
+      attendances: matrixAttendances.map((entry) => ({
+        lessonId: entry.lessonId,
+        employeeId: entry.employeeId,
+        status: entry.status,
+        hoursAttended: entry.hoursAttended ?? null,
+      })),
+      presenzaMinimaType: data.presenzaMinimaType,
+      presenzaMinimaValue: data.presenzaMinimaValue,
+    });
+  }, [data, matrixAttendances]);
+
   return (
     <div className="space-y-4">
       {readOnly ? (
@@ -1105,6 +1153,16 @@ function PresenzeTab({
             <Download className="mr-2 h-4 w-4" />
             Esporta PDF
           </button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={employeeFilter}
+              onChange={(event) => setEmployeeFilter(event.target.value)}
+              placeholder="Cerca dipendente..."
+              className="h-10 rounded-md border bg-background pl-9 pr-3 text-sm"
+            />
+          </div>
           {!readOnly ? (
             <button
               type="button"
@@ -1131,16 +1189,16 @@ function PresenzeTab({
             lessons={data.lessons}
             employees={data.employees}
             attendances={matrixAttendances}
-            stats={data.stats}
             onUpdate={handleUpdate}
             readonly={readOnly}
             isAdmin
+            minRequirementType={data.presenzaMinimaType}
+            minRequirementValue={data.presenzaMinimaValue}
+            employeeFilter={employeeFilter}
+            onEmployeeFilterChange={setEmployeeFilter}
           />
-          <p className="text-xs text-muted-foreground">
-            Legenda: P = Presente, A = Assente, G = Assente giustificato.
-          </p>
           <AttendanceStats
-            stats={data.stats}
+            stats={localStats?.stats ?? data.stats}
             minRequirementType={data.presenzaMinimaType}
             minRequirementValue={data.presenzaMinimaValue}
           />

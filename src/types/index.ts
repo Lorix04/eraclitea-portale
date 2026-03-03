@@ -144,6 +144,7 @@ export interface Attendance {
   lessonId: string;
   employeeId: string;
   status: AttendanceStatus;
+  hoursAttended?: number | null;
   notes?: string | null;
   recordedBy?: string | null;
   recordedAt: Date | string;
@@ -157,6 +158,7 @@ export interface AttendanceUpdate {
   lessonId: string;
   employeeId: string;
   status: AttendanceStatus;
+  hoursAttended?: number | null;
   notes?: string;
 }
 
@@ -167,6 +169,7 @@ export interface EmployeeAttendanceStats {
   present: number;
   absent: number;
   justified: number;
+  attendedLessons?: number;
   percentage: number;
   totalHours: number;
   attendedHours: number;
@@ -197,7 +200,7 @@ export interface CourseEdition {
   startDate?: Date | string | null;
   endDate?: Date | string | null;
   deadlineRegistry?: Date | string | null;
-  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   status: CourseStatus;
   notes?: string | null;

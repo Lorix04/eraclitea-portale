@@ -1,76 +1,145 @@
 "use client";
 
+import { useRef } from "react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  MessageSquare,
+  Minus,
+  X,
+} from "lucide-react";
 import { AttendanceStatus } from "@/types";
-import { Check, X } from "lucide-react";
+import { getEffectiveHours } from "@/lib/attendance-utils";
 import { cn } from "@/lib/utils";
-
-const STATUS_ORDER: AttendanceStatus[] = [
-  "PRESENT",
-  "ABSENT",
-  "ABSENT_JUSTIFIED",
-];
-
-const STATUS_CLASSES: Record<AttendanceStatus, string> = {
-  PRESENT: "bg-green-100 text-green-700 border-green-200",
-  ABSENT: "bg-red-100 text-red-700 border-red-200",
-  ABSENT_JUSTIFIED: "bg-green-100 text-green-700 border-green-200",
-};
-
-type DisplayStatus = AttendanceStatus | "UNRECORDED";
 
 interface AttendanceCellProps {
   status?: AttendanceStatus | null;
+  durationHours: number;
+  hoursAttended?: number | null;
   notes?: string | null;
   readonly?: boolean;
-  onChange?: (status: AttendanceStatus) => void;
-  onOpenNotes?: () => void;
+  onToggle?: () => void;
+  onContextMenuRequest?: (coordinates: { x: number; y: number }) => void;
+}
+
+function formatHours(hours: number) {
+  return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
 }
 
 export function AttendanceCell({
   status,
+  durationHours,
+  hoursAttended,
   notes,
   readonly = false,
-  onChange,
-  onOpenNotes,
+  onToggle,
+  onContextMenuRequest,
 }: AttendanceCellProps) {
-  const displayStatus: DisplayStatus = status ?? "UNRECORDED";
+  const cellRef = useRef<HTMLButtonElement | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
 
-  const handleClick = () => {
-    if (readonly || !onChange) return;
-    const baseStatus: AttendanceStatus = status ?? "PRESENT";
-    const currentIndex = STATUS_ORDER.indexOf(baseStatus);
-    const nextStatus =
-      STATUS_ORDER[(currentIndex + 1) % STATUS_ORDER.length];
-    onChange(nextStatus);
+  const hasStatus = Boolean(status);
+  const effectiveStatus: AttendanceStatus = status ?? "ABSENT";
+  const showHours =
+    effectiveStatus === "PRESENT" || effectiveStatus === "ABSENT_JUSTIFIED";
+  const effectiveHours = showHours
+    ? getEffectiveHours(
+        {
+          status: effectiveStatus,
+          hoursAttended: hoursAttended ?? null,
+        },
+        durationHours
+      )
+    : 0;
+  const isPartial = showHours && effectiveHours < durationHours;
+  const hasNotes = Boolean(notes?.trim());
+
+  const statusClasses = !hasStatus
+    ? "border-gray-200 bg-gray-50 text-gray-600"
+    : effectiveStatus === "ABSENT"
+      ? "border-red-300 bg-red-100 text-red-700"
+      : effectiveStatus === "ABSENT_JUSTIFIED"
+        ? "border-blue-300 bg-blue-100 text-blue-700"
+        : isPartial
+          ? "border-amber-300 bg-amber-100 text-amber-700"
+          : "border-emerald-300 bg-emerald-100 text-emerald-700";
+
+  const renderStatusIcon = () => {
+    if (!hasStatus) return <Minus className="h-4 w-4" />;
+    if (effectiveStatus === "ABSENT") return <X className="h-4 w-4" />;
+    if (effectiveStatus === "ABSENT_JUSTIFIED") {
+      return <AlertCircle className="h-4 w-4" />;
+    }
+    return <Check className="h-4 w-4" />;
   };
 
-  const handleContextMenu = (event: React.MouseEvent) => {
-    if (readonly || !onOpenNotes) return;
+  const openContextMenuAt = (x: number, y: number) => {
+    if (readonly || !onContextMenuRequest) return;
+    onContextMenuRequest({ x, y });
+  };
+
+  const handleContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    onOpenNotes();
+    event.stopPropagation();
+    openContextMenuAt(event.clientX, event.clientY);
+  };
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleTouchStart = () => {
+    if (readonly || !onContextMenuRequest) return;
+    longPressTriggeredRef.current = false;
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      const rect = cellRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      longPressTriggeredRef.current = true;
+      openContextMenuAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }, 500);
   };
 
   return (
     <button
+      ref={cellRef}
       type="button"
       className={cn(
-        "flex h-8 w-full items-center justify-center rounded-md border text-xs font-semibold",
-        displayStatus === "UNRECORDED"
-          ? "bg-gray-50 text-gray-500 border-gray-200"
-          : STATUS_CLASSES[displayStatus],
-        readonly && "cursor-default"
+        "h-10 w-full min-w-[120px] rounded-md border px-2 transition-colors",
+        "hover:brightness-[0.98]",
+        "inline-flex items-center justify-between gap-2 text-xs font-semibold",
+        statusClasses,
+        readonly ? "cursor-default" : "cursor-pointer"
       )}
-      title={notes ? `Note: ${notes}` : undefined}
-      onClick={handleClick}
+      onClick={() => {
+        if (readonly) return;
+        if (longPressTriggeredRef.current) {
+          longPressTriggeredRef.current = false;
+          return;
+        }
+        onToggle?.();
+      }}
       onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={clearLongPressTimer}
+      onTouchCancel={clearLongPressTimer}
+      title={hasNotes ? notes ?? undefined : undefined}
+      aria-label="Cella presenza"
     >
-      {displayStatus === "UNRECORDED" ? (
-        <span aria-label="Non registrato">-</span>
-      ) : displayStatus === "ABSENT" ? (
-        <X className="h-3.5 w-3.5" aria-label="Assente" />
-      ) : (
-        <Check className="h-3.5 w-3.5" aria-label="Presente" />
-      )}
+      <span className="inline-flex items-center gap-1.5">
+        {renderStatusIcon()}
+        {showHours ? <span>{formatHours(effectiveHours)}</span> : null}
+      </span>
+
+      <span className="inline-flex items-center gap-1">
+        {isPartial ? <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> : null}
+        {hasNotes ? <MessageSquare className="h-3.5 w-3.5" /> : null}
+      </span>
     </button>
   );
 }

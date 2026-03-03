@@ -5,6 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { saveCertificateFile } from "@/lib/certificate-storage";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { sendCertificatesAvailableEmail } from "@/lib/email-notifications";
+import {
+  calculateAttendanceStats,
+  formatPresenceRequirementLabel,
+  normalizePresenceRequirement,
+  type AttendanceStatus,
+} from "@/lib/attendance-utils";
 
 export const runtime = "nodejs";
 
@@ -21,18 +27,6 @@ type Association = {
   filename: string;
   employeeId: string;
 };
-
-type PresenceRequirementType = "percentage" | "days";
-
-function normalizePresenceRequirement(
-  type: string | null | undefined,
-  value: number | null | undefined
-): { type: PresenceRequirementType | null; value: number | null } {
-  if ((type === "percentage" || type === "days") && typeof value === "number") {
-    return { type, value };
-  }
-  return { type: null, value: null };
-}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -207,60 +201,59 @@ export async function POST(request: Request) {
       );
       const lessons = await prisma.lesson.findMany({
         where: { courseEditionId: edition.id },
-        select: { id: true },
+        select: { id: true, durationHours: true },
       });
       const lessonIds = lessons.map((lesson) => lesson.id);
-      const attendanceCounts = new Map<string, number>();
 
-      if (lessonIds.length && employeeIdsToUpload.length) {
-        const attendances = await prisma.attendance.findMany({
-          where: {
-            lessonId: { in: lessonIds },
-            employeeId: { in: employeeIdsToUpload },
-            status: { in: ["PRESENT", "ABSENT_JUSTIFIED"] },
-          },
-          select: { employeeId: true },
-        });
+      const attendances = lessonIds.length && employeeIdsToUpload.length
+        ? await prisma.attendance.findMany({
+            where: {
+              lessonId: { in: lessonIds },
+              employeeId: { in: employeeIdsToUpload },
+            },
+            select: {
+              lessonId: true,
+              employeeId: true,
+              status: true,
+              hoursAttended: true,
+            },
+          })
+        : [];
 
-        for (const entry of attendances) {
-          attendanceCounts.set(
-            entry.employeeId,
-            (attendanceCounts.get(entry.employeeId) ?? 0) + 1
-          );
-        }
-      }
+      const selectedEmployees = employees.filter((employee) =>
+        employeeIdsToUpload.includes(employee.id)
+      );
 
-      const totalLessons = lessonIds.length;
-      const blockedEmployees = employeeIdsToUpload
-        .map((employeeId) => {
-          const attendedLessons = attendanceCounts.get(employeeId) ?? 0;
-          if (presenceRequirement.type === "percentage") {
-            const percentage = totalLessons
-              ? (attendedLessons / totalLessons) * 100
-              : 0;
-            return {
-              employeeId,
-              blocked: percentage < presenceRequirement.value!,
-            };
-          }
-          return {
-            employeeId,
-            blocked: attendedLessons < presenceRequirement.value!,
-          };
-        })
-        .filter((entry) => entry.blocked)
-        .map((entry) => {
-          const employee = employees.find((item) => item.id === entry.employeeId);
-          return employee
-            ? `${employee.cognome} ${employee.nome}`
-            : entry.employeeId;
-        });
+      const calculated = calculateAttendanceStats({
+        employees: selectedEmployees.map((employee) => ({
+          id: employee.id,
+          nome: employee.nome,
+          cognome: employee.cognome,
+        })),
+        lessons: lessons.map((lesson) => ({
+          id: lesson.id,
+          durationHours: lesson.durationHours ?? 0,
+        })),
+        attendances: attendances.map((attendance) => ({
+          lessonId: attendance.lessonId,
+          employeeId: attendance.employeeId,
+          status: attendance.status as AttendanceStatus,
+          hoursAttended: attendance.hoursAttended,
+        })),
+        presenzaMinimaType: presenceRequirement.type,
+        presenzaMinimaValue: presenceRequirement.value,
+      });
+
+      const blockedEmployees = calculated.stats
+        .filter((stat) => stat.belowMinimum)
+        .map((stat) => stat.employeeName);
 
       if (blockedEmployees.length > 0) {
         const requirementLabel =
-          presenceRequirement.type === "percentage"
-            ? `${presenceRequirement.value}%`
-            : `${presenceRequirement.value} giorni`;
+          formatPresenceRequirementLabel(
+            presenceRequirement.type,
+            presenceRequirement.value
+          ) ?? "requisito configurato";
         return NextResponse.json(
           {
             error: `I seguenti dipendenti non raggiungono la presenza minima (${requirementLabel}) e non possono ricevere l'attestato: ${blockedEmployees.join(", ")}`,

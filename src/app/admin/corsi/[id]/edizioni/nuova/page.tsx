@@ -33,7 +33,7 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
-    "percentage" | "days"
+    "percentage" | "days" | "hours"
   >("percentage");
   const [presenzaMinimaValue, setPresenzaMinimaValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -319,12 +319,13 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
                   value={presenzaMinimaType}
                   onChange={(event) =>
                     setPresenzaMinimaType(
-                      event.target.value as "percentage" | "days"
+                      event.target.value as "percentage" | "days" | "hours"
                     )
                   }
                 >
                   <option value="percentage">Percentuale</option>
-                  <option value="days">Numero di giorni</option>
+                  <option value="days">Numero di lezioni</option>
+                  <option value="hours">Ore</option>
                 </select>
               </label>
 
@@ -348,11 +349,19 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
                       }
                     }}
                     placeholder={
-                      presenzaMinimaType === "percentage" ? "Es. 75" : "Es. 6"
+                      presenzaMinimaType === "percentage"
+                        ? "Es. 75"
+                        : presenzaMinimaType === "hours"
+                          ? "Es. 24"
+                          : "Es. 6"
                     }
                   />
                   <span className="min-w-[48px] text-xs text-muted-foreground">
-                    {presenzaMinimaType === "percentage" ? "%" : "giorni"}
+                    {presenzaMinimaType === "percentage"
+                      ? "%"
+                      : presenzaMinimaType === "hours"
+                        ? "h"
+                        : "lezioni"}
                   </span>
                 </div>
                 <FormFieldError message={errors.presenzaMinimaValue} />

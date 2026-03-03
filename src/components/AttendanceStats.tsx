@@ -1,4 +1,8 @@
-﻿"use client";
+"use client";
+
+import { Check, X } from "lucide-react";
+import { formatPresenceRequirementLabel } from "@/lib/attendance-utils";
+import { cn } from "@/lib/utils";
 
 interface AttendanceStatsProps {
   stats: {
@@ -8,12 +12,13 @@ interface AttendanceStatsProps {
     present: number;
     absent: number;
     justified: number;
+    attendedLessons?: number;
     percentage: number;
     totalHours: number;
     attendedHours: number;
     belowMinimum: boolean;
   }[];
-  minRequirementType?: "percentage" | "days" | null;
+  minRequirementType?: "percentage" | "days" | "hours" | null;
   minRequirementValue?: number | null;
 }
 
@@ -27,87 +32,77 @@ export function AttendanceStats({
   }
 
   const hasRequirement =
-    (minRequirementType === "percentage" || minRequirementType === "days") &&
+    (minRequirementType === "percentage" ||
+      minRequirementType === "days" ||
+      minRequirementType === "hours") &&
     typeof minRequirementValue === "number";
-  const requirementLabel = hasRequirement
-    ? minRequirementType === "percentage"
-      ? `${minRequirementValue}%`
-      : `${minRequirementValue} giorni`
-    : null;
-  const below = hasRequirement ? stats.filter((item) => item.belowMinimum) : [];
-  const met = hasRequirement ? stats.filter((item) => !item.belowMinimum) : [];
+  const requirementLabel =
+    formatPresenceRequirementLabel(minRequirementType, minRequirementValue) ?? null;
+
+  const totalLessons = stats[0]?.totalLessons ?? 0;
+  const totalHours = stats[0]?.totalHours ?? 0;
+  const participants = stats.length;
+
+  const averagePercentage =
+    participants > 0
+      ? Number(
+          (
+            stats.reduce((sum, item) => sum + (item.percentage ?? 0), 0) / participants
+          ).toFixed(1)
+        )
+      : 0;
+
+  const aboveThreshold = hasRequirement
+    ? stats.filter((item) => !item.belowMinimum).length
+    : participants;
+  const belowThreshold = hasRequirement
+    ? stats.filter((item) => item.belowMinimum).length
+    : 0;
+
+  const averageProgressClass = hasRequirement
+    ? averagePercentage < (minRequirementValue ?? 0)
+      ? "bg-red-500"
+      : "bg-emerald-500"
+    : "bg-emerald-500";
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-4 text-sm">
-        <p className="font-medium">Riepilogo presenze</p>
-        {hasRequirement ? (
-          <p className="text-muted-foreground">
-            Presenza minima richiesta: {requirementLabel}.
-          </p>
-        ) : (
-          <p className="text-muted-foreground">
-            Nessun requisito di presenza minima impostato.
-          </p>
-        )}
+    <div className="rounded-lg border bg-white p-6 shadow-sm">
+      <h3 className="text-base font-semibold">📊 Riepilogo presenze</h3>
+
+      <p className="mt-3 text-sm text-muted-foreground">
+        Lezioni: {totalLessons} · Ore totali: {totalHours}h · Partecipanti: {participants}
+      </p>
+
+      <p className="mt-2 text-sm text-muted-foreground">
+        {hasRequirement && requirementLabel
+          ? `Presenza minima richiesta: ${requirementLabel}${
+              minRequirementType === "percentage" ? " delle ore" : ""
+            }`
+          : "Nessun requisito di presenza minima impostato"}
+      </p>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-2 w-full rounded-full bg-gray-200">
+          <div
+            className={cn("h-2 rounded-full", averageProgressClass)}
+            style={{ width: `${Math.max(0, Math.min(100, averagePercentage))}%` }}
+          />
+        </div>
+        <span className="whitespace-nowrap text-sm font-medium text-muted-foreground">
+          Media partecipanti: {averagePercentage}%
+        </span>
       </div>
 
-      {hasRequirement ? (
-        <>
-          {below.length > 0 ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              {below.length} dipendenti non raggiungono il minimo richiesto ({requirementLabel}).
-            </div>
-          ) : (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              Tutti i dipendenti raggiungono il minimo richiesto ({requirementLabel}).
-            </div>
-          )}
-
-          <div className="overflow-hidden rounded-lg border bg-card">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left">
-                <tr>
-                  <th className="px-4 py-2">Dipendente</th>
-                  <th className="px-4 py-2">Presenze</th>
-                  <th className="px-4 py-2">Percentuale</th>
-                  <th className="px-4 py-2">Esito</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...met, ...below].map((item) => {
-                  const attendedLessons = item.present + item.justified;
-                  return (
-                    <tr
-                      key={item.employeeId}
-                      className={`border-t ${
-                        item.belowMinimum ? "bg-red-50/60" : "bg-emerald-50/60"
-                      }`}
-                    >
-                      <td className="px-4 py-2 font-medium">{item.employeeName}</td>
-                      <td className="px-4 py-2">
-                        {attendedLessons}/{item.totalLessons}
-                      </td>
-                      <td className="px-4 py-2">{item.percentage}%</td>
-                      <td className="px-4 py-2">
-                        {item.belowMinimum ? (
-                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">
-                            Non raggiunto
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
-                            Raggiunto
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : null}
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+        <div className="inline-flex items-center gap-1 text-emerald-700">
+          <Check className="h-4 w-4" />
+          Sopra soglia: {aboveThreshold} dipendenti
+        </div>
+        <div className="inline-flex items-center gap-1 text-red-700">
+          <X className="h-4 w-4" />
+          Sotto soglia: {belowThreshold} dipendenti
+        </div>
+      </div>
     </div>
   );
 }

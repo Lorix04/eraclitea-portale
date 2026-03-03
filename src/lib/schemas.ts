@@ -75,7 +75,7 @@ const courseEditionBaseSchema = z.object({
   presenzaMinimaType: z
     .preprocess(
       (value) => (value === "" ? null : value),
-      z.enum(["percentage", "days"]).nullable().optional()
+      z.enum(["percentage", "days", "hours"]).nullable().optional()
     ),
   presenzaMinimaValue: z.preprocess(
     (value) => {
@@ -92,7 +92,7 @@ function validateEditionDates(
     startDate?: Date;
     endDate?: Date;
     deadlineRegistry?: Date;
-    presenzaMinimaType?: "percentage" | "days" | null;
+    presenzaMinimaType?: "percentage" | "days" | "hours" | null;
     presenzaMinimaValue?: number | null;
   },
   ctx: z.RefinementCtx
@@ -155,7 +155,18 @@ function validateEditionDates(
     if (value < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "La presenza minima in giorni deve essere almeno 1",
+        message: "La presenza minima in lezioni deve essere almeno 1",
+        path: ["presenzaMinimaValue"],
+      });
+    }
+  }
+
+  if (data.presenzaMinimaType === "hours" && hasValue) {
+    const value = data.presenzaMinimaValue as number;
+    if (value < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "La presenza minima in ore deve essere almeno 1",
         path: ["presenzaMinimaValue"],
       });
     }

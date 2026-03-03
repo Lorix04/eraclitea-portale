@@ -16,7 +16,7 @@ type EditionRow = {
   startDate?: string | null;
   endDate?: string | null;
   deadlineRegistry?: string | null;
-  presenzaMinimaType?: "percentage" | "days" | null;
+  presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
   course?: { id: string; title: string } | null;
@@ -249,7 +249,13 @@ function AdminEdizioniContent() {
       edition.presenzaMinimaType === "days" &&
       typeof edition.presenzaMinimaValue === "number"
     ) {
-      return `${edition.presenzaMinimaValue} gg`;
+      return `${edition.presenzaMinimaValue} lezioni`;
+    }
+    if (
+      edition.presenzaMinimaType === "hours" &&
+      typeof edition.presenzaMinimaValue === "number"
+    ) {
+      return `${edition.presenzaMinimaValue}h`;
     }
     return "-";
   };

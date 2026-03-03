@@ -15,9 +15,7 @@ export default function CourseAttendanceClientPage({
   const { data, isLoading } = useAttendance(params.id);
 
   const handleDownload = async () => {
-    const res = await fetch(
-      `/api/corsi/${params.id}/presenze/export?format=pdf`
-    );
+    const res = await fetch(`/api/corsi/${params.id}/presenze/export?format=pdf`);
     if (!res.ok) {
       toast.error("Errore download presenze");
       return;
@@ -63,20 +61,10 @@ export default function CourseAttendanceClientPage({
             lessons={data.lessons}
             employees={data.employees}
             attendances={data.attendances}
-            stats={data.stats}
             readonly
+            minRequirementType={data.presenzaMinimaType}
+            minRequirementValue={data.presenzaMinimaValue}
           />
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-green-700">
-              ✅ Presente
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-red-700">
-              ❌ Assente
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-600">
-              — Non registrato
-            </span>
-          </div>
           <AttendanceStats
             stats={data.stats}
             minRequirementType={data.presenzaMinimaType}

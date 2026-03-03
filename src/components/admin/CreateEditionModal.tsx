@@ -84,7 +84,7 @@ export default function CreateEditionModal({
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
-    "percentage" | "days"
+    "percentage" | "days" | "hours"
   >("percentage");
   const [presenzaMinimaValue, setPresenzaMinimaValue] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -469,12 +469,13 @@ export default function CreateEditionModal({
                           value={presenzaMinimaType}
                           onChange={(event) =>
                             setPresenzaMinimaType(
-                              event.target.value as "percentage" | "days"
+                              event.target.value as "percentage" | "days" | "hours"
                             )
                           }
                         >
                           <option value="percentage">Percentuale</option>
-                          <option value="days">Numero di giorni</option>
+                          <option value="days">Numero di lezioni</option>
+                          <option value="hours">Ore</option>
                         </select>
                       </label>
 
@@ -496,14 +497,22 @@ export default function CreateEditionModal({
                               }
                             }}
                             placeholder={
-                              presenzaMinimaType === "percentage" ? "Es. 75" : "Es. 6"
+                              presenzaMinimaType === "percentage"
+                                ? "Es. 75"
+                                : presenzaMinimaType === "hours"
+                                  ? "Es. 24"
+                                  : "Es. 6"
                             }
                             className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
                               fieldErrors.presenzaMinimaValue ? "border-red-500" : ""
                             }`}
                           />
                           <span className="min-w-[48px] text-xs text-muted-foreground">
-                            {presenzaMinimaType === "percentage" ? "%" : "giorni"}
+                            {presenzaMinimaType === "percentage"
+                              ? "%"
+                              : presenzaMinimaType === "hours"
+                                ? "h"
+                                : "lezioni"}
                           </span>
                         </div>
                         <FormFieldError message={fieldErrors.presenzaMinimaValue} />

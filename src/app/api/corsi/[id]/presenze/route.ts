@@ -5,6 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
+import {
+  calculateAttendanceStats,
+  type AttendanceStatus,
+} from "@/lib/attendance-utils";
 
 const attendanceSchema = z.object({
   attendances: z
@@ -13,44 +17,13 @@ const attendanceSchema = z.object({
         lessonId: z.string(),
         employeeId: z.string(),
         status: z.enum(["PRESENT", "ABSENT", "ABSENT_JUSTIFIED"]),
+        hoursAttended: z.number().min(0).optional().nullable(),
         notes: z.string().optional(),
       })
     )
     .min(1)
     .max(2000),
 });
-
-type PresenceRequirementType = "percentage" | "days";
-
-function normalizePresenceRequirement(
-  type: string | null | undefined,
-  value: number | null | undefined
-): { type: PresenceRequirementType | null; value: number | null } {
-  if ((type === "percentage" || type === "days") && typeof value === "number") {
-    return { type, value };
-  }
-  return { type: null, value: null };
-}
-
-function isBelowPresenceMinimum(
-  requirementType: PresenceRequirementType | null,
-  requirementValue: number | null,
-  attendedLessons: number,
-  totalLessons: number
-) {
-  if (!requirementType || requirementValue === null) {
-    return false;
-  }
-
-  if (requirementType === "percentage") {
-    const percentage = totalLessons
-      ? (attendedLessons / totalLessons) * 100
-      : 0;
-    return percentage < requirementValue;
-  }
-
-  return attendedLessons < requirementValue;
-}
 
 export async function GET(
   _request: Request,
@@ -121,66 +94,24 @@ export async function GET(
         })
       : [];
 
-  const attendanceMap = new Map<string, { status: string; notes?: string | null }>();
-  for (const attendance of attendances) {
-    attendanceMap.set(
-      `${attendance.lessonId}:${attendance.employeeId}`,
-      { status: attendance.status, notes: attendance.notes }
-    );
-  }
-
-  const totalLessons = lessons.length;
-  const totalHours = lessons.reduce(
-    (acc, lesson) => acc + (lesson.durationHours ?? 0),
-    0
-  );
-  const presenceRequirement = normalizePresenceRequirement(
-    edition.presenzaMinimaType,
-    edition.presenzaMinimaValue
-  );
-
-  const stats = employees.map((employee) => {
-    let present = 0;
-    let justified = 0;
-    let absent = 0;
-    let attendedHours = 0;
-
-    for (const lesson of lessons) {
-      const entry = attendanceMap.get(`${lesson.id}:${employee.id}`);
-      const status = entry?.status ?? "ABSENT";
-      if (status === "PRESENT") {
-        present += 1;
-        attendedHours += lesson.durationHours ?? 0;
-      } else if (status === "ABSENT_JUSTIFIED") {
-        justified += 1;
-        attendedHours += lesson.durationHours ?? 0;
-      } else {
-        absent += 1;
-      }
-    }
-
-    const attendedLessons = present + justified;
-    const percentage = totalLessons
-      ? Math.round((attendedLessons / totalLessons) * 100)
-      : 0;
-
-    return {
-      employeeId: employee.id,
-      employeeName: `${employee.cognome} ${employee.nome}`,
-      totalLessons,
-      present,
-      absent,
-      justified,
-      percentage,
-      totalHours,
-      attendedHours,
-      belowMinimum: isBelowPresenceMinimum(
-        presenceRequirement.type,
-        presenceRequirement.value,
-        attendedLessons,
-        totalLessons
-      ),
-    };
+  const calculated = calculateAttendanceStats({
+    employees: employees.map((employee) => ({
+      id: employee.id,
+      nome: employee.nome,
+      cognome: employee.cognome,
+    })),
+    lessons: lessons.map((lesson) => ({
+      id: lesson.id,
+      durationHours: lesson.durationHours ?? 0,
+    })),
+    attendances: attendances.map((attendance) => ({
+      lessonId: attendance.lessonId,
+      employeeId: attendance.employeeId,
+      status: attendance.status as AttendanceStatus,
+      hoursAttended: attendance.hoursAttended,
+    })),
+    presenzaMinimaType: edition.presenzaMinimaType,
+    presenzaMinimaValue: edition.presenzaMinimaValue,
   });
 
   return NextResponse.json({
@@ -201,15 +132,16 @@ export async function GET(
       lessonId: attendance.lessonId,
       employeeId: attendance.employeeId,
       status: attendance.status,
+      hoursAttended: attendance.hoursAttended,
       notes: attendance.notes ?? undefined,
       recordedBy: attendance.recordedBy ?? undefined,
       recordedAt: attendance.recordedAt,
     })),
-    stats,
-    totalLessons,
-    totalHours,
-    presenzaMinimaType: presenceRequirement.type,
-    presenzaMinimaValue: presenceRequirement.value,
+    stats: calculated.stats,
+    totalLessons: calculated.totalLessons,
+    totalHours: calculated.totalHours,
+    presenzaMinimaType: calculated.presenzaMinimaType,
+    presenzaMinimaValue: calculated.presenzaMinimaValue,
   });
 }
 
@@ -253,7 +185,7 @@ export async function POST(
   const [lessons, registrations] = await prisma.$transaction([
     prisma.lesson.findMany({
       where: { courseEditionId: edition.id },
-      select: { id: true },
+      select: { id: true, durationHours: true },
     }),
     prisma.courseRegistration.findMany({
       where: { courseEditionId: edition.id },
@@ -261,21 +193,35 @@ export async function POST(
     }),
   ]);
 
-  const lessonIds = new Set(lessons.map((lesson) => lesson.id));
+  const lessonDurationById = new Map(
+    lessons.map((lesson) => [lesson.id, lesson.durationHours ?? 0])
+  );
   const employeeIds = new Set(registrations.map((reg) => reg.employeeId));
 
-  const invalid = attendances.find(
-    (item) => !lessonIds.has(item.lessonId) || !employeeIds.has(item.employeeId)
-  );
+  const invalid = attendances.find((item) => {
+    if (!lessonDurationById.has(item.lessonId)) return true;
+    if (!employeeIds.has(item.employeeId)) return true;
+    if (item.status === "ABSENT") return false;
+    if (item.hoursAttended === null || item.hoursAttended === undefined) return false;
+    const durationHours = lessonDurationById.get(item.lessonId) ?? 0;
+    return item.hoursAttended > durationHours;
+  });
+
   if (invalid) {
     return NextResponse.json(
-      { error: "Lezione o dipendente non valido per questo corso" },
+      {
+        error:
+          "Lezione o dipendente non valido per questo corso, oppure ore frequentate superiori alla durata della lezione",
+      },
       { status: 400 }
     );
   }
 
   await prisma.$transaction(async (tx) => {
     for (const item of attendances) {
+      const normalizedHours =
+        item.status === "ABSENT" ? null : (item.hoursAttended ?? null);
+
       await tx.attendance.upsert({
         where: {
           lessonId_employeeId: {
@@ -288,6 +234,7 @@ export async function POST(
           employeeId: item.employeeId,
           courseEditionId: context.params.id,
           status: item.status,
+          hoursAttended: normalizedHours,
           notes: item.notes ?? null,
           recordedBy: session.user.id,
           recordedAt: new Date(),
@@ -295,13 +242,13 @@ export async function POST(
         update: {
           courseEditionId: context.params.id,
           status: item.status,
+          hoursAttended: normalizedHours,
           notes: item.notes ?? null,
           recordedBy: session.user.id,
           recordedAt: new Date(),
         },
       });
     }
-
   });
 
   return NextResponse.json({ ok: true, updated: attendances.length });

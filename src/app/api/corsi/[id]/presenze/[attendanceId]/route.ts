@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/api-utils";
 
 const updateSchema = z.object({
   status: z.enum(["PRESENT", "ABSENT", "ABSENT_JUSTIFIED"]),
+  hoursAttended: z.number().min(0).optional().nullable(),
   notes: z.string().optional(),
 });
 
@@ -26,7 +27,9 @@ export async function PUT(
 
   const attendance = await prisma.attendance.findUnique({
     where: { id: context.params.attendanceId },
-    include: { lesson: { select: { courseEditionId: true } } },
+    include: {
+      lesson: { select: { courseEditionId: true, durationHours: true } },
+    },
   });
 
   if (
@@ -36,10 +39,29 @@ export async function PUT(
     return NextResponse.json({ error: "Presenza non trovata" }, { status: 404 });
   }
 
+  const normalizedHours =
+    validation.data.status === "ABSENT"
+      ? null
+      : (validation.data.hoursAttended ?? null);
+
+  if (
+    typeof normalizedHours === "number" &&
+    normalizedHours > (attendance.lesson.durationHours ?? 0)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Le ore frequentate non possono superare la durata totale della lezione",
+      },
+      { status: 400 }
+    );
+  }
+
   const updated = await prisma.attendance.update({
     where: { id: context.params.attendanceId },
     data: {
       status: validation.data.status,
+      hoursAttended: normalizedHours,
       notes: validation.data.notes ?? null,
       recordedBy: session.user.id,
       recordedAt: new Date(),

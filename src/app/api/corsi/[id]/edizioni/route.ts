@@ -138,7 +138,9 @@ export async function POST(
 
     const editionNumber = (lastEdition?.editionNumber ?? 0) + 1;
     const presenzaMinimaType =
-      data.presenzaMinimaType === "percentage" || data.presenzaMinimaType === "days"
+      data.presenzaMinimaType === "percentage" ||
+      data.presenzaMinimaType === "days" ||
+      data.presenzaMinimaType === "hours"
         ? data.presenzaMinimaType
         : null;
     const presenzaMinimaValue =

@@ -110,7 +110,9 @@ export async function PUT(
 
   const data = validation.data;
   const presenzaMinimaType =
-    data.presenzaMinimaType === "percentage" || data.presenzaMinimaType === "days"
+    data.presenzaMinimaType === "percentage" ||
+    data.presenzaMinimaType === "days" ||
+    data.presenzaMinimaType === "hours"
       ? data.presenzaMinimaType
       : data.presenzaMinimaType === null
         ? null

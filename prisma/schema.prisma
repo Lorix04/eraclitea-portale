@@ -365,6 +365,7 @@ model Attendance {
   employeeId String
   employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   status     AttendanceStatus @default(ABSENT)
+  hoursAttended Float?
   notes      String?
   recordedBy String?
   recordedAt DateTime         @default(now())
