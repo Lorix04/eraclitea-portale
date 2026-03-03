@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import {
@@ -18,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/components/BrandingProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
+import ClientLogo from "@/components/ui/ClientLogo";
 
 const CLIENT_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -79,27 +79,19 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
     >
       <div className="flex flex-col items-center gap-3">
         {isLoading ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-gray-200 animate-pulse" />
-            <Skeleton className="h-3 w-20" />
+          <div className="w-full px-4">
+            <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="h-16 w-full animate-pulse rounded-lg bg-gray-200" />
+            </div>
           </div>
-        ) : displayLogo ? (
-          <Image
-            src={displayLogo}
-            alt={clientName}
-            width={160}
-            height={64}
-            unoptimized
-            className="h-12 w-auto object-contain"
-          />
         ) : (
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-lg"
-            style={{ backgroundColor: `${sidebarTextColor}20` }}
-          >
-            <span className="text-xl font-semibold" style={{ color: primaryColor }}>
-              {clientName.charAt(0)}
-            </span>
+          <div className="w-full px-4">
+            <ClientLogo
+              src={displayLogo}
+              alt={clientName}
+              variant="sidebar"
+              fallbackBgColor={primaryColor}
+            />
           </div>
         )}
         <div className="text-center">
