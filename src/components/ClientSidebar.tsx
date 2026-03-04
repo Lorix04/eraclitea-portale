@@ -7,6 +7,7 @@ import {
   Award,
   Bell,
   BookOpen,
+  BookOpenCheck,
   History,
   LayoutDashboard,
   LifeBuoy,
@@ -30,6 +31,7 @@ const CLIENT_SECTIONS = [
   [
     { href: "/notifiche", label: "Notifiche", icon: Bell },
     { href: "/supporto", label: "Supporto", icon: LifeBuoy },
+    { href: "/guida", label: "Guida", icon: BookOpenCheck },
     { href: "/profilo", label: "Profilo", icon: UserCircle },
   ],
 ] as const;

@@ -10,12 +10,10 @@ import {
   ChevronDown,
   Clock,
   Headphones,
-  HelpCircle,
-  LogIn,
   Shield,
   Users,
 } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
+import PublicNavbar from "@/components/PublicNavbar";
 
 type Particle = {
   x: number;
@@ -339,65 +337,15 @@ export default function LandingPage() {
         style={{ width: `${scrollProgress}%` }}
       />
 
-      <header
-        className={`fixed left-0 right-0 top-[2px] z-50 transition-all duration-300 ${
+      <PublicNavbar
+        currentPath="/"
+        onHoverChange={setIsHovering}
+        className={
           scrollProgress > 2
             ? "border-b border-gray-200 bg-white/90 shadow-lg shadow-gray-300/30 backdrop-blur-md dark:border-[#EAB308]/10 dark:bg-[#0A0A0A]/80 dark:shadow-black/20"
             : "bg-transparent"
-        }`}
-      >
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:py-5">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/icons/i-down-remove.png"
-              alt="Sapienta"
-              width={32}
-              height={32}
-              className="h-8 w-8"
-            />
-            <span
-              className="hidden text-lg font-semibold tracking-[0.2em] text-gray-900 dark:text-white sm:inline"
-              style={{ fontFamily: "var(--font-landing-display)" }}
-            >
-              SAPIENTA
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-6">
-            <Link
-              href="/come-funziona"
-              className="inline-flex items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-white/80 dark:hover:bg-white/10 sm:hidden"
-              aria-label="Come funziona"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </Link>
-            <ThemeToggle />
-            <Link
-              href="/come-funziona"
-              className="hidden items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-[#EAB308] dark:text-white/70 sm:inline-flex"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              <HelpCircle className="h-4 w-4" />
-              Come Funziona
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 sm:hidden"
-            >
-              <LogIn className="h-4 w-4" />
-              Accedi
-            </Link>
-            <Link
-              href="/login"
-              className="hidden rounded-lg bg-[#EAB308] px-5 py-2 text-sm font-semibold text-black shadow-[0_8px_25px_rgba(234,179,8,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#FACC15] sm:inline-flex"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              Area Clienti
-            </Link>
-          </div>
-        </div>
-      </header>
+        }
+      />
 
       <main className="relative min-h-screen overflow-x-hidden bg-gray-50 text-gray-900 dark:bg-[#0A0A0A] dark:text-white">
         <section

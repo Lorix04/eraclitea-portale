@@ -9,6 +9,7 @@ import {
   Award,
   Bell,
   BookOpen,
+  BookOpenCheck,
   Building2,
   CalendarRange,
   Download,
@@ -52,6 +53,7 @@ const CLIENT_SECTIONS: SidebarSection[] = [
     items: [
       { href: "/notifiche", label: "Notifiche", icon: Bell },
       { href: "/supporto", label: "Supporto", icon: LifeBuoy },
+      { href: "/guida", label: "Guida", icon: BookOpenCheck },
       { href: "/profilo", label: "Profilo", icon: UserCircle },
     ],
   },
@@ -84,6 +86,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
     label: "Strumenti",
     items: [
       { href: "/admin/export", label: "Export", icon: Download },
+      { href: "/admin/guida", label: "Guida", icon: BookOpenCheck },
       { href: "/admin/audit", label: "Audit", icon: ScrollText },
     ],
   },

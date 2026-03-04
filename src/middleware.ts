@@ -22,6 +22,10 @@ function isClientRoute(pathname: string) {
   );
 }
 
+function isGuideRoute(pathname: string) {
+  return pathname === "/guida" || pathname.startsWith("/guida/");
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
@@ -167,6 +171,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  if (isGuideRoute(pathname)) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+    if (effectiveRole === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin/guida", req.url));
+    }
+    if (effectiveRole !== "CLIENT") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/admin")) {
     if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -207,6 +224,7 @@ export const config = {
     "/supporto/:path*",
     "/storico/:path*",
     "/profilo/:path*",
+    "/guida/:path*",
     "/admin/ticket/:path*",
     "/admin/:path*",
   ],
