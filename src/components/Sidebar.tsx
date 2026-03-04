@@ -9,47 +9,91 @@ import {
   Award,
   Bell,
   BookOpen,
-  FileText,
-  History,
+  Building2,
+  CalendarRange,
+  Download,
+  FolderTree,
   GraduationCap,
+  History,
   LayoutDashboard,
   LifeBuoy,
-  Layers,
-  FolderOpen,
   LogOut,
-  ShieldCheck,
-  Server,
-  UploadCloud,
-  Users,
+  Mail,
+  MessageCircle,
+  ScrollText,
   UserCircle,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const CLIENT_LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/corsi", label: "Corsi", icon: BookOpen },
-  { href: "/dipendenti", label: "Dipendenti", icon: Users },
-  { href: "/notifiche", label: "Notifiche", icon: Bell },
-  { href: "/attestati", label: "Attestati", icon: Award },
-  { href: "/supporto", label: "Supporto", icon: LifeBuoy },
-  { href: "/storico", label: "Storico", icon: History },
-  { href: "/profilo", label: "Profilo", icon: UserCircle },
+type SidebarItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type SidebarSection = {
+  label?: string;
+  items: SidebarItem[];
+};
+
+const CLIENT_SECTIONS: SidebarSection[] = [
+  {
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/corsi", label: "Corsi", icon: BookOpen },
+      { href: "/dipendenti", label: "Dipendenti", icon: Users },
+      { href: "/attestati", label: "Attestati", icon: Award },
+      { href: "/storico", label: "Storico", icon: History },
+    ],
+  },
+  {
+    items: [
+      { href: "/notifiche", label: "Notifiche", icon: Bell },
+      { href: "/supporto", label: "Supporto", icon: LifeBuoy },
+      { href: "/profilo", label: "Profilo", icon: UserCircle },
+    ],
+  },
 ];
 
-const ADMIN_LINKS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/corsi", label: "Corsi", icon: BookOpen },
-  { href: "/admin/edizioni", label: "Edizioni", icon: Layers },
-  { href: "/admin/ticket", label: "Ticket", icon: LifeBuoy },
-  { href: "/admin/area-corsi", label: "Area Corsi", icon: FolderOpen },
-  { href: "/admin/clienti", label: "Clienti", icon: Users },
-  { href: "/admin/docenti", label: "Docenti", icon: GraduationCap },
-  { href: "/admin/dipendenti", label: "Dipendenti", icon: Users },
-  { href: "/admin/attestati", label: "Attestati", icon: UploadCloud },
-  { href: "/admin/export", label: "Export", icon: FileText },
-  { href: "/admin/audit", label: "Audit", icon: ShieldCheck },
-  { href: "/admin/status", label: "Status", icon: Activity },
-  { href: "/admin/smtp", label: "SMTP", icon: Server },
+const ADMIN_SECTIONS: SidebarSection[] = [
+  {
+    label: "Gestione Formazione",
+    items: [
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/corsi", label: "Corsi", icon: BookOpen },
+      { href: "/admin/edizioni", label: "Edizioni", icon: CalendarRange },
+      { href: "/admin/area-corsi", label: "Area Corsi", icon: FolderTree },
+      { href: "/admin/attestati", label: "Attestati", icon: Award },
+    ],
+  },
+  {
+    label: "Anagrafiche",
+    items: [
+      { href: "/admin/clienti", label: "Clienti", icon: Building2 },
+      { href: "/admin/dipendenti", label: "Dipendenti", icon: Users },
+      { href: "/admin/docenti", label: "Docenti", icon: GraduationCap },
+    ],
+  },
+  {
+    label: "Comunicazione",
+    items: [{ href: "/admin/ticket", label: "Ticket", icon: MessageCircle }],
+  },
+  {
+    label: "Strumenti",
+    items: [
+      { href: "/admin/export", label: "Export", icon: Download },
+      { href: "/admin/audit", label: "Audit", icon: ScrollText },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { href: "/admin/status", label: "Status", icon: Activity },
+      { href: "/admin/smtp", label: "SMTP", icon: Mail },
+    ],
+  },
 ];
 
 type SidebarProps = {
@@ -63,7 +107,7 @@ export default function Sidebar({
   onNavigate,
   className,
 }: SidebarProps) {
-  const links = role === "ADMIN" ? ADMIN_LINKS : CLIENT_LINKS;
+  const sections = role === "ADMIN" ? ADMIN_SECTIONS : CLIENT_SECTIONS;
   const pathname = usePathname();
   const { data: adminTicketCount = 0 } = useQuery({
     queryKey: ["sidebar-admin-ticket-count"],
@@ -114,44 +158,61 @@ export default function Sidebar({
     >
       <div className="text-center">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Menu Admin
+          {role === "ADMIN" ? "Menu Admin" : "Menù"}
         </p>
       </div>
-      <nav className="flex flex-col gap-2">
-        {links.map((link) => {
-          const Icon = link.icon;
-          const active = isActive(link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
-              )}
-            >
-              <Icon
+      <nav className="flex flex-col">
+        {sections.map((section, sectionIndex) => (
+          <div key={`${section.label ?? "section"}-${sectionIndex}`} className="flex flex-col gap-1">
+            {sectionIndex > 0 ? (
+              <div
                 className={cn(
-                  "h-4 w-4",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground group-hover:text-foreground"
+                  "mx-4 my-2 border-t",
+                  role === "ADMIN" ? "border-gray-200/50" : "border-white/20"
                 )}
               />
-              {link.label}
-              {role === "ADMIN" &&
-              link.href === "/admin/ticket" &&
-              adminTicketCount > 0 ? (
-                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                  {adminTicketCount}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
+            ) : null}
+            {role === "ADMIN" && section.label ? (
+              <p className="px-4 pt-6 pb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                {section.label}
+              </p>
+            ) : null}
+            {section.items.map((link) => {
+              const Icon = link.icon;
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-4 w-4",
+                      active
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground"
+                    )}
+                  />
+                  {link.label}
+                  {role === "ADMIN" &&
+                  link.href === "/admin/ticket" &&
+                  adminTicketCount > 0 ? (
+                    <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                      {adminTicketCount}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="mt-auto border-t pt-4">
         <button

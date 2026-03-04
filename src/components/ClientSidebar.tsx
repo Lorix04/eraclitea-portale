@@ -19,16 +19,20 @@ import { useBranding } from "@/components/BrandingProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 import ClientLogo from "@/components/ui/ClientLogo";
 
-const CLIENT_LINKS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/corsi", label: "Corsi", icon: BookOpen },
-  { href: "/dipendenti", label: "Dipendenti", icon: Users },
-  { href: "/notifiche", label: "Notifiche", icon: Bell },
-  { href: "/attestati", label: "Attestati", icon: Award },
-  { href: "/supporto", label: "Supporto", icon: LifeBuoy },
-  { href: "/storico", label: "Storico", icon: History },
-  { href: "/profilo", label: "Profilo", icon: UserCircle },
-];
+const CLIENT_SECTIONS = [
+  [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/corsi", label: "Corsi", icon: BookOpen },
+    { href: "/dipendenti", label: "Dipendenti", icon: Users },
+    { href: "/attestati", label: "Attestati", icon: Award },
+    { href: "/storico", label: "Storico", icon: History },
+  ],
+  [
+    { href: "/notifiche", label: "Notifiche", icon: Bell },
+    { href: "/supporto", label: "Supporto", icon: LifeBuoy },
+    { href: "/profilo", label: "Profilo", icon: UserCircle },
+  ],
+] as const;
 
 type ClientSidebarProps = {
   onNavigate?: () => void;
@@ -105,40 +109,47 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
         </div>
       </div>
 
-      <nav className="flex flex-col gap-2">
-        {CLIENT_LINKS.map((link) => {
-          const Icon = link.icon;
-          const isActive =
-            pathname === link.href ||
-            (link.href !== "/" && pathname.startsWith(link.href));
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={onNavigate}
-              className={cn(
-                "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition"
-              )}
-              style={{
-                color: isActive ? activeText : baseText,
-                backgroundColor: isActive ? activeBg : "transparent",
-              }}
-              onMouseEnter={(event) => {
-                if (!isActive) {
-                  event.currentTarget.style.backgroundColor = hoverBg;
-                }
-              }}
-              onMouseLeave={(event) => {
-                if (!isActive) {
-                  event.currentTarget.style.backgroundColor = "transparent";
-                }
-              }}
-            >
-              <Icon className="h-4 w-4" />
-              {link.label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-col">
+        {CLIENT_SECTIONS.map((section, sectionIndex) => (
+          <div key={`section-${sectionIndex}`} className="flex flex-col gap-2">
+            {sectionIndex > 0 ? (
+              <div className="mx-4 my-2 border-t border-white/20" />
+            ) : null}
+            {section.map((link) => {
+              const Icon = link.icon;
+              const isActive =
+                pathname === link.href ||
+                pathname.startsWith(`${link.href}/`);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition"
+                  )}
+                  style={{
+                    color: isActive ? activeText : baseText,
+                    backgroundColor: isActive ? activeBg : "transparent",
+                  }}
+                  onMouseEnter={(event) => {
+                    if (!isActive) {
+                      event.currentTarget.style.backgroundColor = hoverBg;
+                    }
+                  }}
+                  onMouseLeave={(event) => {
+                    if (!isActive) {
+                      event.currentTarget.style.backgroundColor = "transparent";
+                    }
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="mt-auto border-t pt-4" style={{ borderColor: dividerColor }}>
