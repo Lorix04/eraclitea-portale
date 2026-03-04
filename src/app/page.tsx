@@ -11,6 +11,7 @@ import {
   Clock,
   Headphones,
   HelpCircle,
+  LogIn,
   Shield,
   Users,
 } from "lucide-react";
@@ -345,17 +346,30 @@ export default function LandingPage() {
             : "bg-transparent"
         }`}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 md:py-5">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:py-5">
           <div className="flex items-center gap-3">
-            <Image src="/icons/i-down-remove.png" alt="Sapienta" width={32} height={32} />
+            <Image
+              src="/icons/i-down-remove.png"
+              alt="Sapienta"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             <span
-              className="text-lg font-semibold tracking-[0.2em] text-gray-900 dark:text-white"
+              className="hidden text-lg font-semibold tracking-[0.2em] text-gray-900 dark:text-white sm:inline"
               style={{ fontFamily: "var(--font-landing-display)" }}
             >
               SAPIENTA
             </span>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-1.5 sm:gap-6">
+            <Link
+              href="/come-funziona"
+              className="inline-flex items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 dark:text-white/80 dark:hover:bg-white/10 sm:hidden"
+              aria-label="Come funziona"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Link>
             <ThemeToggle />
             <Link
               href="/come-funziona"
@@ -368,7 +382,14 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
-              className="rounded-lg bg-[#EAB308] px-5 py-2 text-sm font-semibold text-black shadow-[0_8px_25px_rgba(234,179,8,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#FACC15]"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 sm:hidden"
+            >
+              <LogIn className="h-4 w-4" />
+              Accedi
+            </Link>
+            <Link
+              href="/login"
+              className="hidden rounded-lg bg-[#EAB308] px-5 py-2 text-sm font-semibold text-black shadow-[0_8px_25px_rgba(234,179,8,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#FACC15] sm:inline-flex"
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
             >
