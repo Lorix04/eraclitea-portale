@@ -208,14 +208,18 @@ export default function AdminAreaCorsiPage() {
 
       {confirmId && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-                <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Vuoi eliminare questa area? Le associazioni con corsi e clienti
-                  verranno rimosse.
-                </p>
-                <div className="mt-6 flex justify-end gap-3">
+            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
+                <div className="modal-header">
+                  <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
+                </div>
+                <div className="modal-body modal-scroll">
+                  <p className="text-sm text-muted-foreground">
+                    Vuoi eliminare questa area? Le associazioni con corsi e clienti
+                    verranno rimosse.
+                  </p>
+                </div>
+                <div className="modal-footer flex justify-end gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"

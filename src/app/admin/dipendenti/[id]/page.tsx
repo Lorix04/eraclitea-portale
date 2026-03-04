@@ -223,21 +223,21 @@ export default function AdminEmployeeDetailPage() {
             }}
             aria-hidden="true"
           />
-          <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="fixed inset-0 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
             <div
-              className="w-full max-w-lg rounded-lg bg-card p-6 shadow-xl"
+              className="modal-panel bg-card shadow-xl sm:max-w-lg"
               role="dialog"
               aria-modal="true"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex items-center gap-2 text-amber-600">
+              <div className="modal-header flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-6 w-6" />
                 <h2 className="text-lg font-semibold">
                   Attenzione: incongruenze rilevate
                 </h2>
               </div>
 
-              <div className="mt-4 space-y-3 text-sm">
+              <div className="modal-body modal-scroll space-y-3 text-sm">
                 <p>Il codice fiscale presenta i seguenti problemi:</p>
                 {forceDetails.mismatches.length > 0 ? (
                   <ul className="list-disc space-y-1 pl-5">
@@ -273,7 +273,7 @@ export default function AdminEmployeeDetailPage() {
                 <p>Vuoi procedere comunque con la modifica?</p>
               </div>
 
-              <div className="mt-6 flex justify-end gap-2">
+              <div className="modal-footer flex justify-end gap-2">
                 <button
                   type="button"
                   className="rounded-md border px-4 py-2 text-sm"

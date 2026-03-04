@@ -1002,24 +1002,26 @@ export default function EmailSettingsPage() {
       </div>
 
       {showTestDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-2 flex items-center gap-2">
+        <div className="fixed inset-0 z-50 bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="modal-panel bg-white shadow-xl sm:max-w-md">
+            <div className="modal-header flex items-center gap-2">
               <Mail className="h-5 w-5 text-blue-600" />
               <h3 className="text-lg font-semibold">Invia email di test</h3>
             </div>
-            <p className="mb-4 text-sm text-gray-500">
-              Inserisci l&apos;indirizzo email dove vuoi ricevere il test.
-            </p>
-            <input
-              type="email"
-              value={testEmail}
-              onChange={(event) => setTestEmail(event.target.value)}
-              placeholder="tuaemail@esempio.it"
-              className="mb-4 w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
+            <div className="modal-body modal-scroll space-y-4">
+              <p className="text-sm text-gray-500">
+                Inserisci l&apos;indirizzo email dove vuoi ricevere il test.
+              </p>
+              <input
+                type="email"
+                value={testEmail}
+                onChange={(event) => setTestEmail(event.target.value)}
+                placeholder="tuaemail@esempio.it"
+                className="w-full rounded-lg border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                autoFocus
+              />
+            </div>
+            <div className="modal-footer flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => {

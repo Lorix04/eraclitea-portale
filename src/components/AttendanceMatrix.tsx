@@ -612,15 +612,19 @@ export function AttendanceMatrix({
       ) : null}
 
       {bulkAction ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-white p-5 shadow-xl">
-            <h3 className="text-base font-semibold">Conferma azione massiva</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {bulkAction.status === "PRESENT"
-                ? "Segnare tutti come presenti per questa lezione?"
-                : "Segnare tutti come assenti per questa lezione?"}
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
+        <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="modal-panel border bg-white shadow-xl sm:max-w-md">
+            <div className="modal-header">
+              <h3 className="text-base font-semibold">Conferma azione massiva</h3>
+            </div>
+            <div className="modal-body modal-scroll">
+              <p className="text-sm text-muted-foreground">
+                {bulkAction.status === "PRESENT"
+                  ? "Segnare tutti come presenti per questa lezione?"
+                  : "Segnare tutti come assenti per questa lezione?"}
+              </p>
+            </div>
+            <div className="modal-footer flex justify-end gap-2">
               <button
                 type="button"
                 className="rounded-md border px-3 py-2 text-sm"

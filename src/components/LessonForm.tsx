@@ -12,6 +12,7 @@ interface LessonFormProps {
   lesson?: Lesson;
   onSubmit: (data: LessonFormData) => void;
   onCancel: () => void;
+  stickyFooter?: boolean;
 }
 
 function getTimeInMinutes(value: string): number | null {
@@ -21,7 +22,12 @@ function getTimeInMinutes(value: string): number | null {
   return hour * 60 + minute;
 }
 
-export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
+export function LessonForm({
+  lesson,
+  onSubmit,
+  onCancel,
+  stickyFooter = false,
+}: LessonFormProps) {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -145,148 +151,153 @@ export function LessonForm({ lesson, onSubmit, onCancel }: LessonFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <FormRequiredLegend />
-      <ItalianDateInput
-        label="Data"
-        value={date}
-        onChange={(value) => {
-          setDate(value);
-          if (errors.date) {
-            setErrors((prev) => ({ ...prev, date: "" }));
-          }
-        }}
-        required
-        error={errors.date}
-      />
+    <form
+      onSubmit={handleSubmit}
+      className={stickyFooter ? "flex h-full flex-col overflow-hidden" : "space-y-4"}
+    >
+      <div className={stickyFooter ? "modal-body modal-scroll space-y-4" : "space-y-4"}>
+        <FormRequiredLegend />
+        <ItalianDateInput
+          label="Data"
+          value={date}
+          onChange={(value) => {
+            setDate(value);
+            if (errors.date) {
+              setErrors((prev) => ({ ...prev, date: "" }));
+            }
+          }}
+          required
+          error={errors.date}
+        />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-2">
-          <FormLabel required>Orario inizio</FormLabel>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <FormLabel required>Orario inizio</FormLabel>
+            <input
+              type="time"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                errors.startTime
+                  ? "border-red-500 focus-visible:outline-red-500"
+                  : ""
+              }`}
+              value={startTime}
+              onChange={(event) => {
+                setStartTime(event.target.value);
+                if (errors.startTime) {
+                  setErrors((prev) => ({ ...prev, startTime: "" }));
+                }
+              }}
+            />
+            <FormFieldError message={errors.startTime} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <FormLabel required>Orario fine</FormLabel>
+            <input
+              type="time"
+              className={`rounded-md border bg-background px-3 py-2 ${
+                errors.endTime ? "border-red-500 focus-visible:outline-red-500" : ""
+              }`}
+              value={endTime}
+              onChange={(event) => {
+                setEndTime(event.target.value);
+                if (errors.endTime) {
+                  setErrors((prev) => ({ ...prev, endTime: "" }));
+                }
+              }}
+            />
+            <FormFieldError message={errors.endTime} />
+          </div>
+        </div>
+
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Durata (ore)</FormLabel>
           <input
-            type="time"
+            type="number"
+            min="0.5"
+            step="0.5"
             className={`rounded-md border bg-background px-3 py-2 ${
-              errors.startTime
+              errors.durationHours
                 ? "border-red-500 focus-visible:outline-red-500"
                 : ""
             }`}
-            value={startTime}
+            value={durationHours}
             onChange={(event) => {
-              setStartTime(event.target.value);
-              if (errors.startTime) {
-                setErrors((prev) => ({ ...prev, startTime: "" }));
+              setDurationHours(event.target.value ? Number(event.target.value) : "");
+              if (errors.durationHours) {
+                setErrors((prev) => ({ ...prev, durationHours: "" }));
               }
             }}
           />
-          <FormFieldError message={errors.startTime} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <FormLabel required>Orario fine</FormLabel>
+          <FormFieldError message={errors.durationHours} />
+        </label>
+
+        <label className="relative flex flex-col gap-2 text-sm">
+          <FormLabel required>Luogo</FormLabel>
           <input
-            type="time"
+            type="text"
             className={`rounded-md border bg-background px-3 py-2 ${
-              errors.endTime ? "border-red-500 focus-visible:outline-red-500" : ""
+              errors.luogo ? "border-red-500 focus-visible:outline-red-500" : ""
             }`}
-            value={endTime}
+            placeholder="Es. Aula A - Roma"
+            value={luogo}
+            onFocus={() => setLuogoInputFocused(true)}
+            onBlur={() => {
+              window.setTimeout(() => setLuogoInputFocused(false), 120);
+            }}
             onChange={(event) => {
-              setEndTime(event.target.value);
-              if (errors.endTime) {
-                setErrors((prev) => ({ ...prev, endTime: "" }));
+              setLuogo(event.target.value);
+              if (errors.luogo) {
+                setErrors((prev) => ({ ...prev, luogo: "" }));
               }
             }}
           />
-          <FormFieldError message={errors.endTime} />
-        </div>
+          {luogoInputFocused && filteredLuoghi.length > 0 ? (
+            <ul className="absolute left-0 right-0 top-full z-20 max-h-44 overflow-auto rounded-md border bg-popover py-1 shadow-md">
+              {filteredLuoghi.map((suggestion) => (
+                <li key={suggestion}>
+                  <button
+                    type="button"
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setLuogo(suggestion);
+                      setLuogoInputFocused(false);
+                      if (errors.luogo) {
+                        setErrors((prev) => ({ ...prev, luogo: "" }));
+                      }
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <FormFieldError message={errors.luogo} />
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Argomento/Titolo</FormLabel>
+          <input
+            type="text"
+            className="rounded-md border bg-background px-3 py-2"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Note</FormLabel>
+          <textarea
+            className="rounded-md border bg-background px-3 py-2"
+            rows={3}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </label>
       </div>
 
-      <label className="flex flex-col gap-2 text-sm">
-        <FormLabel>Durata (ore)</FormLabel>
-        <input
-          type="number"
-          min="0.5"
-          step="0.5"
-          className={`rounded-md border bg-background px-3 py-2 ${
-            errors.durationHours
-              ? "border-red-500 focus-visible:outline-red-500"
-              : ""
-          }`}
-          value={durationHours}
-          onChange={(event) => {
-            setDurationHours(event.target.value ? Number(event.target.value) : "");
-            if (errors.durationHours) {
-              setErrors((prev) => ({ ...prev, durationHours: "" }));
-            }
-          }}
-        />
-        <FormFieldError message={errors.durationHours} />
-      </label>
-
-      <label className="relative flex flex-col gap-2 text-sm">
-        <FormLabel required>Luogo</FormLabel>
-        <input
-          type="text"
-          className={`rounded-md border bg-background px-3 py-2 ${
-            errors.luogo ? "border-red-500 focus-visible:outline-red-500" : ""
-          }`}
-          placeholder="Es. Aula A - Roma"
-          value={luogo}
-          onFocus={() => setLuogoInputFocused(true)}
-          onBlur={() => {
-            window.setTimeout(() => setLuogoInputFocused(false), 120);
-          }}
-          onChange={(event) => {
-            setLuogo(event.target.value);
-            if (errors.luogo) {
-              setErrors((prev) => ({ ...prev, luogo: "" }));
-            }
-          }}
-        />
-        {luogoInputFocused && filteredLuoghi.length > 0 ? (
-          <ul className="absolute left-0 right-0 top-full z-20 max-h-44 overflow-auto rounded-md border bg-popover py-1 shadow-md">
-            {filteredLuoghi.map((suggestion) => (
-              <li key={suggestion}>
-                <button
-                  type="button"
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    setLuogo(suggestion);
-                    setLuogoInputFocused(false);
-                    if (errors.luogo) {
-                      setErrors((prev) => ({ ...prev, luogo: "" }));
-                    }
-                  }}
-                >
-                  {suggestion}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <FormFieldError message={errors.luogo} />
-      </label>
-
-      <label className="flex flex-col gap-2 text-sm">
-        <FormLabel>Argomento/Titolo</FormLabel>
-        <input
-          type="text"
-          className="rounded-md border bg-background px-3 py-2"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-      </label>
-
-      <label className="flex flex-col gap-2 text-sm">
-        <FormLabel>Note</FormLabel>
-        <textarea
-          className="rounded-md border bg-background px-3 py-2"
-          rows={3}
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </label>
-
-      <div className="flex justify-end gap-2">
+      <div className={stickyFooter ? "modal-footer flex justify-end gap-2" : "flex justify-end gap-2"}>
         <button
           type="button"
           className="rounded-md border px-4 py-2 text-sm"

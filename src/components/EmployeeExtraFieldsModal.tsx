@@ -82,9 +82,9 @@ export default function EmployeeExtraFieldsModal({
   return createPortal(
     <div className="fixed inset-0 z-[70]">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="fixed inset-0 z-[71] p-2 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="fixed inset-0 z-[71] p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
         <div
-          className="flex h-[92vh] w-full flex-col rounded-lg bg-card shadow-lg sm:h-auto sm:max-h-[90vh] sm:max-w-2xl"
+          className="modal-panel bg-card shadow-lg sm:max-w-2xl"
           role="dialog"
           aria-modal="true"
           onClick={(event) => event.stopPropagation()}
@@ -108,7 +108,7 @@ export default function EmployeeExtraFieldsModal({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="modal-body modal-scroll">
             <div className="space-y-5">
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold">Contatti</h3>

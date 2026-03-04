@@ -705,15 +705,19 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
 
       {confirmOpen && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-                <h2 className="text-lg font-semibold">Conferma invio anagrafiche</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}
-                  {course.editionNumber ? ` (Ed. #${course.editionNumber})` : ""}.
-                  Dopo l&apos;invio non sar&agrave; possibile modificare i dati.
-                </p>
-                <div className="mt-6 flex justify-end gap-2">
+            <div className="fixed inset-0 z-50 bg-black/30 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
+                <div className="modal-header">
+                  <h2 className="text-lg font-semibold">Conferma invio anagrafiche</h2>
+                </div>
+                <div className="modal-body modal-scroll">
+                  <p className="text-sm text-muted-foreground">
+                    Stai per inviare {registrationStats.valid} anagrafiche per il corso {course.title}
+                    {course.editionNumber ? ` (Ed. #${course.editionNumber})` : ""}.
+                    Dopo l&apos;invio non sar&agrave; possibile modificare i dati.
+                  </p>
+                </div>
+                <div className="modal-footer flex justify-end gap-2">
                   <BrandedButton
                     variant="outline"
                     size="sm"

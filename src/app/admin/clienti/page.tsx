@@ -427,17 +427,21 @@ export default function AdminClientiPage() {
 
       {confirmClient && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-                <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Sei sicuro di voler eliminare il cliente{" "}
-                  <span className="font-medium text-foreground">
-                    {confirmClient.ragioneSociale}
-                  </span>
-                  ? Questa azione è irreversibile.
-                </p>
-                <div className="mt-6 flex justify-end gap-3">
+            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
+                <div className="modal-header">
+                  <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
+                </div>
+                <div className="modal-body modal-scroll">
+                  <p className="text-sm text-muted-foreground">
+                    Sei sicuro di voler eliminare il cliente{" "}
+                    <span className="font-medium text-foreground">
+                      {confirmClient.ragioneSociale}
+                    </span>
+                    ? Questa azione è irreversibile.
+                  </p>
+                </div>
+                <div className="modal-footer flex justify-end gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"
@@ -461,21 +465,25 @@ export default function AdminClientiPage() {
 
       {confirmResetClient && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
-                <h2 className="text-lg font-semibold">Reset Password</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Sei sicuro di voler reimpostare la password di{" "}
-                  <span className="font-medium text-foreground">
-                    {confirmResetClient.ragioneSociale}
-                  </span>
-                  ? Verrà generata una nuova password e inviata via email a{" "}
-                  <span className="font-medium text-foreground">
-                    {confirmResetClient.user?.email || confirmResetClient.referenteEmail}
-                  </span>
-                  .
-                </p>
-                <div className="mt-6 flex justify-end gap-3">
+            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
+                <div className="modal-header">
+                  <h2 className="text-lg font-semibold">Reset Password</h2>
+                </div>
+                <div className="modal-body modal-scroll">
+                  <p className="text-sm text-muted-foreground">
+                    Sei sicuro di voler reimpostare la password di{" "}
+                    <span className="font-medium text-foreground">
+                      {confirmResetClient.ragioneSociale}
+                    </span>
+                    ? Verrà generata una nuova password e inviata via email a{" "}
+                    <span className="font-medium text-foreground">
+                      {confirmResetClient.user?.email || confirmResetClient.referenteEmail}
+                    </span>
+                    .
+                  </p>
+                </div>
+                <div className="modal-footer flex justify-end gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"
@@ -501,51 +509,55 @@ export default function AdminClientiPage() {
 
       {resetPasswordResult && mounted
         ? createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
-                <h2 className="text-lg font-semibold">Password Reimpostata</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  La password di{" "}
-                  <span className="font-medium text-foreground">
-                    {resetPasswordResult.clientName}
-                  </span>{" "}
-                  è stata reimpostata con successo.
-                </p>
-                <div className="mt-4 rounded-md border bg-muted/30 p-3">
-                  <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    Nuova password
-                  </p>
-                  <div className="flex items-center justify-between gap-2">
-                    <code className="rounded bg-background px-2 py-1 font-mono text-sm">
-                      {resetPasswordResult.newPassword}
-                    </code>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                      onClick={handleCopyPassword}
-                    >
-                      {copySuccess ? (
-                        <>
-                          <Check className="h-3.5 w-3.5" />
-                          Copiata
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" />
-                          Copia
-                        </>
-                      )}
-                    </button>
-                  </div>
+            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+              <div className="modal-panel bg-card shadow-lg sm:max-w-lg">
+                <div className="modal-header">
+                  <h2 className="text-lg font-semibold">Password Reimpostata</h2>
                 </div>
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Un&apos;email con le nuove credenziali è stata inviata a{" "}
-                  <span className="font-medium text-foreground">
-                    {resetPasswordResult.email}
-                  </span>
-                  . Il cliente dovrà cambiare la password al primo accesso.
-                </p>
-                <div className="mt-6 flex justify-end">
+                <div className="modal-body modal-scroll space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    La password di{" "}
+                    <span className="font-medium text-foreground">
+                      {resetPasswordResult.clientName}
+                    </span>{" "}
+                    è stata reimpostata con successo.
+                  </p>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      Nuova password
+                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="rounded bg-background px-2 py-1 font-mono text-sm">
+                        {resetPasswordResult.newPassword}
+                      </code>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                        onClick={handleCopyPassword}
+                      >
+                        {copySuccess ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" />
+                            Copiata
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            Copia
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Un&apos;email con le nuove credenziali è stata inviata a{" "}
+                    <span className="font-medium text-foreground">
+                      {resetPasswordResult.email}
+                    </span>
+                    . Il cliente dovrà cambiare la password al primo accesso.
+                  </p>
+                </div>
+                <div className="modal-footer flex justify-end">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"

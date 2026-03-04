@@ -895,20 +895,20 @@ export default function ExcelSheet({
                 aria-hidden="true"
                 onClick={() => setPendingRemoval(null)}
               />
-              <div className="fixed inset-0 z-[81] flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-[81] p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
                 <div
-                  className="w-full max-w-md rounded-lg border bg-card shadow-lg"
+                  className="modal-panel border bg-card shadow-lg sm:max-w-md"
                   role="dialog"
                   aria-modal="true"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <div className="border-b px-4 py-3">
+                  <div className="modal-header">
                     <h3 className="text-base font-semibold">Conferma rimozione</h3>
                   </div>
-                  <div className="px-4 py-4 text-sm text-muted-foreground">
+                  <div className="modal-body modal-scroll text-sm text-muted-foreground">
                     {pendingRemoval.message}
                   </div>
-                  <div className="flex justify-end gap-2 border-t px-4 py-3">
+                  <div className="modal-footer flex justify-end gap-2">
                     <button
                       type="button"
                       className="rounded-md border px-3 py-2 text-sm"

@@ -44,22 +44,24 @@ export function DeleteConfirmModal({
         }}
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
         <div
-          className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg"
+          className="modal-panel bg-card shadow-lg sm:max-w-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-confirm-title"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            <h2 id="delete-confirm-title" className="text-lg font-semibold">
-              {title}
-            </h2>
+          <div className="modal-header">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <h2 id="delete-confirm-title" className="text-lg font-semibold">
+                {title}
+              </h2>
+            </div>
           </div>
 
-          <div className="mt-4 space-y-3 text-sm">
+          <div className="modal-body modal-scroll space-y-3 text-sm">
             <p>{description}</p>
             {itemName ? (
               <p className="font-medium text-foreground">&quot;{itemName}&quot;</p>
@@ -71,7 +73,7 @@ export function DeleteConfirmModal({
             ) : null}
           </div>
 
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="modal-footer flex justify-end gap-2">
             <button
               type="button"
               className="rounded-md border px-4 py-2 text-sm"

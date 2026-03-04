@@ -111,21 +111,21 @@ export default function DeleteEditionModal({
         }}
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
         <div
-          className="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg"
+          className="modal-panel bg-card shadow-lg sm:max-w-lg"
           role="dialog"
           aria-modal="true"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="modal-header flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
             <h2 className="text-lg font-semibold">
-              Elimina Edizione #{editionNumber} — {clientName}
+              Elimina Edizione #{editionNumber} - {clientName}
             </h2>
           </div>
 
-          <div className="mt-4 space-y-3 text-sm">
+          <div className="modal-body modal-scroll space-y-3 text-sm">
             {loading ? (
               <div className="space-y-2">
                 <Skeleton className="h-4 w-40" />
@@ -170,11 +170,11 @@ export default function DeleteEditionModal({
                 />
               </div>
             ) : (
-              <p className="text-muted-foreground">Questa azione e irreversibile.</p>
+              <p className="text-muted-foreground">Questa azione è irreversibile.</p>
             )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="modal-footer flex justify-end gap-2">
             <button
               type="button"
               className="rounded-md border px-4 py-2 text-sm"

@@ -80,14 +80,16 @@ export function AttendanceNoteModal({
   const isHoursVisible = status === "PRESENT" || status === "ABSENT_JUSTIFIED";
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl border bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-semibold">Dettagli presenza</h2>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-0 sm:p-4">
+      <div className="modal-panel border bg-white shadow-xl sm:max-w-lg">
+        <div className="modal-header">
+          <h2 className="text-lg font-semibold">Dettagli presenza</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {employeeName} · {lessonDate}
         </p>
+        </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="modal-body modal-scroll space-y-4">
           <div className="space-y-2">
             <p className="text-sm font-medium">Stato</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -155,7 +157,7 @@ export function AttendanceNoteModal({
           </label>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="modal-footer flex justify-end gap-2">
           <button
             type="button"
             className="rounded-md border px-4 py-2 text-sm"

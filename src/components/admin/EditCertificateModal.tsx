@@ -454,9 +454,9 @@ export function EditCertificateModal({
         aria-hidden="true"
       />
 
-      <div className="fixed inset-0 z-50 p-2 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="fixed inset-0 z-50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
         <div
-          className="flex h-[92vh] w-full flex-col rounded-lg bg-card shadow-lg sm:h-auto sm:max-h-[92vh] sm:max-w-3xl"
+          className="modal-panel bg-card shadow-lg sm:max-w-3xl"
           role="dialog"
           aria-modal="true"
           onClick={(event) => event.stopPropagation()}
@@ -474,7 +474,7 @@ export function EditCertificateModal({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="modal-body modal-scroll">
             <FormRequiredLegend />
 
             {loading ? (

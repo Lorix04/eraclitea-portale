@@ -278,9 +278,9 @@ export default function CreateEditionModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-3xl rounded-xl border bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="modal-panel border bg-white shadow-xl sm:max-w-3xl">
+        <div className="modal-header flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">Nuova Edizione</h2>
             <p className="text-sm text-muted-foreground">
@@ -298,7 +298,8 @@ export default function CreateEditionModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <form onSubmit={handleSubmit} className="flex h-full flex-1 flex-col overflow-hidden">
+          <div className="modal-body modal-scroll space-y-4">
           {apiError ? (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {apiError}
@@ -539,8 +540,9 @@ export default function CreateEditionModal({
               </div>
             </>
           )}
+          </div>
 
-          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+          <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}

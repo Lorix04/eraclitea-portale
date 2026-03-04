@@ -152,21 +152,24 @@ export default function AdminCourseLessonsPage({
                 onClick={closeModal}
                 aria-hidden="true"
               />
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
                 <div
-                  className="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg"
+                  className="modal-panel bg-card shadow-lg sm:max-w-lg"
                   role="dialog"
                   aria-modal="true"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <h2 className="text-lg font-semibold">
-                    {editingLesson ? "Modifica lezione" : "Aggiungi lezione"}
-                  </h2>
-                  <div className="mt-4">
+                  <div className="modal-header">
+                    <h2 className="text-lg font-semibold">
+                      {editingLesson ? "Modifica lezione" : "Aggiungi lezione"}
+                    </h2>
+                  </div>
+                  <div className="flex h-full flex-1 flex-col overflow-hidden">
                     <LessonForm
                       lesson={editingLesson}
                       onSubmit={handleSubmit}
                       onCancel={closeModal}
+                      stickyFooter
                     />
                   </div>
                 </div>

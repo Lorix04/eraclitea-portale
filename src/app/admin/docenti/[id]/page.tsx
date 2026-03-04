@@ -780,13 +780,15 @@ export default function AdminTeacherDetailPage() {
       />
 
       {unavailabilityModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-card p-5 shadow-lg">
-            <h3 className="text-base font-semibold">Aggiungi indisponibilita</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Imposta un impegno esterno per il docente.
-            </p>
-            <div className="mt-4 space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+          <div className="modal-panel border bg-card shadow-lg sm:max-w-md">
+            <div className="modal-header">
+              <h3 className="text-base font-semibold">Aggiungi indisponibilità</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Imposta un impegno esterno per il docente.
+              </p>
+            </div>
+            <div className="modal-body modal-scroll space-y-3">
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-xs text-muted-foreground">Data</span>
                 <input
@@ -852,7 +854,7 @@ export default function AdminTeacherDetailPage() {
                 placeholder="Motivo (opzionale)"
               />
             </div>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="modal-footer flex justify-end gap-2">
               <button
                 type="button"
                 className="rounded-md border px-3 py-2 text-sm"

@@ -170,12 +170,12 @@ function NewTicketModal({
   return (
     <div className="fixed inset-0 z-50">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+      <div className="fixed inset-0 z-50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
         <div
-          className="w-full max-w-2xl rounded-lg border bg-card shadow-xl"
+          className="modal-panel border bg-card shadow-xl sm:max-w-2xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="modal-header flex items-center justify-between">
             <h2 className="text-base font-semibold">Nuovo ticket</h2>
             <button
               type="button"
@@ -187,7 +187,7 @@ function NewTicketModal({
             </button>
           </div>
 
-          <div className="space-y-4 p-4">
+          <div className="modal-body modal-scroll space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Oggetto *</label>
               <input
@@ -271,7 +271,7 @@ function NewTicketModal({
             ) : null}
           </div>
 
-          <div className="flex justify-end gap-2 border-t px-4 py-3">
+          <div className="modal-footer flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -474,4 +474,3 @@ export default function SupportoPage() {
     </div>
   );
 }
-

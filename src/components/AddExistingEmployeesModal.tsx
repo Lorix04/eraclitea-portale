@@ -200,9 +200,9 @@ export default function AddExistingEmployeesModal({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-50 p-2 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="fixed inset-0 z-50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
         <div
-          className="flex h-[92vh] w-full flex-col rounded-lg bg-card shadow-lg sm:h-auto sm:max-h-[85vh] sm:max-w-2xl"
+          className="modal-panel bg-card shadow-lg sm:max-w-2xl"
           role="dialog"
           aria-modal="true"
           onClick={(event) => event.stopPropagation()}
@@ -246,7 +246,7 @@ export default function AddExistingEmployeesModal({
             ) : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-3">
+          <div className="modal-body modal-scroll px-4 py-3">
             {employeesQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />

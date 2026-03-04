@@ -218,7 +218,7 @@ export default function ImportEmployeesModal({
         <h2 className="text-base font-semibold">Importa Dipendenti da CSV/Excel</h2>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
+      <div className="modal-scroll flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
         <div className="space-y-2">
           <p className="font-medium">Come importare:</p>
           <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
@@ -361,7 +361,7 @@ export default function ImportEmployeesModal({
         <h2 className="text-base font-semibold">Import completato</h2>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
+      <div className="modal-scroll flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
         <div className="space-y-2">
           <p className="flex items-center text-green-700">
             <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -405,7 +405,7 @@ export default function ImportEmployeesModal({
         <h2 className="text-base font-semibold">Import non riuscito</h2>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
+      <div className="modal-scroll flex-1 space-y-4 overflow-y-auto px-4 py-4 text-sm">
         <p className="flex items-center text-red-700">
           <AlertCircle className="mr-2 h-4 w-4" />
           L&apos;import non e andato a buon fine.
@@ -487,9 +487,9 @@ export default function ImportEmployeesModal({
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
-      <div className="fixed inset-0 z-[81] p-2 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="fixed inset-0 z-[81] p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
         <div
-          className="flex h-[92vh] w-full flex-col rounded-lg bg-card shadow-lg sm:h-auto sm:max-h-[92vh] sm:max-w-3xl"
+          className="modal-panel bg-card shadow-lg sm:max-w-3xl"
           role="dialog"
           aria-modal="true"
           onClick={(event) => event.stopPropagation()}

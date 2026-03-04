@@ -352,9 +352,9 @@ export default function TeacherModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl border bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-5 py-4">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="modal-panel border bg-white shadow-xl sm:max-w-2xl">
+        <div className="modal-header flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">{modalTitle}</h2>
             <p className="text-sm text-muted-foreground">
@@ -372,7 +372,8 @@ export default function TeacherModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <form onSubmit={handleSubmit} className="flex h-full flex-1 flex-col overflow-hidden">
+          <div className="modal-body modal-scroll space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm">
               <FormLabel required>Nome</FormLabel>
@@ -604,8 +605,9 @@ export default function TeacherModal({
             />
             Docente attivo
           </label>
+          </div>
 
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
