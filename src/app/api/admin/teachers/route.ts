@@ -10,6 +10,8 @@ const querySchema = z.object({
   search: z.string().optional(),
   active: z.enum(["true", "false"]).optional(),
   categoryId: z.string().cuid().optional(),
+  province: z.string().trim().min(1).max(10).optional(),
+  region: z.string().trim().min(1).max(100).optional(),
   includeAssignments: z.enum(["true", "false"]).optional(),
   editionId: z.string().optional(),
 });
@@ -19,6 +21,8 @@ const teacherSchema = z.object({
   lastName: z.string().trim().min(1, "Cognome obbligatorio").max(100),
   email: z.string().trim().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().trim().max(50).optional().or(z.literal("")),
+  province: z.string().trim().max(10).optional().or(z.literal("")),
+  region: z.string().trim().max(100).optional().or(z.literal("")),
   specialization: z.string().trim().max(150).optional().or(z.literal("")),
   categoryIds: z.array(z.string().cuid()).optional(),
   bio: z.string().trim().max(5000).optional().or(z.literal("")),
@@ -38,10 +42,33 @@ export async function GET(request: Request) {
       return validation.error;
     }
 
-    const { search, active, categoryId, includeAssignments, editionId } =
+    const {
+      search,
+      active,
+      categoryId,
+      province,
+      region,
+      includeAssignments,
+      editionId,
+    } =
       validation.data;
     const where: Prisma.TeacherWhereInput = {
       ...(active ? { active: active === "true" } : {}),
+      ...(province
+        ? {
+            province: {
+              equals: province.toUpperCase(),
+            },
+          }
+        : {}),
+      ...(region
+        ? {
+            region: {
+              equals: region,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          }
+        : {}),
       ...(categoryId
         ? {
             categories: {
@@ -57,6 +84,8 @@ export async function GET(request: Request) {
               { firstName: { contains: search, mode: Prisma.QueryMode.insensitive } },
               { lastName: { contains: search, mode: Prisma.QueryMode.insensitive } },
               { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              { province: { contains: search, mode: Prisma.QueryMode.insensitive } },
+              { region: { contains: search, mode: Prisma.QueryMode.insensitive } },
               {
                 categories: {
                   some: {
@@ -152,6 +181,10 @@ export async function POST(request: Request) {
         lastName: data.lastName,
         email: data.email?.trim() ? data.email.trim() : null,
         phone: data.phone?.trim() ? data.phone.trim() : null,
+        province: data.province?.trim()
+          ? data.province.trim().toUpperCase()
+          : null,
+        region: data.region?.trim() ? data.region.trim() : null,
         specialization: data.specialization?.trim() ? data.specialization.trim() : null,
         bio: data.bio?.trim() ? data.bio.trim() : null,
         notes: data.notes?.trim() ? data.notes.trim() : null,

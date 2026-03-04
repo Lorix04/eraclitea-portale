@@ -207,6 +207,8 @@ export async function GET(request: Request) {
       Email: teacher.email ?? "",
       Telefono: teacher.phone ?? "",
       Specializzazione: teacher.specialization ?? "",
+      Provincia: teacher.province ?? "",
+      Regione: teacher.region ?? "",
       Aree: teacher.categories.map((category) => category.name).join(", "),
       Stato: teacher.active ? "Attivo" : "Inattivo",
       "Lezioni assegnate": teacher._count.assignments,

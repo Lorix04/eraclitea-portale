@@ -11,6 +11,8 @@ const teacherUpdateSchema = z.object({
   lastName: z.string().trim().min(1, "Cognome obbligatorio").max(100).optional(),
   email: z.string().trim().email("Email non valida").optional().or(z.literal("")),
   phone: z.string().trim().max(50).optional().or(z.literal("")),
+  province: z.string().trim().max(10).optional().or(z.literal("")),
+  region: z.string().trim().max(100).optional().or(z.literal("")),
   specialization: z.string().trim().max(150).optional().or(z.literal("")),
   categoryIds: z.array(z.string().cuid()).optional(),
   bio: z.string().trim().max(5000).optional().or(z.literal("")),
@@ -107,6 +109,11 @@ export async function PUT(
         lastName: data.lastName,
         email: data.email !== undefined ? (data.email.trim() || null) : undefined,
         phone: data.phone !== undefined ? (data.phone.trim() || null) : undefined,
+        province:
+          data.province !== undefined
+            ? data.province.trim().toUpperCase() || null
+            : undefined,
+        region: data.region !== undefined ? data.region.trim() || null : undefined,
         specialization:
           data.specialization !== undefined
             ? data.specialization.trim() || null

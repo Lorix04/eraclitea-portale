@@ -140,6 +140,8 @@ model Teacher {
   lastName        String
   email           String?
   phone           String?
+  province        String?
+  region          String?
   specialization  String?
   bio             String?
   cvPath          String?

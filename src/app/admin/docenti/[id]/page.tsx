@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { formatItalianDate } from "@/lib/date-utils";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
 type EditionStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
 
@@ -137,6 +138,7 @@ export default function AdminTeacherDetailPage() {
     reason: "",
   });
   const cvInputRef = useRef<HTMLInputElement | null>(null);
+  const { province: provinceOptions } = useProvinceRegioni();
 
   const month = monthCursor.getMonth() + 1;
   const year = monthCursor.getFullYear();
@@ -156,6 +158,20 @@ export default function AdminTeacherDetailPage() {
   });
 
   const teacher = teacherQuery.data;
+  const provinceLabelBySigla = useMemo(() => {
+    const map = new Map<string, string>();
+    provinceOptions.forEach((item) => {
+      map.set(item.sigla.toUpperCase(), item.nome);
+    });
+    return map;
+  }, [provinceOptions]);
+
+  const formattedProvince = useMemo(() => {
+    if (!teacher?.province) return "-";
+    const sigla = teacher.province.toUpperCase();
+    const name = provinceLabelBySigla.get(sigla);
+    return name ? `${sigla} - ${name}` : sigla;
+  }, [provinceLabelBySigla, teacher?.province]);
   const days = useMemo(() => calendarQuery.data ?? [], [calendarQuery.data]);
 
   const dayMap = useMemo(() => {
@@ -395,6 +411,14 @@ export default function AdminTeacherDetailPage() {
               <div>
                 <dt className="text-xs text-muted-foreground">Telefono</dt>
                 <dd>{teacher.phone || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Provincia</dt>
+                <dd>{formattedProvince}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Regione</dt>
+                <dd>{teacher.region || "-"}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Specializzazione</dt>

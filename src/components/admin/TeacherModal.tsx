@@ -5,6 +5,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
 export type TeacherFormValue = {
   id: string;
@@ -12,6 +13,8 @@ export type TeacherFormValue = {
   lastName: string;
   email: string | null;
   phone: string | null;
+  province: string | null;
+  region: string | null;
   specialization: string | null;
   categories?: { id: string; name: string; color?: string | null }[];
   bio: string | null;
@@ -48,6 +51,14 @@ function validateEmail(value: string) {
   return EMAIL_REGEX.test(value.trim());
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 export default function TeacherModal({
   open,
   onClose,
@@ -59,6 +70,10 @@ export default function TeacherModal({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [provinceValue, setProvinceValue] = useState("");
+  const [regionValue, setRegionValue] = useState("");
+  const [provinceQuery, setProvinceQuery] = useState("");
+  const [regionQuery, setRegionQuery] = useState("");
   const [specialization, setSpecialization] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -70,6 +85,7 @@ export default function TeacherModal({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const categorySearchInputRef = useRef<HTMLInputElement>(null);
+  const { province: provinceOptions, regioni, filterRegioni } = useProvinceRegioni();
 
   const isEdit = Boolean(teacher?.id);
 
@@ -79,6 +95,31 @@ export default function TeacherModal({
     setLastName(teacher?.lastName ?? "");
     setEmail(teacher?.email ?? "");
     setPhone(teacher?.phone ?? "");
+    const rawProvince = teacher?.province?.trim() ?? "";
+    const provinceMatch = rawProvince
+      ? provinceOptions.find(
+          (item) =>
+            item.sigla.toUpperCase() === rawProvince.toUpperCase() ||
+            normalizeText(item.nome) === normalizeText(rawProvince)
+        )
+      : undefined;
+    const normalizedProvince = provinceMatch
+      ? provinceMatch.sigla.toUpperCase()
+      : rawProvince.toUpperCase();
+    const normalizedRegion = (
+      teacher?.region?.trim() ??
+      provinceMatch?.regione ??
+      ""
+    ).trim();
+
+    setProvinceValue(normalizedProvince);
+    setProvinceQuery(
+      provinceMatch
+        ? `${provinceMatch.sigla.toUpperCase()} - ${provinceMatch.nome}`
+        : normalizedProvince
+    );
+    setRegionValue(normalizedRegion);
+    setRegionQuery(normalizedRegion);
     setSpecialization(teacher?.specialization ?? "");
     setSelectedCategoryIds((teacher?.categories ?? []).map((category) => category.id));
     setCategorySearch("");
@@ -87,7 +128,7 @@ export default function TeacherModal({
     setActive(teacher?.active ?? true);
     setCvFile(null);
     setErrors({});
-  }, [open, teacher]);
+  }, [open, teacher, provinceOptions]);
 
   useEffect(() => {
     if (!open) return;
@@ -148,6 +189,91 @@ export default function TeacherModal({
     );
   }, [categories, categorySearch]);
 
+  const provincePool = useMemo(() => {
+    if (!regionValue) return provinceOptions;
+    return provinceOptions.filter(
+      (province) => normalizeText(province.regione) === normalizeText(regionValue)
+    );
+  }, [provinceOptions, regionValue]);
+
+  const filteredProvinceOptions = useMemo(() => {
+    const query = normalizeText(provinceQuery);
+    if (!query) return provincePool.slice(0, 40);
+    return provincePool
+      .filter((province) => {
+        const siglaMatch = province.sigla.toLowerCase().startsWith(query);
+        const nameMatch = normalizeText(province.nome).includes(query);
+        return siglaMatch || nameMatch;
+      })
+      .slice(0, 40);
+  }, [provincePool, provinceQuery]);
+
+  const filteredRegionOptions = useMemo(
+    () => filterRegioni(regionQuery).slice(0, 20),
+    [filterRegioni, regionQuery]
+  );
+
+  const handleProvinceInputChange = (value: string) => {
+    setProvinceQuery(value);
+    const normalized = normalizeText(value);
+    if (!normalized) {
+      setProvinceValue("");
+      return;
+    }
+
+    const provinceMatch = provincePool.find((province) => {
+      const label = normalizeText(`${province.sigla} - ${province.nome}`);
+      return (
+        label === normalized ||
+        province.sigla.toLowerCase() === normalized ||
+        normalizeText(province.nome) === normalized
+      );
+    });
+
+    if (!provinceMatch) {
+      setProvinceValue("");
+      return;
+    }
+
+    setProvinceValue(provinceMatch.sigla.toUpperCase());
+    setProvinceQuery(`${provinceMatch.sigla.toUpperCase()} - ${provinceMatch.nome}`);
+    setRegionValue(provinceMatch.regione);
+    setRegionQuery(provinceMatch.regione);
+  };
+
+  const handleRegionInputChange = (value: string) => {
+    setRegionQuery(value);
+    const normalized = normalizeText(value);
+    if (!normalized) {
+      setRegionValue("");
+      return;
+    }
+
+    const regionMatch = regioni.find(
+      (region) => normalizeText(region) === normalized
+    );
+    if (!regionMatch) {
+      setRegionValue("");
+      return;
+    }
+
+    setRegionValue(regionMatch);
+    setRegionQuery(regionMatch);
+
+    if (provinceValue) {
+      const currentProvince = provinceOptions.find(
+        (province) => province.sigla.toUpperCase() === provinceValue.toUpperCase()
+      );
+      if (
+        currentProvince &&
+        normalizeText(currentProvince.regione) !== normalizeText(regionMatch)
+      ) {
+        setProvinceValue("");
+        setProvinceQuery("");
+      }
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors: FieldErrors = {};
@@ -171,6 +297,8 @@ export default function TeacherModal({
         lastName: lastName.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        province: provinceValue.trim(),
+        region: regionValue.trim(),
         specialization: specialization.trim(),
         categoryIds: selectedCategoryIds,
         bio: bio.trim(),
@@ -307,6 +435,43 @@ export default function TeacherModal({
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
               />
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex flex-col gap-2 text-sm">
+              <FormLabel>Provincia</FormLabel>
+              <input
+                list="teacher-province-options"
+                className="rounded-md border bg-background px-3 py-2"
+                value={provinceQuery}
+                onChange={(event) => handleProvinceInputChange(event.target.value)}
+                placeholder="Es. CT - Catania"
+              />
+              <datalist id="teacher-province-options">
+                {filteredProvinceOptions.map((province) => (
+                  <option
+                    key={`${province.sigla}-${province.nome}`}
+                    value={`${province.sigla.toUpperCase()} - ${province.nome}`}
+                  />
+                ))}
+              </datalist>
+            </label>
+
+            <label className="flex flex-col gap-2 text-sm">
+              <FormLabel>Regione</FormLabel>
+              <input
+                list="teacher-region-options"
+                className="rounded-md border bg-background px-3 py-2"
+                value={regionQuery}
+                onChange={(event) => handleRegionInputChange(event.target.value)}
+                placeholder="Es. Sicilia"
+              />
+              <datalist id="teacher-region-options">
+                {filteredRegionOptions.map((region) => (
+                  <option key={region} value={region} />
+                ))}
+              </datalist>
             </label>
           </div>
 

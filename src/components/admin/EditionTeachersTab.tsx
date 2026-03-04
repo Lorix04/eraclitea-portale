@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Plus, Save, X } from "lucide-react";
+import { AlertTriangle, Plus, Save, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { formatItalianDate } from "@/lib/date-utils";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
 type LessonItem = {
   id: string;
@@ -52,12 +53,24 @@ function toDateKey(value: string | Date) {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 export default function EditionTeachersTab({
   editionId,
   lessons,
   readOnly = false,
 }: EditionTeachersTabProps) {
   const [query, setQuery] = useState("");
+  const [categoryIdFilter, setCategoryIdFilter] = useState("");
+  const [provinceFilter, setProvinceFilter] = useState("");
+  const [provinceFilterQuery, setProvinceFilterQuery] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [lessonSelections, setLessonSelections] = useState<Record<string, Set<string>>>(
     {}
@@ -67,6 +80,7 @@ export default function EditionTeachersTab({
   >({});
   const [saving, setSaving] = useState(false);
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
+  const { province: provinceOptions, regioni } = useProvinceRegioni();
 
   const teachersQuery = useQuery({
     queryKey: ["teachers", "active"],
@@ -106,6 +120,47 @@ export default function EditionTeachersTab({
 
   const allTeachers = useMemo(() => teachersQuery.data ?? [], [teachersQuery.data]);
 
+  const provinceLabelBySigla = useMemo(() => {
+    const map = new Map<string, string>();
+    provinceOptions.forEach((item) => {
+      map.set(item.sigla.toUpperCase(), item.nome);
+    });
+    return map;
+  }, [provinceOptions]);
+
+  const availableCategories = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    allTeachers.forEach((teacher) => {
+      (teacher.categories ?? []).forEach((category) => {
+        if (!map.has(category.id)) {
+          map.set(category.id, { id: category.id, name: category.name });
+        }
+      });
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "it")
+    );
+  }, [allTeachers]);
+
+  const provincePool = useMemo(() => {
+    if (!regionFilter) return provinceOptions;
+    return provinceOptions.filter(
+      (item) => normalizeText(item.regione) === normalizeText(regionFilter)
+    );
+  }, [provinceOptions, regionFilter]);
+
+  const filteredProvinceOptions = useMemo(() => {
+    const queryValue = normalizeText(provinceFilterQuery);
+    if (!queryValue) return provincePool.slice(0, 40);
+    return provincePool
+      .filter((province) => {
+        const siglaMatch = province.sigla.toLowerCase().startsWith(queryValue);
+        const nameMatch = normalizeText(province.nome).includes(queryValue);
+        return siglaMatch || nameMatch;
+      })
+      .slice(0, 40);
+  }, [provincePool, provinceFilterQuery]);
+
   const teachersById = useMemo(() => {
     const map = new Map<string, TeacherListItem>();
     allTeachers.forEach((teacher) => map.set(teacher.id, teacher));
@@ -131,10 +186,35 @@ export default function EditionTeachersTab({
     return allTeachers
       .filter((teacher) => !selectedTeacherIds.includes(teacher.id))
       .filter((teacher) => {
+        if (categoryIdFilter) {
+          const hasCategory = (teacher.categories ?? []).some(
+            (category) => category.id === categoryIdFilter
+          );
+          if (!hasCategory) return false;
+        }
+
+        if (regionFilter) {
+          if (!teacher.region) return false;
+          if (normalizeText(teacher.region) !== normalizeText(regionFilter)) {
+            return false;
+          }
+        }
+
+        if (provinceFilter) {
+          if (!teacher.province) return false;
+          if (
+            teacher.province.toUpperCase() !== provinceFilter.toUpperCase()
+          ) {
+            return false;
+          }
+        }
+
         if (!term) return true;
         const fullName = `${teacher.firstName} ${teacher.lastName}`.toLowerCase();
         const email = (teacher.email ?? "").toLowerCase();
         const specialization = (teacher.specialization ?? "").toLowerCase();
+        const province = (teacher.province ?? "").toLowerCase();
+        const region = (teacher.region ?? "").toLowerCase();
         const categoryNames = (teacher.categories ?? [])
           .map((category) => category.name.toLowerCase())
           .join(" ");
@@ -143,10 +223,19 @@ export default function EditionTeachersTab({
           fullName.includes(term) ||
           email.includes(term) ||
           specialization.includes(term) ||
+          province.includes(term) ||
+          region.includes(term) ||
           categoryNames.includes(term)
         );
       });
-  }, [allTeachers, query, selectedTeacherIds]);
+  }, [
+    allTeachers,
+    categoryIdFilter,
+    provinceFilter,
+    query,
+    regionFilter,
+    selectedTeacherIds,
+  ]);
 
   useEffect(() => {
     const fromData = assignmentsQuery.data ?? [];
@@ -251,6 +340,65 @@ export default function EditionTeachersTab({
         [teacherId]: nextSet,
       };
     });
+  };
+
+  const handleProvinceFilterChange = (value: string) => {
+    setProvinceFilterQuery(value);
+    const normalized = normalizeText(value);
+    if (!normalized) {
+      setProvinceFilter("");
+      return;
+    }
+
+    const match = provincePool.find((item) => {
+      const label = normalizeText(`${item.sigla} - ${item.nome}`);
+      return (
+        label === normalized ||
+        item.sigla.toLowerCase() === normalized ||
+        normalizeText(item.nome) === normalized
+      );
+    });
+
+    if (!match) {
+      setProvinceFilter("");
+      return;
+    }
+
+    setProvinceFilter(match.sigla.toUpperCase());
+    setProvinceFilterQuery(`${match.sigla.toUpperCase()} - ${match.nome}`);
+    if (!regionFilter) {
+      setRegionFilter(match.regione);
+    }
+  };
+
+  const handleRegionFilterChange = (value: string) => {
+    setRegionFilter(value);
+    if (!value || !provinceFilter) return;
+
+    const selectedProvince = provinceOptions.find(
+      (item) => item.sigla.toUpperCase() === provinceFilter.toUpperCase()
+    );
+    if (!selectedProvince) return;
+
+    if (normalizeText(selectedProvince.regione) !== normalizeText(value)) {
+      setProvinceFilter("");
+      setProvinceFilterQuery("");
+    }
+  };
+
+  const resetFilters = () => {
+    setQuery("");
+    setCategoryIdFilter("");
+    setProvinceFilter("");
+    setProvinceFilterQuery("");
+    setRegionFilter("");
+  };
+
+  const formatProvince = (value?: string | null) => {
+    if (!value) return "-";
+    const sigla = value.toUpperCase();
+    const nome = provinceLabelBySigla.get(sigla);
+    return nome ? `${sigla} - ${nome}` : sigla;
   };
 
   const handleSaveAssignments = async () => {
@@ -395,6 +543,8 @@ export default function EditionTeachersTab({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {teacher.specialization || "Nessuna specializzazione"}
+                      {" · "}
+                      {formatProvince(teacher.province)}
                     </p>
                     <div className="mt-1">{renderCategoryChips(teacher.categories)}</div>
                   </div>
@@ -442,13 +592,78 @@ export default function EditionTeachersTab({
         </div>
 
         <div className="mt-3 space-y-3">
-          <input
-            type="text"
-            placeholder="Cerca docente per nome, cognome, email o area..."
-            className="rounded-md border bg-background px-3 py-2 text-sm"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Cerca docente per nome, cognome, email o area..."
+              className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-[170px] flex-col gap-1 text-xs text-muted-foreground">
+              Area
+              <select
+                className="min-h-[40px] rounded-md border bg-background px-3 py-2 text-sm text-foreground"
+                value={categoryIdFilter}
+                onChange={(event) => setCategoryIdFilter(event.target.value)}
+              >
+                <option value="">Tutte</option>
+                {availableCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex min-w-[220px] flex-col gap-1 text-xs text-muted-foreground">
+              Provincia
+              <input
+                list="edition-teachers-province-options"
+                value={provinceFilterQuery}
+                onChange={(event) => handleProvinceFilterChange(event.target.value)}
+                placeholder="Tutte"
+                className="min-h-[40px] rounded-md border bg-background px-3 py-2 text-sm text-foreground"
+              />
+              <datalist id="edition-teachers-province-options">
+                {filteredProvinceOptions.map((item) => (
+                  <option
+                    key={`${item.sigla}-${item.nome}`}
+                    value={`${item.sigla.toUpperCase()} - ${item.nome}`}
+                  />
+                ))}
+              </datalist>
+            </label>
+
+            <label className="flex min-w-[200px] flex-col gap-1 text-xs text-muted-foreground">
+              Regione
+              <select
+                className="min-h-[40px] rounded-md border bg-background px-3 py-2 text-sm text-foreground"
+                value={regionFilter}
+                onChange={(event) => handleRegionFilterChange(event.target.value)}
+              >
+                <option value="">Tutte</option>
+                {regioni.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              className="inline-flex min-h-[40px] items-center rounded-md border px-3 py-2 text-sm"
+              onClick={resetFilters}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Resetta filtri
+            </button>
+          </div>
 
           <div className="max-h-56 space-y-2 overflow-auto rounded-md border bg-background p-2">
             {availableTeachers.length === 0 ? (
@@ -467,6 +682,8 @@ export default function EditionTeachersTab({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {teacher.specialization || "Nessuna specializzazione"}
+                      {" · "}
+                      {formatProvince(teacher.province)}
                       {teacher.email ? ` · ${teacher.email}` : ""}
                     </p>
                     <div className="mt-1">{renderCategoryChips(teacher.categories, true)}</div>
@@ -504,6 +721,8 @@ export default function EditionTeachersTab({
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {teacher.specialization || "Nessuna specializzazione"}
+                    {" · "}
+                    {formatProvince(teacher.province)}
                   </p>
                   <div className="mt-1">{renderCategoryChips(teacher.categories)}</div>
                 </div>
