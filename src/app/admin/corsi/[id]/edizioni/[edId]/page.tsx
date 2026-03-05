@@ -6,6 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   Archive,
   CheckCircle,
   Clock,
@@ -488,6 +489,24 @@ export default function AdminEditionDetailPage({
     [lessons]
   );
 
+  const getLessonTeacherNames = useCallback((lessonItem: Lesson) => {
+    return (lessonItem.teacherAssignments ?? [])
+      .map((assignment) => {
+        const firstName = assignment.teacher?.firstName?.trim() ?? "";
+        const lastName = assignment.teacher?.lastName?.trim() ?? "";
+        const fullName = `${firstName} ${lastName}`.trim();
+        return fullName.length > 0 ? fullName : null;
+      })
+      .filter((name): name is string => Boolean(name));
+  }, []);
+
+  const lessonsWithoutTeacherCount = useMemo(
+    () =>
+      lessons.filter((lessonItem) => getLessonTeacherNames(lessonItem).length === 0)
+        .length,
+    [lessons, getLessonTeacherNames]
+  );
+
   if (loading) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-6">
@@ -752,9 +771,18 @@ export default function AdminEditionDetailPage({
             </div>
           ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Totale lezioni: {lessons.length} &middot; Ore totali: {totalLessonHours}
-            </p>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">
+                Totale lezioni: {lessons.length} &middot; Ore totali:{" "}
+                {totalLessonHours}
+              </p>
+              {lessonsWithoutTeacherCount > 0 ? (
+                <p className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {lessonsWithoutTeacherCount} lezioni senza docente assegnato
+                </p>
+              ) : null}
+            </div>
             {!isArchived ? (
               <button
                 type="button"
@@ -783,7 +811,7 @@ export default function AdminEditionDetailPage({
           ) : (
             <div className="overflow-hidden rounded-lg border bg-card">
               <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[920px] text-sm">
                 <thead className="bg-muted/40 text-left">
                   <tr>
                     <th className="px-4 py-3">Data</th>
@@ -792,50 +820,90 @@ export default function AdminEditionDetailPage({
                     <th className="px-4 py-3">Durata</th>
                     <th className="px-4 py-3">Luogo</th>
                     <th className="px-4 py-3">Titolo</th>
+                    <th className="px-4 py-3">Docenti</th>
                     <th className="px-4 py-3">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lessons.map((lessonItem) => (
-                    <tr key={lessonItem.id} className="border-t">
-                      <td className="px-4 py-3">
-                        {formatItalianDate(lessonItem.date)}
-                      </td>
-                      <td className="px-4 py-3">{lessonItem.startTime || "-"}</td>
-                      <td className="px-4 py-3">{lessonItem.endTime || "-"}</td>
-                      <td className="px-4 py-3">{lessonItem.durationHours}h</td>
-                      <td className="px-4 py-3">{lessonItem.luogo || "-"}</td>
-                      <td className="px-4 py-3">{lessonItem.title || "-"}</td>
-                      <td className="px-4 py-3">
-                        {!isArchived ? (
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 text-xs text-primary"
-                              onClick={() => {
-                                setEditingLesson(lessonItem);
-                                setLessonModalOpen(true);
-                              }}
+                  {lessons.map((lessonItem) => {
+                    const teacherNames = getLessonTeacherNames(lessonItem);
+                    return (
+                      <tr key={lessonItem.id} className="border-t">
+                        <td className="px-4 py-3">
+                          {formatItalianDate(lessonItem.date)}
+                        </td>
+                        <td className="px-4 py-3">{lessonItem.startTime || "-"}</td>
+                        <td className="px-4 py-3">{lessonItem.endTime || "-"}</td>
+                        <td className="px-4 py-3">{lessonItem.durationHours}h</td>
+                        <td className="px-4 py-3">{lessonItem.luogo || "-"}</td>
+                        <td className="px-4 py-3">{lessonItem.title || "-"}</td>
+                        <td className="px-4 py-3">
+                          {teacherNames.length > 0 ? (
+                            <div
+                              className="flex flex-wrap items-center gap-1.5"
+                              title={teacherNames.join(", ")}
                             >
-                              <Pencil className="h-3 w-3" />
-                              Modifica
-                            </button>
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 text-xs text-destructive"
-                              onClick={() => handleLessonDelete(lessonItem.id)}
-                              disabled={lessonDeleting === lessonItem.id}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                              {lessonDeleting === lessonItem.id ? "Elimino..." : "Elimina"}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Sola lettura</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                                {teacherNames[0]}
+                              </span>
+                              {teacherNames[1] ? (
+                                <span className="hidden items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 sm:inline-flex">
+                                  {teacherNames[1]}
+                                </span>
+                              ) : null}
+                              {teacherNames.length > 1 ? (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 sm:hidden">
+                                  +{teacherNames.length - 1}
+                                </span>
+                              ) : null}
+                              {teacherNames.length > 2 ? (
+                                <span className="hidden items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700 sm:inline-flex">
+                                  +{teacherNames.length - 2}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Docente mancante
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {!isArchived ? (
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-xs text-primary"
+                                onClick={() => {
+                                  setEditingLesson(lessonItem);
+                                  setLessonModalOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Modifica
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-1 text-xs text-destructive"
+                                onClick={() => handleLessonDelete(lessonItem.id)}
+                                disabled={lessonDeleting === lessonItem.id}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                {lessonDeleting === lessonItem.id
+                                  ? "Elimino..."
+                                  : "Elimina"}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Sola lettura
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 </table>
               </div>

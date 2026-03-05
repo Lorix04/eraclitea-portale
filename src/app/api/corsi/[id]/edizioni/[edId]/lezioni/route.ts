@@ -53,8 +53,21 @@ export async function GET(
   const [lessons, total, totalEmployees] = await prisma.$transaction([
     prisma.lesson.findMany({
       where: { courseEditionId: edition.id },
-      orderBy: { date: "asc" },
-      include: { _count: { select: { attendances: true } } },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }],
+      include: {
+        _count: { select: { attendances: true } },
+        teacherAssignments: {
+          include: {
+            teacher: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
       skip,
       take: safeLimit,
     }),

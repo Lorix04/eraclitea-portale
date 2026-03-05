@@ -124,6 +124,16 @@ export interface Lesson {
   luogo?: string | null;
   title?: string | null;
   notes?: string | null;
+  teacherAssignments?: Array<{
+    id: string;
+    teacherId: string;
+    notes?: string | null;
+    teacher?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } | null;
+  }>;
   createdAt: Date | string;
   updatedAt: Date | string;
   _count?: { attendances: number };
