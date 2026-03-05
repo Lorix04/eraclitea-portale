@@ -51,11 +51,19 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/api/")) {
     const ip =
       req.ip ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-    const isAuthRoute = pathname === "/api/auth/callback/credentials";
-    const { success, remaining } = await checkRateLimit(
-      `${isAuthRoute ? "auth" : "api"}:${ip}`,
-      isAuthRoute ? 5 : 100,
-      60_000
+    const isAuthApiRoute = pathname.startsWith("/api/auth/");
+    const rateLimitTier = isAuthApiRoute
+      ? "login"
+      : token
+        ? "authenticated"
+        : "public";
+    const rateLimitIdentifier =
+      rateLimitTier === "authenticated"
+        ? `authenticated:${tokenUserId ?? ip}`
+        : `${rateLimitTier}:${ip}`;
+    const { success, remaining, retryAfter } = await checkRateLimit(
+      rateLimitIdentifier,
+      rateLimitTier
     );
 
     if (!success) {
@@ -65,7 +73,7 @@ export async function middleware(req: NextRequest) {
           status: 429,
           headers: {
             "X-RateLimit-Remaining": "0",
-            "Retry-After": "60",
+            "Retry-After": String(retryAfter),
           },
         }
       );
@@ -73,7 +81,6 @@ export async function middleware(req: NextRequest) {
 
     const isReadOnlyMethod = !["GET", "HEAD", "OPTIONS"].includes(req.method);
     const isImpersonateStopRoute = pathname === "/api/admin/impersonate/stop";
-    const isAuthApiRoute = pathname.startsWith("/api/auth/");
     const isForceChangePasswordApi = pathname === "/api/profilo/cambia-password";
     const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
       req.method
