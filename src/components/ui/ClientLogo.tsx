@@ -44,6 +44,7 @@ export default function ClientLogo({
   const initials = useMemo(() => getInitials(alt), [alt]);
   const hasImage = Boolean(normalizedSrc) && !hasError;
   const radiusClass = isSquare ? "rounded-full" : "rounded-xl";
+  const objectFitClass = isSquare ? "object-cover" : "object-contain";
   const resolvedMaxWidth = maxWidth ?? size;
   const resolvedMaxHeight = maxHeight ?? size;
   const squareSize = Math.min(resolvedMaxWidth, resolvedMaxHeight);
@@ -69,16 +70,15 @@ export default function ClientLogo({
     return (
       <div
         className={cn(
-          "w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm",
+          "mx-auto flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white p-2 shadow-sm",
           className
         )}
+        style={{ width: squareSize, height: squareSize }}
       >
         <div
-          className="flex w-full items-center justify-center rounded-lg text-white"
+          className="flex h-full w-full items-center justify-center rounded-full text-white"
           style={{
             backgroundColor: fallbackBgColor || "#64748b",
-            minHeight: 64,
-            maxHeight: 80,
           }}
         >
           <span className="select-none text-2xl font-semibold uppercase">
@@ -90,33 +90,43 @@ export default function ClientLogo({
   }
 
   if (isSidebar) {
+    const sidebarWrapperClass = isSquare
+      ? "relative mx-auto overflow-hidden rounded-full border border-slate-200 bg-white p-2 shadow-sm"
+      : "relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm";
+
     return (
       <div
-        className={cn(
-          "relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-3 shadow-sm",
-          className
-        )}
-        style={{ maxHeight: 100 }}
+        className={cn(sidebarWrapperClass, className)}
+        style={isSquare ? { width: squareSize, height: squareSize } : { maxHeight: 100 }}
       >
-        <div className="flex w-full items-center justify-center">
+        <div className={cn("flex items-center justify-center", isSquare ? "h-full w-full" : "w-full")}>
           <Image
             src={normalizedSrc as string}
             alt={alt}
-            width={320}
-            height={80}
+            width={isSquare ? squareSize : 320}
+            height={isSquare ? squareSize : 80}
             unoptimized
             sizes="(max-width: 768px) 60vw, 240px"
             onLoad={handleLoad}
             onError={handleError}
             className={cn(
-              "h-auto max-h-[80px] w-full object-contain transition-opacity duration-150",
+              isSquare
+                ? "h-full w-full object-cover transition-opacity duration-150"
+                : "h-auto max-h-[80px] w-full object-contain transition-opacity duration-150",
+              radiusClass,
               isLoading ? "opacity-0" : "opacity-100"
             )}
           />
         </div>
 
         {isLoading ? (
-          <div className="absolute inset-3 flex items-center justify-center rounded-lg bg-gray-200 text-gray-600">
+          <div
+            className={cn(
+              "absolute flex items-center justify-center bg-gray-200 text-gray-600",
+              radiusClass,
+              isSquare ? "inset-2" : "inset-3"
+            )}
+          >
             <span className="select-none text-2xl font-semibold uppercase">
               {initials}
             </span>
@@ -167,7 +177,8 @@ export default function ClientLogo({
           onLoad={handleLoad}
           onError={handleError}
           className={cn(
-            "h-full w-full object-contain transition-opacity duration-150",
+            "h-full w-full transition-opacity duration-150",
+            objectFitClass,
             radiusClass,
             isLoading ? "opacity-0" : "opacity-100"
           )}
