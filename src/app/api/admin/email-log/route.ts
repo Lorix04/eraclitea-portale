@@ -31,6 +31,9 @@ export async function GET(request: Request) {
   const limit = Math.max(1, Math.min(100, limitRaw));
   const type = (searchParams.get("type") || "").trim();
   const status = (searchParams.get("status") || "").trim().toUpperCase();
+  const retryStatus = (searchParams.get("retryStatus") || "").trim();
+  const retryableFilter = (searchParams.get("retryable") || "").trim().toLowerCase();
+  const sensitiveFilter = (searchParams.get("sensitive") || "").trim().toLowerCase();
   const search = (searchParams.get("search") || "").trim();
   const from = parseDate(searchParams.get("from"));
   const to = parseDate(searchParams.get("to"));
@@ -43,6 +46,22 @@ export async function GET(request: Request) {
 
   if (status && ["SENT", "FAILED", "PENDING"].includes(status)) {
     where.status = status;
+  }
+
+  if (retryStatus) {
+    where.retryStatus = retryStatus;
+  }
+
+  if (retryableFilter === "true") {
+    where.retryable = true;
+  } else if (retryableFilter === "false") {
+    where.retryable = false;
+  }
+
+  if (sensitiveFilter === "true") {
+    where.sensitive = true;
+  } else if (sensitiveFilter === "false") {
+    where.sensitive = false;
   }
 
   if (search) {

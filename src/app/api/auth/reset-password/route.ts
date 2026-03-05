@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { send } from "@/lib/email";
+import { sendAutoEmail } from "@/lib/email-service";
 import { passwordResetRequestTemplate } from "@/lib/email-templates";
 
 const requestSchema = z.object({
@@ -36,10 +36,17 @@ export async function POST(request: Request) {
     });
 
     const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password/${resetToken}`;
-    await send({
-      to: payload.email,
+    await sendAutoEmail({
+      emailType: "PASSWORD_RESET_REQUEST",
+      recipientEmail: payload.email,
+      recipientName: user.email,
+      recipientId: user.id,
       subject: "Reimposta la tua password — Sapienta",
       html: passwordResetRequestTemplate(resetUrl),
+      meta: {
+        userId: user.id,
+        resetToken,
+      },
     });
   }
 

@@ -309,6 +309,14 @@ model EmailLog {
   subject        String
   courseEditionId String?
   status         String   @default("SENT")
+  sensitive      Boolean  @default(false)
+  retryable      Boolean  @default(true)
+  retryCount     Int      @default(0)
+  lastRetryAt    DateTime?
+  retryStatus    String?
+  htmlBody       String?  @db.Text
+  textBody       String?  @db.Text
+  meta           Json?
   errorMessage   String?
   sentAt         DateTime @default(now())
 
@@ -317,6 +325,8 @@ model EmailLog {
   @@index([sentAt])
   @@index([status])
   @@index([courseEditionId])
+  @@index([status, retryable])
+  @@index([retryStatus])
 }
 
 model EmailPreference {

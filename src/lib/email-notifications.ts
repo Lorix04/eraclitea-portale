@@ -13,6 +13,10 @@ export async function sendWelcomeEmail(params: {
   clientName?: string | null;
   clientId?: string;
   tempPassword?: string;
+},
+options?: {
+  ignorePreference?: boolean;
+  meta?: Record<string, unknown>;
 }) {
   const clientName = safeName(params.clientName, params.clientEmail);
   const credentialsHtml = params.tempPassword
@@ -50,6 +54,8 @@ export async function sendWelcomeEmail(params: {
     recipientId: params.clientId,
     subject: "Benvenuto su Sapienta - Le tue credenziali",
     html,
+    ignorePreference: options?.ignorePreference,
+    meta: options?.meta,
   });
 }
 

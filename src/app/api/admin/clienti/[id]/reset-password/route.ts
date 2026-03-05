@@ -4,7 +4,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { send } from "@/lib/email";
+import { sendAutoEmail } from "@/lib/email-service";
 import { adminResetPasswordTemplate } from "@/lib/email-templates";
 import { getClientIP, logAudit } from "@/lib/audit";
 
@@ -61,14 +61,21 @@ export async function POST(
       },
     });
 
-    const sent = await send({
-      to: user.email,
+    const sent = await sendAutoEmail({
+      emailType: "PASSWORD_RESET_ADMIN",
+      recipientEmail: user.email,
+      recipientName: client.referenteNome || client.ragioneSociale,
+      recipientId: user.id,
       subject: "La tua password è stata reimpostata — Sapienta",
       html: adminResetPasswordTemplate({
         clientName: client.referenteNome || client.ragioneSociale,
         email: user.email,
         newPassword,
       }),
+      meta: {
+        clientId: client.id,
+        userId: user.id,
+      },
     });
 
     if (!sent) {
