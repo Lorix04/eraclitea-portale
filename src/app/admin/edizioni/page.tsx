@@ -3,12 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowUpDown, Copy, Plus, Search, Trash2, X } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
+import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
 
 type EditionRow = {
   id: string;
@@ -21,7 +22,10 @@ type EditionRow = {
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
   course?: { id: string; title: string } | null;
   client?: { id: string; ragioneSociale: string } | null;
-  lessons?: Array<{ luogo?: string | null }>;
+  lessons?: Array<{
+    luogo?: string | null;
+    _count?: { teacherAssignments: number };
+  }>;
   _count?: { registrations: number };
 };
 
@@ -115,6 +119,7 @@ function AdminEdizioniContent() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<EditionRow | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<EditionRow | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
@@ -259,6 +264,12 @@ function AdminEdizioniContent() {
     }
     return "-";
   };
+
+  const getTeacherAssignmentsCount = (edition: EditionRow) =>
+    (edition.lessons ?? []).reduce(
+      (count, lesson) => count + (lesson._count?.teacherAssignments ?? 0),
+      0
+    );
 
   return (
     <div className="space-y-6">
@@ -451,16 +462,24 @@ function AdminEdizioniContent() {
                   <td className="px-4 py-3">{getLuoghiDisplay(edition)}</td>
                   <td className="px-4 py-3">
                     {edition.course?.id ? (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Link
                           href={`/admin/corsi/${edition.course.id}/edizioni/${edition.id}`}
-                          className="text-xs text-primary"
+                          className="inline-flex items-center rounded-md border px-2 py-1 text-xs text-primary"
                         >
                           Apri
                         </Link>
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 text-xs text-destructive"
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                          onClick={() => setDuplicateTarget(edition)}
+                        >
+                          <Copy className="h-3 w-3" />
+                          Duplica
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive"
                           onClick={() => setDeleteTarget(edition)}
                         >
                           <Trash2 className="h-3 w-3" />
@@ -491,6 +510,26 @@ function AdminEdizioniContent() {
             setEditions((prev) =>
               prev.filter((edition) => edition.id !== deleteTarget.id)
             );
+          }}
+        />
+      ) : null}
+
+      {duplicateTarget ? (
+        <DuplicateEditionModal
+          open={Boolean(duplicateTarget)}
+          onClose={() => setDuplicateTarget(null)}
+          edition={{
+            id: duplicateTarget.id,
+            editionNumber: duplicateTarget.editionNumber,
+            course: { name: duplicateTarget.course?.title ?? "Corso" },
+            client: { name: duplicateTarget.client?.ragioneSociale ?? "Cliente" },
+            lessonsCount: duplicateTarget.lessons?.length ?? 0,
+            teacherAssignmentsCount: getTeacherAssignmentsCount(duplicateTarget),
+            presenzaMinimaType: duplicateTarget.presenzaMinimaType ?? null,
+            presenzaMinimaValue: duplicateTarget.presenzaMinimaValue ?? null,
+          }}
+          onSuccess={async () => {
+            await fetchEditions();
           }}
         />
       ) : null}

@@ -9,6 +9,7 @@ import {
   Archive,
   CheckCircle,
   Clock,
+  Copy,
   Download,
   Lock,
   Pencil,
@@ -33,6 +34,7 @@ import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
+import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
 import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
@@ -152,6 +154,7 @@ export default function AdminEditionDetailPage({
   const [lessonDeleting, setLessonDeleting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   const registryRows = useMemo(() => {
@@ -520,6 +523,14 @@ export default function AdminEditionDetailPage({
           >
             Torna al corso
           </Link>
+          <button
+            type="button"
+            className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+            onClick={() => setDuplicateModalOpen(true)}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Duplica edizione
+          </button>
           {!isArchived ? (
             <Link
               href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
@@ -996,6 +1007,28 @@ export default function AdminEditionDetailPage({
           onClose={() => setDeleteModalOpen(false)}
           onDeleted={() => {
             router.push(`/admin/corsi/${params.id}`);
+          }}
+        />
+      ) : null}
+
+      {duplicateModalOpen ? (
+        <DuplicateEditionModal
+          open={duplicateModalOpen}
+          onClose={() => setDuplicateModalOpen(false)}
+          edition={{
+            id: edition.id,
+            editionNumber: edition.editionNumber,
+            course: { name: edition.course.title },
+            client: { name: edition.client.ragioneSociale },
+            lessonsCount: edition._count?.lessons ?? 0,
+            teacherAssignmentsCount: 0,
+            presenzaMinimaType: edition.presenzaMinimaType ?? null,
+            presenzaMinimaValue: edition.presenzaMinimaValue ?? null,
+          }}
+          onSuccess={(newEdition) => {
+            router.push(
+              `/admin/corsi/${newEdition.courseId}/edizioni/${newEdition.id}`
+            );
           }}
         />
       ) : null}
