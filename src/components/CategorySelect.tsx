@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getArrayData } from "@/lib/api-response";
 
 type Category = {
   id: string;
@@ -30,7 +31,7 @@ export default function CategorySelect({
     const load = async () => {
       const res = await fetch("/api/admin/categorie");
       const json = await res.json();
-      setCategories(Array.isArray(json) ? json : json.data ?? []);
+      setCategories(getArrayData<Category>(json));
     };
     load();
   }, []);

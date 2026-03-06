@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getArrayData } from "@/lib/api-response";
 
 type Edition = {
   id: string;
@@ -49,8 +50,8 @@ export default function AdminExportPage() {
       ]);
       const editionsJson = await editionsRes.json();
       const clientsJson = await clientsRes.json();
-      setEditions(editionsJson.data ?? []);
-      setClients(clientsJson.data ?? []);
+      setEditions(getArrayData<Edition>(editionsJson));
+      setClients(getArrayData<Client>(clientsJson));
     };
     loadBase();
   }, []);

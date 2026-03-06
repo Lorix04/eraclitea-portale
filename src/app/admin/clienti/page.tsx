@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Check, Copy, LogIn, Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getArrayData } from "@/lib/api-response";
 
 type ClientRow = {
   id: string;
@@ -71,7 +72,7 @@ export default function AdminClientiPage() {
     }
     const text = await res.text();
     const json = text ? JSON.parse(text) : {};
-    setClients(json.data ?? []);
+    setClients(getArrayData<ClientRow>(json));
     setLoading(false);
   }, [queryString]);
 
@@ -96,7 +97,7 @@ export default function AdminClientiPage() {
       }
       const text = await res.text();
       const json = text ? JSON.parse(text) : {};
-      const data = Array.isArray(json) ? json : json.data ?? [];
+      const data = getArrayData<{ id: string; name: string }>(json);
       setCategories(
         data.map((category: { id: string; name: string }) => ({
           id: category.id,

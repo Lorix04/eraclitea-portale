@@ -7,6 +7,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getArrayData } from "@/lib/api-response";
 
 type Course = {
   id: string;
@@ -79,7 +80,7 @@ export default function AdminCorsiPage() {
         return;
       }
       const json = await res.json();
-      setCourses(json.data ?? []);
+      setCourses(getArrayData<Course>(json));
     } catch {
       setCourses([]);
       setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
@@ -96,7 +97,7 @@ export default function AdminCorsiPage() {
     const loadCategories = async () => {
       const res = await fetch("/api/admin/categorie");
       const json = await res.json();
-      const data = Array.isArray(json) ? json : json.data ?? [];
+      const data = getArrayData<{ id: string; name: string }>(json);
       setCategories(
         data.map((cat: { id: string; name: string }) => ({
           id: cat.id,

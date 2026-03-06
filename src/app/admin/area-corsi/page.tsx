@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getArrayData } from "@/lib/api-response";
 
 type CategoryRow = {
   id: string;
@@ -39,7 +40,7 @@ export default function AdminAreaCorsiPage() {
     setLoading(true);
     const res = await fetch(`/api/admin/categorie?${queryString}`);
     const json = await res.json();
-    setCategories(json.data ?? []);
+    setCategories(getArrayData<CategoryRow>(json));
     setLoading(false);
   }, [queryString]);
 

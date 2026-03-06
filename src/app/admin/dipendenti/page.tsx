@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import AddEmployeeModal from "@/components/AddEmployeeModal";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
+import { getArrayData } from "@/lib/api-response";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -95,7 +96,7 @@ function AdminDipendentiContent() {
       }
       const text = await res.text();
       const json = text ? JSON.parse(text) : {};
-      const items = json.data ?? [];
+      const items = getArrayData<{ id: string; ragioneSociale: string }>(json);
       setClients(
         items.map((client: { id: string; ragioneSociale: string }) => ({
           id: client.id,
@@ -114,7 +115,7 @@ function AdminDipendentiContent() {
         return;
       }
       const json = await res.json();
-      setEditions(json.data ?? []);
+      setEditions(getArrayData<EditionOption>(json));
     };
     loadEditions();
   }, []);

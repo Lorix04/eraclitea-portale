@@ -9,7 +9,7 @@ const redis =
       })
     : null;
 
-type RateLimitTier = "login" | "authenticated" | "public";
+type RateLimitTier = "login" | "admin" | "authenticated" | "public";
 
 type TierConfig = {
   limit: number;
@@ -20,11 +20,24 @@ type TierConfig = {
 const RATE_LIMIT_CONFIG: Record<RateLimitTier, TierConfig> = {
   // 10 tentativi al minuto per sicurezza login/auth
   login: { limit: 10, windowMs: 60_000, upstashWindow: "1 m" },
-  // 30 richieste ogni 10 secondi (~180/min) per traffico autenticato
-  authenticated: { limit: 30, windowMs: 10_000, upstashWindow: "10 s" },
+  // Limite molto piu alto per l'area admin, che carica piu liste in parallelo.
+  admin: { limit: 200, windowMs: 10_000, upstashWindow: "10 s" },
+  // 60 richieste ogni 10 secondi per traffico autenticato standard.
+  authenticated: { limit: 60, windowMs: 10_000, upstashWindow: "10 s" },
   // 60 richieste al minuto per API pubbliche
   public: { limit: 60, windowMs: 60_000, upstashWindow: "1 m" },
 };
+
+const adminLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(
+        RATE_LIMIT_CONFIG.admin.limit,
+        RATE_LIMIT_CONFIG.admin.upstashWindow
+      ),
+      analytics: true,
+    })
+  : null;
 
 const authenticatedLimiter = redis
   ? new Ratelimit({
@@ -78,6 +91,15 @@ export async function checkRateLimit(
 
   if (tier === "public" && publicLimiter) {
     const result = await publicLimiter.limit(identifier);
+    const retryAfter = Math.max(
+      1,
+      Math.ceil((result.reset - Date.now()) / 1000)
+    );
+    return { success: result.success, remaining: result.remaining, retryAfter };
+  }
+
+  if (tier === "admin" && adminLimiter) {
+    const result = await adminLimiter.limit(identifier);
     const retryAfter = Math.max(
       1,
       Math.ceil((result.reset - Date.now()) / 1000)

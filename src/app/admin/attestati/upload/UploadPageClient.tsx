@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
+import { getArrayData } from "@/lib/api-response";
 
 type Edition = {
   id: string;
@@ -69,8 +70,8 @@ export default function AdminUploadAttestatiPageClient() {
       ]);
       const editionsJson = await editionsRes.json();
       const clientsJson = await clientsRes.json();
-      setEditions(editionsJson.data ?? []);
-      setClients(clientsJson.data ?? []);
+      setEditions(getArrayData<Edition>(editionsJson));
+      setClients(getArrayData<Client>(clientsJson));
     };
     loadBase();
   }, []);
@@ -105,7 +106,7 @@ export default function AdminUploadAttestatiPageClient() {
           `/api/corsi/${courseEditionId}/registrazioni?clientId=${clientId}`
         );
         const json = await res.json();
-        const list = (json.data ?? []).map(
+        const list = getArrayData<{ employee: Employee }>(json).map(
           (reg: { employee: Employee }) => reg.employee
         );
         setEmployees(list);
@@ -114,7 +115,7 @@ export default function AdminUploadAttestatiPageClient() {
 
       const res = await fetch(`/api/dipendenti?clientId=${clientId}&limit=500`);
       const json = await res.json();
-      setEmployees(json.data ?? []);
+      setEmployees(getArrayData<Employee>(json));
     };
     loadEmployees();
   }, [courseEditionId, clientId]);

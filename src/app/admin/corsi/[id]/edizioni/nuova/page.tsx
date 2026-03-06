@@ -8,6 +8,7 @@ import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
+import { getArrayData } from "@/lib/api-response";
 
 type ClientOption = {
   id: string;
@@ -60,7 +61,7 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
     const loadClients = async () => {
       const res = await fetch("/api/admin/clienti");
       const json = await res.json();
-      const data = json.data ?? [];
+      const data = getArrayData<ClientOption>(json);
       setClients(
         data.map((client: any) => ({
           id: client.id,

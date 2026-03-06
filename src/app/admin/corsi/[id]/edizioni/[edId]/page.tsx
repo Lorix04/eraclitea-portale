@@ -40,6 +40,7 @@ import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { calculateAttendanceStats } from "@/lib/attendance-utils";
+import { getArrayData } from "@/lib/api-response";
 
 const AnagraficheResponsive = dynamic(
   () => import("@/components/AnagraficheResponsive"),
@@ -263,7 +264,7 @@ export default function AdminEditionDetailPage({
       return;
     }
     const json = await res.json().catch(() => ({}));
-    setLessons(json.data ?? []);
+    setLessons(getArrayData<Lesson>(json));
     setLessonsLoading(false);
   }, [params.id, params.edId]);
 
@@ -279,7 +280,7 @@ export default function AdminEditionDetailPage({
       `/api/corsi/${params.edId}/registrazioni?clientId=${edition.client.id}`
     );
     const json = await res.json().catch(() => ({}));
-    setRegistrations(json.data ?? []);
+    setRegistrations(getArrayData<RegistrationRow>(json));
     setRegistrationsLoading(false);
   }, [edition?.client?.id, params.edId]);
 
@@ -294,7 +295,7 @@ export default function AdminEditionDetailPage({
         `/api/attestati?courseEditionId=${params.edId}&limit=200`
       );
       const json = await res.json().catch(() => ({}));
-      const mapped: CertificateRow[] = (json.data ?? []).map((cert: any) => ({
+      const mapped: CertificateRow[] = getArrayData<any>(json).map((cert: any) => ({
         id: cert.id,
         employee: cert.employee,
         courseEdition: cert.courseEdition

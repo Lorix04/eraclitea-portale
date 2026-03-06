@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpDown, Copy, Plus, Search, Trash2, X } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
+import { getArrayData } from "@/lib/api-response";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
@@ -118,6 +119,7 @@ function AdminEdizioniContent() {
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditionRow | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<EditionRow | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -153,6 +155,7 @@ function AdminEdizioniContent() {
 
   const fetchEditions = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     params.set("limit", "500");
     if (debouncedSearch) params.set("search", debouncedSearch);
@@ -166,13 +169,25 @@ function AdminEdizioniContent() {
 
     const res = await fetch(`/api/edizioni?${params.toString()}`);
     if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
       setEditions([]);
+      setError(
+        typeof payload?.error === "string"
+          ? payload.error
+          : "Errore durante il caricamento delle edizioni."
+      );
       setLoading(false);
       return;
     }
-    const data: ApiResponse = await res.json();
-    setEditions(data.data ?? []);
-    setLoading(false);
+    try {
+      const data: ApiResponse = await res.json();
+      setEditions(getArrayData<EditionRow>(data));
+    } catch {
+      setEditions([]);
+      setError("Errore durante il caricamento delle edizioni.");
+    } finally {
+      setLoading(false);
+    }
   }, [
     debouncedSearch,
     clientId,
@@ -192,14 +207,14 @@ function AdminEdizioniContent() {
   useEffect(() => {
     fetch("/api/clienti")
       .then((res) => res.json())
-      .then((data) => setClients(data.data || data || []))
+      .then((data) => setClients(getArrayData<ClientOption>(data)))
       .catch(() => setClients([]));
   }, []);
 
   useEffect(() => {
     fetch("/api/admin/categorie")
       .then((res) => res.json())
-      .then((data) => setCategories(data.data || data || []))
+      .then((data) => setCategories(getArrayData<CategoryOption>(data)))
       .catch(() => setCategories([]));
   }, []);
 
@@ -382,6 +397,12 @@ function AdminEdizioniContent() {
           </span>
         </div>
       </div>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <table className="w-full text-sm">

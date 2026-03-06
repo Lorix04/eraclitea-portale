@@ -17,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getArrayData } from "@/lib/api-response";
 
 type EmailLogItem = {
   id: string;
@@ -134,10 +135,10 @@ export default function EmailLogPage() {
         return;
       }
       const data = payload as EmailLogResponse;
-      setRows(data.data);
-      setTotal(data.total);
-      setTotalPages(data.totalPages);
-      setLimit(data.limit);
+      setRows(getArrayData<EmailLogItem>(data));
+      setTotal(typeof data.total === "number" ? data.total : 0);
+      setTotalPages(typeof data.totalPages === "number" ? data.totalPages : 1);
+      setLimit(typeof data.limit === "number" ? data.limit : 20);
     } catch (fetchError) {
       setError(
         fetchError instanceof Error

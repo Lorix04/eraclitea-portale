@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatItalianDateTime } from "@/lib/date-utils";
+import { getArrayData } from "@/lib/api-response";
 
 const ACTIONS = [
   "LOGIN",
@@ -92,7 +93,7 @@ export default function AdminAuditPage() {
         return;
       }
       const json = await res.json();
-      setRows(json.data ?? []);
+      setRows(getArrayData<AuditLogRow>(json));
       setTotal(json.total ?? 0);
     } catch {
       setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");

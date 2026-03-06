@@ -10,6 +10,7 @@ import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
+import { getArrayData } from "@/lib/api-response";
 
 const optionalInt = z.preprocess(
   (value) => {
@@ -94,7 +95,7 @@ export default function CourseForm({
     const loadClients = async () => {
       const res = await fetch("/api/clienti");
       const json = await res.json();
-      setClients(json.data ?? []);
+      setClients(getArrayData<ClientOption>(json));
     };
     loadClients();
   }, []);
@@ -103,7 +104,7 @@ export default function CourseForm({
     const loadCategories = async () => {
       const res = await fetch("/api/admin/categorie?stats=true");
       const json = await res.json();
-      const data = Array.isArray(json) ? json : json.data ?? [];
+      const data = getArrayData<any>(json);
       setVisibilityCategories(
         data.map((cat: any) => ({
           id: cat.id,

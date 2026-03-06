@@ -52,14 +52,20 @@ export async function middleware(req: NextRequest) {
     const ip =
       req.ip ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     const isAuthApiRoute = pathname.startsWith("/api/auth/");
+    const isAdminAuthenticatedApi =
+      !isAuthApiRoute &&
+      token?.role === "ADMIN" &&
+      !isImpersonatingClient;
     const rateLimitTier = isAuthApiRoute
       ? "login"
-      : token
-        ? "authenticated"
-        : "public";
+      : isAdminAuthenticatedApi
+        ? "admin"
+        : token
+          ? "authenticated"
+          : "public";
     const rateLimitIdentifier =
-      rateLimitTier === "authenticated"
-        ? `authenticated:${tokenUserId ?? ip}`
+      rateLimitTier === "authenticated" || rateLimitTier === "admin"
+        ? `${rateLimitTier}:${tokenUserId ?? ip}`
         : `${rateLimitTier}:${ip}`;
     const { success, remaining, retryAfter } = await checkRateLimit(
       rateLimitIdentifier,

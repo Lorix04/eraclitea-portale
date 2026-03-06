@@ -8,6 +8,7 @@ import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { formatItalianDate } from "@/lib/date-utils";
+import { getArrayData } from "@/lib/api-response";
 
 type EditCertificateModalProps = {
   open: boolean;
@@ -183,7 +184,7 @@ export function EditCertificateModal({
         return;
       }
       const json = await response.json().catch(() => ({}));
-      setEmployees((json.data ?? []) as EmployeeOption[]);
+      setEmployees(getArrayData<EmployeeOption>(json));
     } finally {
       setLoadingEmployees(false);
     }
@@ -202,7 +203,7 @@ export function EditCertificateModal({
         return;
       }
       const json = await response.json().catch(() => ({}));
-      setEditions((json.data ?? []) as EditionOption[]);
+      setEditions(getArrayData<EditionOption>(json));
     } finally {
       setLoadingEditions(false);
     }
@@ -268,7 +269,7 @@ export function EditCertificateModal({
         const detailsJson = await detailsRes.json().catch(() => ({}));
         const coursesJson = await coursesRes.json().catch(() => ({}));
         const certificate = detailsJson.data as CertificateDetail | undefined;
-        const loadedCourses = (coursesJson.data ?? []) as CourseOption[];
+        const loadedCourses = getArrayData<CourseOption>(coursesJson);
 
         if (!certificate) {
           setLoadError("Attestato non trovato.");

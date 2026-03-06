@@ -13,6 +13,7 @@ import { decodeCF } from "@/lib/codice-fiscale-decoder";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import { useCodiciCatastali } from "@/hooks/useCodiciCatastali";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
+import { getArrayData } from "@/lib/api-response";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -136,10 +137,10 @@ export default function AddEmployeeModal({
           return;
         }
         const json = await res.json().catch(() => ({}));
-        const items = (json.data ?? []) as Array<{
+        const items = getArrayData<{
           id: string;
           ragioneSociale: string;
-        }>;
+        }>(json);
         setClients(
           items.map((client) => ({
             id: client.id,

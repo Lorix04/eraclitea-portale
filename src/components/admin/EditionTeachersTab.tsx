@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
+import { getArrayData } from "@/lib/api-response";
 
 type LessonItem = {
   id: string;
@@ -90,7 +91,7 @@ export default function EditionTeachersTab({
         throw new Error("Errore caricamento docenti");
       }
       const json = await res.json();
-      return (json.data ?? []) as TeacherListItem[];
+      return getArrayData<TeacherListItem>(json);
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -106,7 +107,7 @@ export default function EditionTeachersTab({
         throw new Error("Errore caricamento assegnazioni docenti");
       }
       const json = await res.json();
-      return (json.data ?? []) as TeacherListItem[];
+      return getArrayData<TeacherListItem>(json);
     },
     staleTime: 15_000,
     refetchOnWindowFocus: false,

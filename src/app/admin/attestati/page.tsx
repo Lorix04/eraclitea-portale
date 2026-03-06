@@ -6,6 +6,7 @@ import { Download, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
+import { getArrayData } from "@/lib/api-response";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
@@ -183,9 +184,9 @@ export default function AdminAttestatiPage() {
         return;
       }
       const data: ApiResponse = await res.json();
-      setCertificates(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotal(data.total || 0);
+      setCertificates(getArrayData<CertificateRow>(data));
+      setTotalPages(typeof data.totalPages === "number" ? data.totalPages : 1);
+      setTotal(typeof data.total === "number" ? data.total : 0);
     } catch {
       setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
       setCertificates([]);
@@ -216,14 +217,14 @@ export default function AdminAttestatiPage() {
   useEffect(() => {
     fetch("/api/clienti")
       .then((res) => res.json())
-      .then((data) => setClients(data.data || data || []))
+      .then((data) => setClients(getArrayData<ClientOption>(data)))
       .catch(() => setClients([]));
   }, []);
 
   useEffect(() => {
     fetch("/api/corsi")
       .then((res) => res.json())
-      .then((data) => setCourses(data.data || []))
+      .then((data) => setCourses(getArrayData<CourseOption>(data)))
       .catch(() => setCourses([]));
   }, []);
 
@@ -233,7 +234,7 @@ export default function AdminAttestatiPage() {
       : "/api/edizioni?limit=500";
     fetch(url)
       .then((res) => res.json())
-      .then((data) => setEditions(data.data || data || []))
+      .then((data) => setEditions(getArrayData<EditionOption>(data)))
       .catch(() => setEditions([]));
   }, [clientId]);
 
@@ -245,7 +246,7 @@ export default function AdminAttestatiPage() {
     }
     fetch(`/api/dipendenti?clientId=${clientId}&limit=500`)
       .then((res) => res.json())
-      .then((data) => setEmployees(data.data || []))
+      .then((data) => setEmployees(getArrayData<EmployeeOption>(data)))
       .catch(() => setEmployees([]));
   }, [clientId]);
 

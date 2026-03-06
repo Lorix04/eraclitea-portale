@@ -8,6 +8,7 @@ import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { getArrayData } from "@/lib/api-response";
 
 type CourseItem = { id: string; label: string; subtitle?: string };
 type ClientItem = { id: string; label: string; subtitle?: string };
@@ -69,7 +70,7 @@ export default function ModificaAreaPage({
       const coursesText = await coursesRes.text();
       const coursesJson = coursesText ? JSON.parse(coursesText) : {};
       setCourses(
-        (coursesJson.data ?? []).map((course: any) => {
+        getArrayData<any>(coursesJson).map((course: any) => {
           const totalEditions = course._count?.editions ?? 0;
           const activeEditions = course.activeEditions ?? 0;
           return {
@@ -86,7 +87,7 @@ export default function ModificaAreaPage({
       const clientsText = await clientsRes.text();
       const clientsJson = clientsText ? JSON.parse(clientsText) : {};
       setClients(
-        (clientsJson.data ?? []).map((client: any) => ({
+        getArrayData<any>(clientsJson).map((client: any) => ({
           id: client.id,
           label: client.ragioneSociale,
           subtitle: client.isActive ? "Attivo" : "Disattivo",
