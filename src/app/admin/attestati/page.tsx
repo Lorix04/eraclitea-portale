@@ -10,6 +10,8 @@ import { getArrayData } from "@/lib/api-response";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type CertificateRow = {
   id: string;
@@ -175,7 +177,7 @@ export default function AdminAttestatiPage() {
     if (dateTo) params.set("dateTo", dateTo);
 
     try {
-      const res = await fetch(`/api/attestati?${params.toString()}`);
+      const res = await fetchWithRetry(`/api/attestati?${params.toString()}`);
       if (!res.ok) {
         setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
         setCertificates([]);
@@ -215,14 +217,14 @@ export default function AdminAttestatiPage() {
   }, [fetchCertificates]);
 
   useEffect(() => {
-    fetch("/api/clienti")
+    fetchWithRetry("/api/clienti")
       .then((res) => res.json())
       .then((data) => setClients(getArrayData<ClientOption>(data)))
       .catch(() => setClients([]));
   }, []);
 
   useEffect(() => {
-    fetch("/api/corsi")
+    fetchWithRetry("/api/corsi")
       .then((res) => res.json())
       .then((data) => setCourses(getArrayData<CourseOption>(data)))
       .catch(() => setCourses([]));
@@ -232,7 +234,7 @@ export default function AdminAttestatiPage() {
     const url = clientId
       ? `/api/edizioni?clientId=${clientId}&limit=500`
       : "/api/edizioni?limit=500";
-    fetch(url)
+    fetchWithRetry(url)
       .then((res) => res.json())
       .then((data) => setEditions(getArrayData<EditionOption>(data)))
       .catch(() => setEditions([]));
@@ -244,7 +246,7 @@ export default function AdminAttestatiPage() {
       setEmployeeId(null);
       return;
     }
-    fetch(`/api/dipendenti?clientId=${clientId}&limit=500`)
+    fetchWithRetry(`/api/dipendenti?clientId=${clientId}&limit=500`)
       .then((res) => res.json())
       .then((data) => setEmployees(getArrayData<EmployeeOption>(data)))
       .catch(() => setEmployees([]));
@@ -367,9 +369,7 @@ export default function AdminAttestatiPage() {
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
+        <ErrorMessage message={error} onRetry={() => void fetchCertificates()} />
       ) : null}
 
       <div className="space-y-3">

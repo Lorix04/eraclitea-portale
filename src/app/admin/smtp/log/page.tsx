@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import CardSkeleton from "@/components/ui/CardSkeleton";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type EmailLogItem = {
   id: string;
@@ -125,7 +129,7 @@ export default function EmailLogPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/email-log?${query}`, {
+      const res = await fetchWithRetry(`/api/admin/email-log?${query}`, {
         cache: "no-store",
       });
       const payload = (await res.json()) as EmailLogResponse | { error?: string };
@@ -153,7 +157,7 @@ export default function EmailLogPage() {
 
   const fetchQueueStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/smtp/queue-status", {
+      const res = await fetchWithRetry("/api/admin/smtp/queue-status", {
         cache: "no-store",
       });
       if (!res.ok) return;
@@ -487,47 +491,54 @@ export default function EmailLogPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-6">
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Stato coda</span>
-            <p className="font-medium">
-              {queueStatus?.active ? "Attiva" : "Inattiva"}
-            </p>
+        {queueStatus ? (
+          <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-6">
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Stato coda</span>
+              <p className="font-medium">
+                {queueStatus.active ? "Attiva" : "Inattiva"}
+              </p>
+            </div>
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Pending</span>
+              <p className="font-medium">{queueStatus.pending}</p>
+            </div>
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Sent</span>
+              <p className="font-medium">{queueStatus.sent}</p>
+            </div>
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Failed</span>
+              <p className="font-medium">{queueStatus.failed}</p>
+            </div>
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Totale</span>
+              <p className="font-medium">{queueStatus.total}</p>
+            </div>
+            <div className="rounded-md border bg-gray-50 px-3 py-2">
+              <span className="text-xs text-gray-500">Tempo stimato</span>
+              <p className="font-medium">
+                {queueStatus.estimatedRemainingSeconds}s
+              </p>
+            </div>
           </div>
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Pending</span>
-            <p className="font-medium">{queueStatus?.pending ?? 0}</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <CardSkeleton key={`queue-skeleton-${index}`} />
+            ))}
           </div>
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Sent</span>
-            <p className="font-medium">{queueStatus?.sent ?? 0}</p>
-          </div>
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Failed</span>
-            <p className="font-medium">{queueStatus?.failed ?? 0}</p>
-          </div>
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Totale</span>
-            <p className="font-medium">{queueStatus?.total ?? 0}</p>
-          </div>
-          <div className="rounded-md border bg-gray-50 px-3 py-2">
-            <span className="text-xs text-gray-500">Tempo stimato</span>
-            <p className="font-medium">
-              {queueStatus?.estimatedRemainingSeconds ?? 0}s
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {error ? <ErrorMessage message={error} onRetry={() => void fetchLogs()} /> : null}
 
-      <div className="overflow-hidden rounded-lg border bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1320px] text-sm">
+      {loading ? (
+        <TableSkeleton rows={8} columns={11} />
+      ) : (
+        <div className="overflow-hidden rounded-lg border bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1320px] text-sm">
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="px-4 py-3 text-left">
@@ -571,13 +582,7 @@ export default function EmailLogPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
-                    Caricamento...
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-10 text-center text-gray-400">
                     Nessun log email trovato.
@@ -752,9 +757,10 @@ export default function EmailLogPage() {
                 })
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600">
         <p>

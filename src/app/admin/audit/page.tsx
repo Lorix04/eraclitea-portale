@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatItalianDateTime } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 const ACTIONS = [
   "LOGIN",
@@ -85,7 +87,7 @@ export default function AdminAuditPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/audit?${queryString}`);
+      const res = await fetchWithRetry(`/api/admin/audit?${queryString}`);
       if (!res.ok) {
         setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
         setRows([]);
@@ -164,11 +166,7 @@ export default function AdminAuditPage() {
         />
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorMessage message={error} onRetry={() => void loadAudit()} /> : null}
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">

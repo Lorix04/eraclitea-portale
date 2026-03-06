@@ -7,6 +7,8 @@ import { Check, Copy, LogIn, Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type ClientRow = {
   id: string;
@@ -38,6 +40,7 @@ export default function AdminClientiPage() {
     { id: string; name: string }[]
   >([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [confirmClient, setConfirmClient] = useState<ClientRow | null>(null);
   const [confirmResetClient, setConfirmResetClient] = useState<ClientRow | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<ResetPasswordResult | null>(null);
@@ -60,20 +63,27 @@ export default function AdminClientiPage() {
 
   const loadClients = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/clienti?${queryString}`);
-    if (!res.ok) {
-      if (res.status === 401) {
-        window.location.href = "/login";
+    setError(null);
+    try {
+      const res = await fetchWithRetry(`/api/admin/clienti?${queryString}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        setClients([]);
+        setError("Si e verificato un errore nel caricamento dei clienti.");
         return;
       }
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+      setClients(getArrayData<ClientRow>(json));
+    } catch {
       setClients([]);
+      setError("Si e verificato un errore nel caricamento dei clienti.");
+    } finally {
       setLoading(false);
-      return;
     }
-    const text = await res.text();
-    const json = text ? JSON.parse(text) : {};
-    setClients(getArrayData<ClientRow>(json));
-    setLoading(false);
   }, [queryString]);
 
   useEffect(() => {
@@ -86,26 +96,30 @@ export default function AdminClientiPage() {
 
   useEffect(() => {
     const loadCategories = async () => {
-      const res = await fetch("/api/admin/categorie");
-      if (!res.ok) {
-        if (res.status === 401) {
-          window.location.href = "/login";
+      try {
+        const res = await fetchWithRetry("/api/admin/categorie");
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+          }
+          setCategories([]);
           return;
         }
+        const text = await res.text();
+        const json = text ? JSON.parse(text) : {};
+        const data = getArrayData<{ id: string; name: string }>(json);
+        setCategories(
+          data.map((category: { id: string; name: string }) => ({
+            id: category.id,
+            name: category.name,
+          }))
+        );
+      } catch {
         setCategories([]);
-        return;
       }
-      const text = await res.text();
-      const json = text ? JSON.parse(text) : {};
-      const data = getArrayData<{ id: string; name: string }>(json);
-      setCategories(
-        data.map((category: { id: string; name: string }) => ({
-          id: category.id,
-          name: category.name,
-        }))
-      );
     };
-    loadCategories();
+    void loadCategories();
   }, []);
 
   const handleToggleStatus = async (id: string) => {
@@ -302,6 +316,8 @@ export default function AdminClientiPage() {
           </button>
         </div>
       </div>
+
+      {error ? <ErrorMessage message={error} onRetry={() => void loadClients()} /> : null}
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">

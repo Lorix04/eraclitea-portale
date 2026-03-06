@@ -8,6 +8,8 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
@@ -167,7 +169,7 @@ function AdminEdizioniContent() {
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
 
-    const res = await fetch(`/api/edizioni?${params.toString()}`);
+    const res = await fetchWithRetry(`/api/edizioni?${params.toString()}`);
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}));
       setEditions([]);
@@ -205,14 +207,14 @@ function AdminEdizioniContent() {
   }, [updateUrl, fetchEditions]);
 
   useEffect(() => {
-    fetch("/api/clienti")
+    fetchWithRetry("/api/clienti")
       .then((res) => res.json())
       .then((data) => setClients(getArrayData<ClientOption>(data)))
       .catch(() => setClients([]));
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/categorie")
+    fetchWithRetry("/api/admin/categorie")
       .then((res) => res.json())
       .then((data) => setCategories(getArrayData<CategoryOption>(data)))
       .catch(() => setCategories([]));
@@ -398,11 +400,7 @@ function AdminEdizioniContent() {
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorMessage message={error} onRetry={() => void fetchEditions()} /> : null}
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <table className="w-full text-sm">

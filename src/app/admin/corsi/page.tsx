@@ -8,6 +8,8 @@ import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type Course = {
   id: string;
@@ -73,7 +75,7 @@ export default function AdminCorsiPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/corsi${queryString}`);
+      const res = await fetchWithRetry(`/api/corsi${queryString}`);
       if (!res.ok) {
         setCourses([]);
         setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
@@ -95,17 +97,21 @@ export default function AdminCorsiPage() {
 
   useEffect(() => {
     const loadCategories = async () => {
-      const res = await fetch("/api/admin/categorie");
-      const json = await res.json();
-      const data = getArrayData<{ id: string; name: string }>(json);
-      setCategories(
-        data.map((cat: { id: string; name: string }) => ({
-          id: cat.id,
-          name: cat.name,
-        }))
-      );
+      try {
+        const res = await fetchWithRetry("/api/admin/categorie");
+        const json = await res.json();
+        const data = getArrayData<{ id: string; name: string }>(json);
+        setCategories(
+          data.map((cat: { id: string; name: string }) => ({
+            id: cat.id,
+            name: cat.name,
+          }))
+        );
+      } catch {
+        setCategories([]);
+      }
     };
-    loadCategories();
+    void loadCategories();
   }, []);
 
   const handleDeleteClick = (course: Course) => {
@@ -239,11 +245,7 @@ export default function AdminCorsiPage() {
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorMessage message={error} onRetry={() => void loadCourses()} /> : null}
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">

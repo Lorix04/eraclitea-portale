@@ -9,6 +9,7 @@ import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal"
 import { formatItalianDate } from "@/lib/date-utils";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 
 type LessonItem = {
   id: string;
@@ -86,7 +87,7 @@ export default function EditionTeachersTab({
   const teachersQuery = useQuery({
     queryKey: ["teachers", "active"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/teachers?active=true");
+      const res = await fetchWithRetry("/api/admin/teachers?active=true");
       if (!res.ok) {
         throw new Error("Errore caricamento docenti");
       }
@@ -95,12 +96,13 @@ export default function EditionTeachersTab({
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const assignmentsQuery = useQuery({
     queryKey: ["edition", editionId, "teachers-assignments"],
     queryFn: async () => {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `/api/admin/teachers?includeAssignments=true&editionId=${editionId}`
       );
       if (!res.ok) {
@@ -111,6 +113,7 @@ export default function EditionTeachersTab({
     },
     staleTime: 15_000,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const lessonsById = useMemo(() => {
@@ -276,7 +279,7 @@ export default function EditionTeachersTab({
     const load = async () => {
       const entries = await Promise.all(
         selectedTeacherIds.map(async (teacherId) => {
-          const res = await fetch(
+          const res = await fetchWithRetry(
             `/api/admin/teachers/${teacherId}/unavailability?from=${from}&to=${to}`
           );
           if (!res.ok) return [teacherId, new Set<string>()] as const;

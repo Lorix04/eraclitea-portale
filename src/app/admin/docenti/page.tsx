@@ -15,6 +15,9 @@ import { toast } from "sonner";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type TeacherRow = TeacherFormValue & {
   _count?: { assignments?: number };
@@ -61,7 +64,7 @@ async function fetchTeachers(filters: TeacherFilters) {
   if (filters.province) params.set("province", filters.province);
   if (filters.region) params.set("region", filters.region);
 
-  const response = await fetch(`/api/admin/teachers?${params.toString()}`);
+  const response = await fetchWithRetry(`/api/admin/teachers?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Errore caricamento docenti");
   }
@@ -70,7 +73,7 @@ async function fetchTeachers(filters: TeacherFilters) {
 }
 
 async function fetchCategories() {
-  const response = await fetch("/api/admin/categorie");
+  const response = await fetchWithRetry("/api/admin/categorie");
   if (!response.ok) {
     throw new Error("Errore caricamento aree");
   }
@@ -119,6 +122,7 @@ export default function AdminDocentiPage() {
       }),
     staleTime: 20_000,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const categoriesQuery = useQuery({
@@ -126,6 +130,7 @@ export default function AdminDocentiPage() {
     queryFn: fetchCategories,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const teachers = useMemo(() => teachersQuery.data ?? [], [teachersQuery.data]);
@@ -357,9 +362,19 @@ export default function AdminDocentiPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[1040px] text-sm">
+      {teachersQuery.isError ? (
+        <ErrorMessage
+          message="Errore durante il caricamento dei docenti."
+          onRetry={() => void teachersQuery.refetch()}
+        />
+      ) : null}
+
+      {teachersQuery.isLoading ? (
+        <TableSkeleton rows={8} columns={9} />
+      ) : (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[1040px] text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
                 <th className="px-4 py-3">Nome completo</th>
@@ -374,19 +389,7 @@ export default function AdminDocentiPage() {
               </tr>
             </thead>
             <tbody>
-              {teachersQuery.isLoading ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                    Caricamento docenti...
-                  </td>
-                </tr>
-              ) : teachersQuery.isError ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-red-600">
-                    Errore durante il caricamento dei docenti.
-                  </td>
-                </tr>
-              ) : teachers.length === 0 ? (
+              {teachers.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                     Nessun docente trovato.
@@ -469,9 +472,10 @@ export default function AdminDocentiPage() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       <TeacherModal
         open={modalOpen}

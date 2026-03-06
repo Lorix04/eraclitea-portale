@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type Edition = {
   id: string;
@@ -44,16 +46,21 @@ export default function AdminExportPage() {
 
   useEffect(() => {
     const loadBase = async () => {
-      const [editionsRes, clientsRes] = await Promise.all([
-        fetch("/api/edizioni?limit=500"),
-        fetch("/api/clienti"),
-      ]);
-      const editionsJson = await editionsRes.json();
-      const clientsJson = await clientsRes.json();
-      setEditions(getArrayData<Edition>(editionsJson));
-      setClients(getArrayData<Client>(clientsJson));
+      try {
+        const [editionsRes, clientsRes] = await Promise.all([
+          fetchWithRetry("/api/edizioni?limit=500"),
+          fetchWithRetry("/api/clienti"),
+        ]);
+        const editionsJson = await editionsRes.json();
+        const clientsJson = await clientsRes.json();
+        setEditions(getArrayData<Edition>(editionsJson));
+        setClients(getArrayData<Client>(clientsJson));
+      } catch {
+        setEditions([]);
+        setClients([]);
+      }
     };
-    loadBase();
+    void loadBase();
   }, []);
 
   const previewUrl = useMemo(() => {
@@ -98,7 +105,7 @@ export default function AdminExportPage() {
       setLoadingPreview(true);
       setError(null);
       try {
-        const res = await fetch(previewUrl);
+        const res = await fetchWithRetry(previewUrl);
         if (!res.ok) {
           setRows([]);
           setError("Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.");
@@ -120,7 +127,7 @@ export default function AdminExportPage() {
     setLoadingExport(true);
     setError(null);
     try {
-      const res = await fetch(downloadUrl);
+      const res = await fetchWithRetry(downloadUrl);
       if (!res.ok) {
         setError("Si e verificato un errore durante l'esportazione. Riprova piu tardi.");
         return;
@@ -257,11 +264,7 @@ export default function AdminExportPage() {
         </label>
       </div>
 
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
+      {error ? <ErrorMessage message={error} /> : null}
 
       <div className="rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

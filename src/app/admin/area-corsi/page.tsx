@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { useFetchWithRetry } from "@/hooks/useFetchWithRetry";
 import { getArrayData } from "@/lib/api-response";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type CategoryRow = {
   id: string;
@@ -17,8 +19,6 @@ type CategoryRow = {
 };
 
 export default function AdminAreaCorsiPage() {
-  const [categories, setCategories] = useState<CategoryRow[]>([]);
-  const [loading, setLoading] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [searchName, setSearchName] = useState("");
   const [sortBy, setSortBy] = useState("name");
@@ -36,17 +36,18 @@ export default function AdminAreaCorsiPage() {
     return params.toString();
   }, [debouncedSearch, sortBy, sortOrder]);
 
-  const loadAreas = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/admin/categorie?${queryString}`);
-    const json = await res.json();
-    setCategories(getArrayData<CategoryRow>(json));
-    setLoading(false);
-  }, [queryString]);
-
-  useEffect(() => {
-    loadAreas();
-  }, [loadAreas]);
+  const {
+    data: categoriesData,
+    loading,
+    retrying,
+    error,
+    refetch,
+  } = useFetchWithRetry<CategoryRow[]>({
+    url: `/api/admin/categorie?${queryString}`,
+    dependencies: [queryString],
+    transform: (payload) => getArrayData<CategoryRow>(payload),
+  });
+  const categories = categoriesData ?? [];
 
   useEffect(() => {
     setMounted(true);
@@ -62,7 +63,7 @@ export default function AdminAreaCorsiPage() {
     if (!confirmId) return;
     await fetch(`/api/admin/categorie/${confirmId}`, { method: "DELETE" });
     setConfirmId(null);
-    loadAreas();
+    await refetch();
   };
 
   return (
@@ -125,87 +126,70 @@ export default function AdminAreaCorsiPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3">Nome</th>
-              <th className="px-4 py-3">Descrizione</th>
-              <th className="px-4 py-3">Corsi</th>
-              <th className="px-4 py-3">Clienti</th>
-              <th className="px-4 py-3">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <tr key={`skeleton-${index}`} className="border-t">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-2 w-2 rounded-full" />
-                      <Skeleton className="h-4 w-40" />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-48" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-10" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-10" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-24" />
-                  </td>
-                </tr>
-              ))
-            ) : categories.length === 0 ? (
+      {error ? <ErrorMessage message={error} onRetry={() => void refetch()} /> : null}
+
+      {loading || retrying ? (
+        <TableSkeleton rows={5} columns={5} />
+      ) : (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left">
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                  Nessuna area.
-                </td>
+                <th className="px-4 py-3">Nome</th>
+                <th className="px-4 py-3">Descrizione</th>
+                <th className="px-4 py-3">Corsi</th>
+                <th className="px-4 py-3">Clienti</th>
+                <th className="px-4 py-3">Azioni</th>
               </tr>
-            ) : (
-              categories.map((category) => (
-                <tr key={category.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: category.color ?? "#6B7280" }}
-                      />
-                      {category.name}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {category.description || "-"}
-                  </td>
-                  <td className="px-4 py-3">{category._count?.courses ?? 0}</td>
-                  <td className="px-4 py-3">{category._count?.clients ?? 0}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2 text-xs">
-                      <Link
-                        href={`/admin/area-corsi/${category.id}`}
-                        className="text-primary"
-                      >
-                        Modifica
-                      </Link>
-                      <button
-                        type="button"
-                        className="text-destructive"
-                        onClick={() => setConfirmId(category.id)}
-                      >
-                        Elimina
-                      </button>
-                    </div>
+            </thead>
+            <tbody>
+              {categories.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                    Nessuna area.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                categories.map((category) => (
+                  <tr key={category.id} className="border-t">
+                    <td className="px-4 py-3 font-medium">
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: category.color ?? "#6B7280" }}
+                        />
+                        {category.name}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {category.description || "-"}
+                    </td>
+                    <td className="px-4 py-3">{category._count?.courses ?? 0}</td>
+                    <td className="px-4 py-3">{category._count?.clients ?? 0}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2 text-xs">
+                        <Link
+                          href={`/admin/area-corsi/${category.id}`}
+                          className="text-primary"
+                        >
+                          Modifica
+                        </Link>
+                        <button
+                          type="button"
+                          className="text-destructive"
+                          onClick={() => setConfirmId(category.id)}
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {confirmId && mounted
         ? createPortal(

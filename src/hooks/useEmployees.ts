@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
 
 type UseEmployeesParams = {
   search?: string;
@@ -72,13 +74,23 @@ export function useEmployees(params: UseEmployeesParams) {
       }
       if (params.page) searchParams.set("page", String(params.page));
       if (params.limit) searchParams.set("limit", String(params.limit));
-      const res = await fetch(`/api/dipendenti?${searchParams.toString()}`);
+      const res = await fetchWithRetry(`/api/dipendenti?${searchParams.toString()}`);
       if (!res.ok) {
         throw new Error("Failed to fetch employees");
       }
-      return res.json();
+      const payload = (await res.json()) as Partial<EmployeesResponse>;
+      return {
+        data: getArrayData<EmployeeRow>(payload),
+        total: typeof payload.total === "number" ? payload.total : 0,
+        page: typeof payload.page === "number" ? payload.page : params.page ?? 1,
+        limit:
+          typeof payload.limit === "number" ? payload.limit : params.limit ?? 20,
+        totalPages:
+          typeof payload.totalPages === "number" ? payload.totalPages : 1,
+      } satisfies EmployeesResponse;
     },
     enabled: params.enabled ?? true,
     placeholderData: (prev) => prev,
+    retry: false,
   });
 }

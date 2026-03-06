@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import AddEmployeeModal from "@/components/AddEmployeeModal";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { getArrayData } from "@/lib/api-response";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -90,34 +92,42 @@ function AdminDipendentiContent() {
 
   useEffect(() => {
     const loadClients = async () => {
-      const res = await fetch("/api/admin/clienti");
-      if (!res.ok) {
-        return;
+      try {
+        const res = await fetchWithRetry("/api/admin/clienti");
+        if (!res.ok) {
+          return;
+        }
+        const text = await res.text();
+        const json = text ? JSON.parse(text) : {};
+        const items = getArrayData<{ id: string; ragioneSociale: string }>(json);
+        setClients(
+          items.map((client: { id: string; ragioneSociale: string }) => ({
+            id: client.id,
+            ragioneSociale: client.ragioneSociale,
+          }))
+        );
+      } catch {
+        setClients([]);
       }
-      const text = await res.text();
-      const json = text ? JSON.parse(text) : {};
-      const items = getArrayData<{ id: string; ragioneSociale: string }>(json);
-      setClients(
-        items.map((client: { id: string; ragioneSociale: string }) => ({
-          id: client.id,
-          ragioneSociale: client.ragioneSociale,
-        }))
-      );
     };
-    loadClients();
+    void loadClients();
   }, []);
 
   useEffect(() => {
     const loadEditions = async () => {
-      const res = await fetch("/api/edizioni?limit=500");
-      if (!res.ok) {
+      try {
+        const res = await fetchWithRetry("/api/edizioni?limit=500");
+        if (!res.ok) {
+          setEditions([]);
+          return;
+        }
+        const json = await res.json();
+        setEditions(getArrayData<EditionOption>(json));
+      } catch {
         setEditions([]);
-        return;
       }
-      const json = await res.json();
-      setEditions(getArrayData<EditionOption>(json));
     };
-    loadEditions();
+    void loadEditions();
   }, []);
 
   const editionOptions = useMemo(() => {
@@ -382,9 +392,10 @@ function AdminDipendentiContent() {
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Si e verificato un errore nel caricamento dei dati. Riprova piu tardi.
-        </div>
+        <ErrorMessage
+          message="Si e verificato un errore nel caricamento dei dati. Riprova piu tardi."
+          onRetry={() => void refetch()}
+        />
       ) : null}
 
       <EmployeeTable

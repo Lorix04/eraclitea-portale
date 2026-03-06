@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, LifeBuoy, Loader2, Search } from "lucide-react";
+import { Eye, LifeBuoy, Search } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   TICKET_CATEGORY_LABELS,
   TICKET_PRIORITY_LABELS,
   TICKET_STATUS_LABELS,
 } from "@/lib/tickets";
+import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import TableSkeleton from "@/components/ui/TableSkeleton";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 type TicketCategory =
@@ -71,7 +74,7 @@ async function fetchTickets(filters: {
   if (filters.clientId) params.set("clientId", filters.clientId);
   if (filters.search.trim()) params.set("search", filters.search.trim());
 
-  const response = await fetch(`/api/tickets?${params.toString()}`);
+  const response = await fetchWithRetry(`/api/tickets?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Errore caricamento ticket");
   }
@@ -81,7 +84,7 @@ async function fetchTickets(filters: {
 }
 
 async function fetchTicketStats() {
-  const response = await fetch("/api/tickets");
+  const response = await fetchWithRetry("/api/tickets");
   if (!response.ok) {
     throw new Error("Errore caricamento statistiche ticket");
   }
@@ -90,7 +93,7 @@ async function fetchTicketStats() {
 }
 
 async function fetchClients() {
-  const response = await fetch("/api/admin/clienti?isActive=true");
+  const response = await fetchWithRetry("/api/admin/clienti?isActive=true");
   if (!response.ok) {
     return [] as ClientOption[];
   }
@@ -155,6 +158,7 @@ export default function AdminTicketPage() {
     isLoading,
     isFetching,
     isError,
+    refetch,
   } = useQuery({
     queryKey: [
       "tickets",
@@ -173,17 +177,20 @@ export default function AdminTicketPage() {
         clientId,
         search: debouncedSearch,
       }),
+    retry: false,
   });
 
   const { data: statsTickets = [] } = useQuery({
     queryKey: ["tickets", "admin", "stats"],
     queryFn: fetchTicketStats,
     refetchInterval: 60_000,
+    retry: false,
   });
 
   const { data: clients = [] } = useQuery({
     queryKey: ["tickets", "admin", "clients"],
     queryFn: fetchClients,
+    retry: false,
   });
 
   const counts = useMemo(() => {
@@ -291,9 +298,19 @@ export default function AdminTicketPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[1024px] text-sm">
+      {isError ? (
+        <ErrorMessage
+          message="Errore nel caricamento dei ticket."
+          onRetry={() => void refetch()}
+        />
+      ) : null}
+
+      {isLoading ? (
+        <TableSkeleton rows={8} columns={9} />
+      ) : (
+        <div className="rounded-lg border bg-card">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[1024px] text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
                 <th className="px-4 py-3">Stato</th>
@@ -308,20 +325,7 @@ export default function AdminTicketPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
-                    Caricamento ticket...
-                  </td>
-                </tr>
-              ) : isError ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-red-600">
-                    Errore nel caricamento dei ticket.
-                  </td>
-                </tr>
-              ) : tickets.length === 0 ? (
+              {tickets.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                     Nessun ticket trovato con i filtri selezionati.
@@ -375,9 +379,10 @@ export default function AdminTicketPage() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {isFetching && !isLoading ? (
         <p className="text-xs text-muted-foreground">Aggiornamento in corso...</p>
