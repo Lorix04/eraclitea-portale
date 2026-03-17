@@ -8,8 +8,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
-import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
+import ActionMenu from "@/components/ui/ActionMenu";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -148,14 +148,7 @@ export default function AdminAttestatiPage() {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [editions, setEditions] = useState<EditionOption[]>([]);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editCertificateId, setEditCertificateId] = useState<string | null>(null);
-  const [certificateToDelete, setCertificateToDelete] = useState<{
-    id: string;
-    fileName: string;
-    employeeName: string;
-  } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchCertificates = useCallback(async () => {
     setLoading(true);
@@ -268,28 +261,13 @@ export default function AdminAttestatiPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDeleteClick = (certificate: CertificateRow, fileName: string) => {
-    setCertificateToDelete({
-      id: certificate.id,
-      fileName,
-      employeeName: certificate.employee
-        ? `${certificate.employee.nome} ${certificate.employee.cognome}`
-        : "Sconosciuto",
-    });
-    setDeleteModalOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!certificateToDelete) return;
-    setIsDeleting(true);
+  const handleDeleteConfirm = async (id: string) => {
     try {
-      const res = await fetch(`/api/attestati/${certificateToDelete.id}`, {
+      const res = await fetch(`/api/attestati/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         toast.success("Attestato eliminato");
-        setDeleteModalOpen(false);
-        setCertificateToDelete(null);
         fetchCertificates();
       } else {
         const dataRes = await res.json().catch(() => ({}));
@@ -298,8 +276,6 @@ export default function AdminAttestatiPage() {
     } catch (error) {
       console.error("Errore eliminazione attestato:", error);
       toast.error("Errore durante l'eliminazione dell'attestato");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -642,32 +618,38 @@ export default function AdminAttestatiPage() {
         actions={(cert) => {
           const fileName = cert.filePath ? getFileName(cert.filePath) : "Attestato";
           return (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
-                onClick={() => setEditCertificateId(cert.id)}
-                title="Modifica attestato"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
-                onClick={() => handleDownload(cert.id, fileName)}
-                title="Scarica"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="min-h-[44px] rounded-md border px-2 py-1 text-xs text-destructive hover:text-destructive"
-                onClick={() => handleDeleteClick(cert, fileName)}
-                title="Elimina"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+            <ActionMenu
+              primaryAction={{
+                key: "download",
+                label: "Download",
+                icon: Download,
+                variant: "info",
+                onClick: () => handleDownload(cert.id, fileName),
+                shortcutKey: "d",
+              }}
+              secondaryActions={[
+                {
+                  key: "edit",
+                  label: "Modifica",
+                  icon: Pencil,
+                  variant: "default",
+                  onClick: () => setEditCertificateId(cert.id),
+                  shortcutKey: "e",
+                },
+                {
+                  key: "delete",
+                  label: "Elimina",
+                  icon: Trash2,
+                  variant: "danger",
+                  requireConfirm: true,
+                  confirmMessage: `Eliminare "${fileName}"?`,
+                  onClick: () => handleDeleteConfirm(cert.id),
+                  shortcutKey: "Delete",
+                  shortcutLabel: "Del",
+                },
+              ]}
+              size="sm"
+            />
           );
         }}
       />
@@ -697,21 +679,6 @@ export default function AdminAttestatiPage() {
           </div>
         </div>
       ) : null}
-
-      <DeleteConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => !isDeleting && setDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        title="Elimina attestato"
-        description="Sei sicuro di voler eliminare questo attestato?"
-        itemName={certificateToDelete?.fileName}
-        isDeleting={isDeleting}
-        warningMessage={
-          certificateToDelete
-            ? `L'attestato "${certificateToDelete.fileName}" del dipendente ${certificateToDelete.employeeName} verrà eliminato permanentemente. Questa azione non può essere annullata.`
-            : "Questa azione non può essere annullata."
-        }
-      />
 
       <EditCertificateModal
         open={Boolean(editCertificateId)}

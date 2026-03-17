@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Eye, Pencil, Search, Trash2 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { toast } from "sonner";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import ActionMenu from "@/components/ui/ActionMenu";
 
 type Course = {
   id: string;
@@ -51,13 +51,6 @@ export default function AdminCorsiPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [courseToDelete, setCourseToDelete] = useState<{
-    id: string;
-    title: string;
-    editionsCount: number;
-  } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const debouncedSearch = useDebounce(searchTitle, 300);
 
@@ -115,26 +108,13 @@ export default function AdminCorsiPage() {
     void loadCategories();
   }, []);
 
-  const handleDeleteClick = (course: Course) => {
-    setCourseToDelete({
-      id: course.id,
-      title: course.title,
-      editionsCount: course._count?.editions ?? 0,
-    });
-    setDeleteModalOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!courseToDelete) return;
-    setIsDeleting(true);
+  const handleDeleteConfirm = async (id: string) => {
     try {
-      const res = await fetch(`/api/corsi/${courseToDelete.id}`, {
+      const res = await fetch(`/api/corsi/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
         toast.success("Corso eliminato con successo");
-        setDeleteModalOpen(false);
-        setCourseToDelete(null);
         loadCourses();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -143,15 +123,7 @@ export default function AdminCorsiPage() {
     } catch (error) {
       console.error("Errore eliminazione corso:", error);
       toast.error("Errore durante l'eliminazione del corso");
-    } finally {
-      setIsDeleting(false);
     }
-  };
-
-  const handleCloseModal = () => {
-    if (isDeleting) return;
-    setDeleteModalOpen(false);
-    setCourseToDelete(null);
   };
 
   const resetFilters = () => {
@@ -314,43 +286,38 @@ export default function AdminCorsiPage() {
         skeletonCount={6}
         emptyMessage="Nessun corso trovato."
         actions={(course) => (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/admin/corsi/${course.id}`}
-              className="text-xs text-primary"
-            >
-              Dettaglio
-            </Link>
-            <Link
-              href={`/admin/corsi/${course.id}/edit`}
-              className="text-xs text-primary"
-            >
-              Modifica
-            </Link>
-            <button
-              type="button"
-              className="text-xs text-destructive"
-              onClick={() => handleDeleteClick(course)}
-            >
-              Elimina
-            </button>
-          </div>
+          <ActionMenu
+            primaryAction={{
+              key: "detail",
+              label: "Dettaglio",
+              icon: Eye,
+              variant: "info",
+              href: `/admin/corsi/${course.id}`,
+              shortcutKey: "o",
+            }}
+            secondaryActions={[
+              {
+                key: "edit",
+                label: "Modifica",
+                icon: Pencil,
+                variant: "default",
+                href: `/admin/corsi/${course.id}/edit`,
+                shortcutKey: "e",
+              },
+              {
+                key: "delete",
+                label: "Elimina",
+                icon: Trash2,
+                variant: "danger",
+                requireConfirm: true,
+                confirmMessage: `Eliminare "${course.title}"?`,
+                onClick: () => handleDeleteConfirm(course.id),
+                shortcutKey: "Delete",
+                shortcutLabel: "Del",
+              },
+            ]}
+          />
         )}
-      />
-
-      <DeleteConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={handleCloseModal}
-        onConfirm={handleDeleteConfirm}
-        title="Elimina corso"
-        description="Sei sicuro di voler eliminare questo corso?"
-        itemName={courseToDelete?.title}
-        isDeleting={isDeleting}
-        warningMessage={
-          courseToDelete && courseToDelete.editionsCount > 0
-            ? `Questo corso ha ${courseToDelete.editionsCount} edizioni. Tutti i dati associati verranno eliminati permanentemente.`
-            : "Questa azione non puo essere annullata."
-        }
       />
     </div>
   );

@@ -6,7 +6,8 @@
       "Bash(grep -r 'grid grid-cols-1' /c/dev/project/src/app/admin/docenti --include=*.tsx -B 2 -A 2)",
       "Bash(grep -r 'grid grid-cols-2' /c/dev/project/src/app/admin/smtp/log --include=*.tsx -B 3 -A 3)",
       "Bash(grep -r modal-footer /c/dev/project/src/components --include=*.tsx -B 1 -A 5)",
-      "Bash(grep -n \"flex.*items-center\\\\|flex.*gap\\\\|ArrowLeft\\\\|Trash2\\\\|Copy\\\\|Upload\\\\|Download\" /c/dev/project/src/app/admin/corsi/[id]/edizioni/[edId]/page.tsx)"
+      "Bash(grep -n \"flex.*items-center\\\\|flex.*gap\\\\|ArrowLeft\\\\|Trash2\\\\|Copy\\\\|Upload\\\\|Download\" /c/dev/project/src/app/admin/corsi/[id]/edizioni/[edId]/page.tsx)",
+      "Bash(ls c:/dev/project/src/app/\\\\\\(dashboard\\\\\\)/)"
     ]
   }
 }

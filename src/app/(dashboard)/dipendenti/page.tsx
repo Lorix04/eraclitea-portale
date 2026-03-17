@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, Upload } from "lucide-react";
+import { Eye, Plus, Search, Trash2, Upload } from "lucide-react";
+import ActionMenu from "@/components/ui/ActionMenu";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
@@ -11,7 +12,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { BrandedButton } from "@/components/BrandedButton";
 import AddEmployeeModal from "@/components/AddEmployeeModal";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
-import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 
@@ -107,16 +107,6 @@ function ClientDipendentiContent() {
     includeRegistrations: true,
   });
 
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [employeeToDelete, setEmployeeToDelete] = useState<{
-    id: string;
-    nome: string;
-    cognome: string;
-    registrationsCount: number;
-    certificatesCount: number;
-  } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const allEmployees = useMemo<EmployeeRow[]>(() => data?.data ?? [], [data]);
 
   const filteredEmployees = useMemo(() => {
@@ -194,46 +184,6 @@ function ClientDipendentiContent() {
     setCertStatus("all");
     setSortOrder("asc");
     setPage(1);
-  };
-
-  const handleDeleteClick = (employee: {
-    id: string;
-    nome: string;
-    cognome: string;
-    _count?: { registrations?: number; certificates?: number };
-  }) => {
-    setEmployeeToDelete({
-      id: employee.id,
-      nome: employee.nome,
-      cognome: employee.cognome,
-      registrationsCount: employee._count?.registrations ?? 0,
-      certificatesCount: employee._count?.certificates ?? 0,
-    });
-    setDeleteModalOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!employeeToDelete) return;
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/dipendenti/${employeeToDelete.id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Dipendente eliminato con successo");
-        setDeleteModalOpen(false);
-        setEmployeeToDelete(null);
-        refetch();
-      } else {
-        const dataRes = await res.json().catch(() => ({}));
-        toast.error(dataRes?.error ?? "Errore durante l'eliminazione");
-      }
-    } catch (error) {
-      console.error("Errore eliminazione dipendente:", error);
-      toast.error("Errore durante l'eliminazione del dipendente");
-    } finally {
-      setIsDeleting(false);
-    }
   };
 
   return (
@@ -349,7 +299,47 @@ function ClientDipendentiContent() {
         basePath="/dipendenti"
         isLoading={isLoading}
         useBranding
-        onDelete={handleDeleteClick}
+        renderActions={(employee) => {
+          const regCount = employee._count?.registrations ?? 0;
+          const certCount = employee._count?.certificates ?? 0;
+          const hasData = regCount > 0 || certCount > 0;
+          return (
+            <ActionMenu
+              primaryAction={{
+                key: "detail",
+                label: "Dettaglio",
+                icon: Eye,
+                variant: "info",
+                href: `/dipendenti/${employee.id}`,
+                shortcutKey: "o",
+              }}
+              secondaryActions={[
+                {
+                  key: "delete",
+                  label: "Elimina",
+                  icon: Trash2,
+                  variant: "danger",
+                  requireConfirm: true,
+                  confirmMessage: hasData
+                    ? `${employee.nome} ${employee.cognome} ha ${regCount} iscrizioni e ${certCount} attestati. Eliminare?`
+                    : `Eliminare ${employee.nome} ${employee.cognome}?`,
+                  onClick: async () => {
+                    const res = await fetch(`/api/dipendenti/${employee.id}`, { method: "DELETE" });
+                    if (res.ok) {
+                      toast.success("Dipendente eliminato con successo");
+                      refetch();
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      toast.error(d?.error ?? "Errore durante l'eliminazione");
+                    }
+                  },
+                  shortcutKey: "Delete",
+                  shortcutLabel: "Del",
+                },
+              ]}
+            />
+          );
+        }}
       />
 
       <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -376,26 +366,6 @@ function ClientDipendentiContent() {
         </div>
       </div>
 
-      <DeleteConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => !isDeleting && setDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        title="Elimina dipendente"
-        description="Sei sicuro di voler eliminare questo dipendente?"
-        itemName={
-          employeeToDelete
-            ? `${employeeToDelete.nome} ${employeeToDelete.cognome}`
-            : undefined
-        }
-        isDeleting={isDeleting}
-        warningMessage={
-          employeeToDelete &&
-          (employeeToDelete.registrationsCount > 0 ||
-            employeeToDelete.certificatesCount > 0)
-            ? `Questo dipendente ha ${employeeToDelete.registrationsCount} iscrizioni a corsi e ${employeeToDelete.certificatesCount} attestati. Tutti i dati associati verranno eliminati.`
-            : "Questa azione non puo essere annullata."
-        }
-      />
 
       <AddEmployeeModal
         open={addModalOpen}

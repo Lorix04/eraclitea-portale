@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Eye,
   GraduationCap,
   Pencil,
   Plus,
@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
+import ActionMenu from "@/components/ui/ActionMenu";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -98,8 +98,6 @@ export default function AdminDocentiPage() {
   const [regionFilter, setRegionFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
-  const [teacherToDelete, setTeacherToDelete] = useState<TeacherRow | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const { province: provinceOptions, regioni } = useProvinceRegioni();
 
@@ -219,11 +217,9 @@ export default function AdminDocentiPage() {
     setRegionFilter("");
   };
 
-  const handleDeleteTeacher = async () => {
-    if (!teacherToDelete) return;
-    setDeleting(true);
+  const handleDeleteConfirm = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/teachers/${teacherToDelete.id}`, {
+      const response = await fetch(`/api/admin/teachers/${id}`, {
         method: "DELETE",
       });
       const json = await response.json().catch(() => ({}));
@@ -232,13 +228,10 @@ export default function AdminDocentiPage() {
         return;
       }
       toast.success("Docente eliminato");
-      setTeacherToDelete(null);
       await teachersQuery.refetch();
     } catch (error) {
       console.error("[ADMIN_TEACHERS_DELETE] Error:", error);
       toast.error("Errore eliminazione docente");
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -446,40 +439,47 @@ export default function AdminDocentiPage() {
         skeletonCount={8}
         emptyMessage="Nessun docente trovato."
         actions={(teacher) => (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/admin/docenti/${teacher.id}`}
-              className="rounded-md border px-2 py-1 text-xs"
-            >
-              Visualizza
-            </Link>
-            <button
-              type="button"
-              className="inline-flex min-h-[32px] items-center rounded-md border px-2 py-1 text-xs"
-              onClick={() => {
-                setEditingTeacher(teacher);
-                setModalOpen(true);
-              }}
-            >
-              <Pencil className="mr-1 h-3.5 w-3.5" />
-              Modifica
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-[32px] items-center rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
-              onClick={() => setTeacherToDelete(teacher)}
-            >
-              <Trash2 className="mr-1 h-3.5 w-3.5" />
-              Elimina
-            </button>
-          </div>
+          <ActionMenu
+            primaryAction={{
+              key: "view",
+              label: "Visualizza",
+              icon: Eye,
+              variant: "info",
+              href: `/admin/docenti/${teacher.id}`,
+              shortcutKey: "o",
+            }}
+            secondaryActions={[
+              {
+                key: "edit",
+                label: "Modifica",
+                icon: Pencil,
+                variant: "default",
+                onClick: () => {
+                  setEditingTeacher(teacher);
+                  setModalOpen(true);
+                },
+                shortcutKey: "e",
+              },
+              {
+                key: "delete",
+                label: "Elimina",
+                icon: Trash2,
+                variant: "danger",
+                requireConfirm: true,
+                confirmMessage: `Eliminare ${teacher.firstName} ${teacher.lastName}?`,
+                onClick: () => handleDeleteConfirm(teacher.id!),
+                shortcutKey: "Delete",
+                shortcutLabel: "Del",
+              },
+            ]}
+            size="sm"
+          />
         )}
       />
 
       <TeacherModal
         open={modalOpen}
         onClose={() => {
-          if (deleting) return;
           setModalOpen(false);
           setEditingTeacher(null);
         }}
@@ -487,24 +487,6 @@ export default function AdminDocentiPage() {
         onSaved={async () => {
           await teachersQuery.refetch();
         }}
-      />
-
-      <DeleteConfirmModal
-        isOpen={Boolean(teacherToDelete)}
-        onClose={() => {
-          if (deleting) return;
-          setTeacherToDelete(null);
-        }}
-        onConfirm={handleDeleteTeacher}
-        title="Elimina docente"
-        description="Sei sicuro di voler eliminare questo docente?"
-        itemName={
-          teacherToDelete
-            ? `${teacherToDelete.firstName} ${teacherToDelete.lastName}`
-            : undefined
-        }
-        isDeleting={deleting}
-        warningMessage="Questa azione eliminera anche assegnazioni e indisponibilita collegate."
       />
     </div>
   );

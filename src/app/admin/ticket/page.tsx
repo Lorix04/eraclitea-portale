@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, LifeBuoy, Search } from "lucide-react";
+import ActionMenu from "@/components/ui/ActionMenu";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   TICKET_CATEGORY_LABELS,
@@ -387,13 +388,15 @@ export default function AdminTicketPage() {
         skeletonCount={8}
         emptyMessage="Nessun ticket trovato con i filtri selezionati."
         actions={(ticket) => (
-          <Link
-            href={`/admin/ticket/${ticket.id}`}
-            className="inline-flex min-h-[36px] items-center rounded-md border px-2 text-xs hover:bg-muted"
-            title="Apri ticket"
-          >
-            <Eye className="h-4 w-4" />
-          </Link>
+          <ActionMenu
+            primaryAction={{
+              key: "open",
+              label: "Apri",
+              icon: Eye,
+              variant: "info",
+              href: `/admin/ticket/${ticket.id}`,
+            }}
+          />
         )}
       />
 

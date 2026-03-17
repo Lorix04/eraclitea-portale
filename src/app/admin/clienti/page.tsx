@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, LogIn, Search } from "lucide-react";
+import { Check, Copy, KeyRound, LogIn, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import ActionMenu from "@/components/ui/ActionMenu";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getArrayData } from "@/lib/api-response";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
@@ -42,7 +43,6 @@ export default function AdminClientiPage() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmClient, setConfirmClient] = useState<ClientRow | null>(null);
   const [confirmResetClient, setConfirmResetClient] = useState<ClientRow | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<ResetPasswordResult | null>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -185,20 +185,6 @@ export default function AdminClientiPage() {
       throw new Error(json.error || "Errore durante l'eliminazione del cliente");
     }
     await loadClients();
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!confirmClient) return;
-    try {
-      await handleDelete(confirmClient.id);
-      setConfirmClient(null);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Errore durante l'eliminazione del cliente";
-      window.alert(message);
-    }
   };
 
   const handleImpersonate = async (client: ClientRow) => {
@@ -399,85 +385,55 @@ export default function AdminClientiPage() {
         skeletonCount={6}
         emptyMessage="Nessun cliente trovato."
         actions={(client) => (
-          <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-wrap">
-            <button
-              type="button"
-              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
-              onClick={() => handleImpersonate(client)}
-              disabled={!client.user?.id || impersonatingClientId === client.id}
-              title="Accedi come cliente"
-            >
-              <LogIn className="mr-1 h-3.5 w-3.5" />
-              Accedi come
-            </button>
-            <Link
-              href={`/admin/clienti/${client.id}/edit`}
-              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
-            >
-              Modifica
-            </Link>
-            <button
-              type="button"
-              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
-              onClick={() => handleToggleStatus(client.id)}
-            >
-              {client.isActive ? "Disattiva" : "Attiva"}
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
-              onClick={() => setConfirmResetClient(client)}
-            >
-              Reset pwd
-            </button>
-            <button
-              type="button"
-              className="col-span-2 inline-flex min-h-[36px] items-center justify-center rounded-md border border-destructive/30 px-2 py-1 text-destructive md:col-span-1 md:min-h-[44px] md:border-0"
-              onClick={() => setConfirmClient(client)}
-            >
-              Elimina
-            </button>
-          </div>
+          <ActionMenu
+            primaryAction={{
+              key: "impersonate",
+              label: "Accedi come",
+              icon: LogIn,
+              variant: "info",
+              onClick: () => handleImpersonate(client),
+              disabled: !client.user?.id || impersonatingClientId === client.id,
+            }}
+            secondaryActions={[
+              {
+                key: "edit",
+                label: "Modifica",
+                icon: Pencil,
+                variant: "default",
+                href: `/admin/clienti/${client.id}/edit`,
+                shortcutKey: "e",
+              },
+              {
+                key: "toggle",
+                label: client.isActive ? "Disattiva" : "Attiva",
+                icon: client.isActive ? UserX : UserCheck,
+                variant: "warning",
+                onClick: () => handleToggleStatus(client.id),
+                shortcutKey: "a",
+              },
+              {
+                key: "reset",
+                label: "Reset password",
+                icon: KeyRound,
+                variant: "warning",
+                onClick: () => setConfirmResetClient(client),
+                shortcutKey: "r",
+              },
+              {
+                key: "delete",
+                label: "Elimina",
+                icon: Trash2,
+                variant: "danger",
+                requireConfirm: true,
+                confirmMessage: `Eliminare "${client.ragioneSociale}"? Azione irreversibile.`,
+                onClick: () => handleDelete(client.id),
+                shortcutKey: "Delete",
+                shortcutLabel: "Del",
+              },
+            ]}
+          />
         )}
       />
-
-      {confirmClient && mounted
-        ? createPortal(
-            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
-              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
-                <div className="modal-header">
-                  <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
-                </div>
-                <div className="modal-body modal-scroll">
-                  <p className="text-sm text-muted-foreground">
-                    Sei sicuro di voler eliminare il cliente{" "}
-                    <span className="font-medium text-foreground">
-                      {confirmClient.ragioneSociale}
-                    </span>
-                    ? Questa azione è irreversibile.
-                  </p>
-                </div>
-                <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                  <button
-                    type="button"
-                    className="rounded-md border px-4 py-2 text-sm"
-                    onClick={() => setConfirmClient(null)}
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground"
-                    onClick={handleConfirmDelete}
-                  >
-                    Elimina
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
 
       {confirmResetClient && mounted
         ? createPortal(

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Pencil, Search, Trash2 } from "lucide-react";
+import ActionMenu from "@/components/ui/ActionMenu";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFetchWithRetry } from "@/hooks/useFetchWithRetry";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
@@ -20,12 +20,9 @@ type CategoryRow = {
 };
 
 export default function AdminAreaCorsiPage() {
-  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [searchName, setSearchName] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [mounted, setMounted] = useState(false);
-
   const debouncedSearch = useDebounce(searchName, 300);
 
   const queryString = useMemo(() => {
@@ -50,20 +47,14 @@ export default function AdminAreaCorsiPage() {
   });
   const categories = categoriesData ?? [];
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const resetFilters = () => {
     setSearchName("");
     setSortBy("name");
     setSortOrder("asc");
   };
 
-  const handleDelete = async () => {
-    if (!confirmId) return;
-    await fetch(`/api/admin/categorie/${confirmId}`, { method: "DELETE" });
-    setConfirmId(null);
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/admin/categorie/${id}`, { method: "DELETE" });
     await refetch();
   };
 
@@ -164,58 +155,31 @@ export default function AdminAreaCorsiPage() {
         loading={loading || retrying}
         emptyMessage="Nessuna area."
         actions={(category) => (
-          <div className="flex gap-2 text-xs">
-            <Link
-              href={`/admin/area-corsi/${category.id}`}
-              className="text-primary"
-            >
-              Modifica
-            </Link>
-            <button
-              type="button"
-              className="text-destructive"
-              onClick={() => setConfirmId(category.id)}
-            >
-              Elimina
-            </button>
-          </div>
+          <ActionMenu
+            primaryAction={{
+              key: "edit",
+              label: "Modifica",
+              icon: Pencil,
+              variant: "info",
+              href: `/admin/area-corsi/${category.id}`,
+              shortcutKey: "e",
+            }}
+            secondaryActions={[
+              {
+                key: "delete",
+                label: "Elimina",
+                icon: Trash2,
+                variant: "danger",
+                requireConfirm: true,
+                confirmMessage: "Eliminare questa area? Le associazioni verranno rimosse.",
+                onClick: () => handleDelete(category.id),
+                shortcutKey: "Delete",
+                shortcutLabel: "Del",
+              },
+            ]}
+          />
         )}
       />
-
-      {confirmId && mounted
-        ? createPortal(
-            <div className="fixed inset-0 z-50 bg-black/40 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
-              <div className="modal-panel bg-card shadow-lg sm:max-w-md">
-                <div className="modal-header">
-                  <h2 className="text-lg font-semibold">Conferma eliminazione</h2>
-                </div>
-                <div className="modal-body modal-scroll">
-                  <p className="text-sm text-muted-foreground">
-                    Vuoi eliminare questa area? Le associazioni con corsi e clienti
-                    verranno rimosse.
-                  </p>
-                </div>
-                <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                  <button
-                    type="button"
-                    className="rounded-md border px-4 py-2 text-sm"
-                    onClick={() => setConfirmId(null)}
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground"
-                    onClick={handleDelete}
-                  >
-                    Elimina
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
     </div>
   );
 }

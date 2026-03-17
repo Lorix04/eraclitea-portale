@@ -1,9 +1,8 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Copy, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Plus, Search, Trash2 } from "lucide-react";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
@@ -14,6 +13,7 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
+import ActionMenu from "@/components/ui/ActionMenu";
 
 type EditionRow = {
   id: string;
@@ -482,30 +482,35 @@ function AdminEdizioniContent() {
         }
         actions={(edition) =>
           edition.course?.id ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/admin/corsi/${edition.course.id}/edizioni/${edition.id}`}
-                className="inline-flex items-center rounded-md border px-2 py-1 text-xs text-primary"
-              >
-                Apri
-              </Link>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                onClick={() => setDuplicateTarget(edition)}
-              >
-                <Copy className="h-3 w-3" />
-                Duplica
-              </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive"
-                onClick={() => setDeleteTarget(edition)}
-              >
-                <Trash2 className="h-3 w-3" />
-                Elimina
-              </button>
-            </div>
+            <ActionMenu
+              primaryAction={{
+                key: "open",
+                label: "Apri",
+                icon: ExternalLink,
+                variant: "info",
+                href: `/admin/corsi/${edition.course.id}/edizioni/${edition.id}`,
+                shortcutKey: "o",
+              }}
+              secondaryActions={[
+                {
+                  key: "duplicate",
+                  label: "Duplica",
+                  icon: Copy,
+                  variant: "default",
+                  onClick: () => setDuplicateTarget(edition),
+                  shortcutKey: "d",
+                },
+                {
+                  key: "delete",
+                  label: "Elimina",
+                  icon: Trash2,
+                  variant: "danger",
+                  onClick: () => setDeleteTarget(edition),
+                  shortcutKey: "Delete",
+                  shortcutLabel: "Del",
+                },
+              ]}
+            />
           ) : (
             "-"
           )

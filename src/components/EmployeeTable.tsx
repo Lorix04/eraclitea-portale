@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
@@ -26,6 +27,7 @@ type EmployeeTableProps = {
   isLoading?: boolean;
   useBranding?: boolean;
   onDelete?: (employee: EmployeeRow) => void;
+  renderActions?: (employee: EmployeeRow) => React.ReactNode;
 };
 
 function formatDate(value?: string | Date | null) {
@@ -39,6 +41,7 @@ export default function EmployeeTable({
   isLoading,
   useBranding = false,
   onDelete,
+  renderActions,
 }: EmployeeTableProps) {
   const router = useRouter();
   const linkClass = useBranding ? "link-brand" : "text-primary";
@@ -129,29 +132,29 @@ export default function EmployeeTable({
                     <td className="px-4 py-3">
                       {employee._count?.registrations ?? 0}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`${basePath}/${employee.id}`}
-                          className={linkClass}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          Dettaglio
-                        </Link>
-                        {hasDelete ? (
-                          <button
-                            type="button"
-                            className="inline-flex min-h-[44px] items-center text-destructive"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              onDelete?.(employee);
-                            }}
-                            title="Elimina"
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {renderActions ? (
+                        renderActions(employee)
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`${basePath}/${employee.id}`}
+                            className={linkClass}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        ) : null}
-                      </div>
+                            Dettaglio
+                          </Link>
+                          {hasDelete ? (
+                            <button
+                              type="button"
+                              className="inline-flex min-h-[44px] items-center text-destructive"
+                              onClick={() => onDelete?.(employee)}
+                              title="Elimina"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -216,24 +219,28 @@ export default function EmployeeTable({
                 <span className="rounded-full bg-muted px-2 py-1">
                   Corsi: {employee._count?.registrations ?? 0}
                 </span>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`${basePath}/${employee.id}`}
-                    className={linkClass}
-                  >
-                    Dettaglio
-                  </Link>
-                  {hasDelete ? (
-                    <button
-                      type="button"
-                      className="inline-flex min-h-[44px] items-center text-destructive"
-                      onClick={() => onDelete?.(employee)}
-                      title="Elimina"
+                {renderActions ? (
+                  renderActions(employee)
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`${basePath}/${employee.id}`}
+                      className={linkClass}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                </div>
+                      Dettaglio
+                    </Link>
+                    {hasDelete ? (
+                      <button
+                        type="button"
+                        className="inline-flex min-h-[44px] items-center text-destructive"
+                        onClick={() => onDelete?.(employee)}
+                        title="Elimina"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </article>
           ))
