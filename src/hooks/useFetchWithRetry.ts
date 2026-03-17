@@ -38,10 +38,9 @@ export function useFetchWithRetry<T>({
   const [error, setError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
 
-  const transformData = useMemo(
-    () => transform ?? ((payload: unknown) => payload as T),
-    [transform]
-  );
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
+
   const dependenciesKey = useMemo(() => JSON.stringify(dependencies), [dependencies]);
 
   const execute = useCallback(async () => {
@@ -73,7 +72,7 @@ export function useFetchWithRetry<T>({
       }
 
       const payload = await response.json().catch(() => null);
-      setData(transformData(payload));
+      setData(transformRef.current ? transformRef.current(payload) : (payload as T));
       hasLoadedRef.current = true;
     } catch (fetchError) {
       setError(getErrorMessage(fetchError));
@@ -81,7 +80,7 @@ export function useFetchWithRetry<T>({
       setLoading(false);
       setRetrying(false);
     }
-  }, [enabled, transformData, url]);
+  }, [enabled, url]);
 
   useEffect(() => {
     void execute();
