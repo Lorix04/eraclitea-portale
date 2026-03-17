@@ -68,11 +68,11 @@ export default function AdminPage() {
           <Skeleton className="h-6 w-48" />
           <Skeleton className="mt-2 h-4 w-72" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-5">
           {Array.from({ length: 5 }).map((_, index) => (
             <div
               key={index}
-              className="rounded-lg border border-gray-200 bg-white p-4"
+              className="rounded-lg border border-gray-200 bg-white p-3 md:p-4"
             >
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-3 h-8 w-16" />
@@ -111,8 +111,8 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">Dashboard Admin</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-lg font-semibold md:text-xl">Dashboard Admin</h1>
+        <p className="text-xs text-muted-foreground md:text-sm">
           Panoramica generale della piattaforma.
         </p>
       </div>
@@ -134,7 +134,7 @@ export default function AdminPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-5">
         <StatsCard
           title="Clienti attivi"
           value={stats.activeClients}
@@ -182,10 +182,10 @@ export default function AdminPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6">
+      <div className="grid gap-4 md:gap-6 md:grid-cols-2">
+        <div className="rounded-lg border bg-card p-4 md:p-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Attivita recente</h2>
+            <h2 className="text-base font-semibold md:text-lg">Attivita recente</h2>
             <Link href="/admin/audit" className="text-sm text-primary">
               Vedi tutto
             </Link>
@@ -199,8 +199,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border bg-card p-6">
-          <h2 className="text-lg font-semibold">Ultime iscrizioni</h2>
+        <div className="rounded-lg border bg-card p-4 md:p-6">
+          <h2 className="text-base font-semibold md:text-lg">Ultime iscrizioni</h2>
           <div className="mt-4 space-y-3">
             {stats.recentRegistrations.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nessuna registrazione.</p>

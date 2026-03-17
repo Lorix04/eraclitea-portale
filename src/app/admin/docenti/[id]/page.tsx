@@ -376,25 +376,25 @@ export default function AdminTeacherDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <Link href="/admin/docenti" className="text-sm text-primary">
+      <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <Link href="/admin/docenti" className="text-xs text-primary md:text-sm">
             &larr; Torna ai docenti
           </Link>
-          <h1 className="mt-2 flex items-center gap-2 text-xl font-semibold">
-            <GraduationCap className="h-5 w-5" />
+          <h1 className="mt-1 flex items-center gap-2 break-words text-lg font-semibold md:mt-2 md:text-xl">
+            <GraduationCap className="h-5 w-5 shrink-0" />
             {teacher.firstName} {teacher.lastName}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground md:text-sm">
             Gestisci anagrafica, CV e calendario disponibilita.
           </p>
         </div>
         <button
           type="button"
-          className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+          className="inline-flex min-h-[44px] shrink-0 items-center rounded-md border px-2 py-1.5 text-xs md:px-3 md:py-2 md:text-sm"
           onClick={() => setEditModalOpen(true)}
         >
-          <Pencil className="mr-2 h-4 w-4" />
+          <Pencil className="mr-1 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
           Modifica
         </button>
       </div>
@@ -817,7 +817,7 @@ export default function AdminTeacherDetailPage() {
                 Tutto il giorno
               </label>
               {!unavailabilityForm.allDay ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <input
                     type="time"
                     value={unavailabilityForm.startTime}
@@ -854,7 +854,7 @@ export default function AdminTeacherDetailPage() {
                 placeholder="Motivo (opzionale)"
               />
             </div>
-            <div className="modal-footer flex justify-end gap-2">
+            <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 className="rounded-md border px-3 py-2 text-sm"

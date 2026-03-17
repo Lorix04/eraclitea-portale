@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatItalianDateTime } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 const ACTIONS = [
   "LOGIN",
@@ -121,122 +123,114 @@ export default function AdminAuditPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={action}
-          onChange={(event) => {
-            setPage(1);
-            setAction(event.target.value);
-          }}
-        >
-          <option value="">Tutte le azioni</option>
-          {ACTIONS.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <input
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          placeholder="Entita (es. Course)"
-          value={entityType}
-          onChange={(event) => {
-            setPage(1);
-            setEntityType(event.target.value);
-          }}
-        />
-        <input
-          type="date"
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={dateFrom}
-          onChange={(event) => {
-            setPage(1);
-            setDateFrom(event.target.value);
-          }}
-        />
-        <input
-          type="date"
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={dateTo}
-          onChange={(event) => {
-            setPage(1);
-            setDateTo(event.target.value);
-          }}
-        />
-      </div>
+      <MobileFilterPanel
+        searchBar={
+          <input
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            placeholder="Entita (es. Course)"
+            value={entityType}
+            onChange={(event) => {
+              setPage(1);
+              setEntityType(event.target.value);
+            }}
+          />
+        }
+        activeFiltersCount={
+          (action !== "" ? 1 : 0) +
+          (entityType !== "" ? 1 : 0) +
+          (dateFrom !== "" ? 1 : 0) +
+          (dateTo !== "" ? 1 : 0)
+        }
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={action}
+            onChange={(event) => {
+              setPage(1);
+              setAction(event.target.value);
+            }}
+          >
+            <option value="">Tutte le azioni</option>
+            {ACTIONS.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={dateFrom}
+            onChange={(event) => {
+              setPage(1);
+              setDateFrom(event.target.value);
+            }}
+          />
+          <input
+            type="date"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={dateTo}
+            onChange={(event) => {
+              setPage(1);
+              setDateTo(event.target.value);
+            }}
+          />
+        </div>
+      </MobileFilterPanel>
 
       {error ? <ErrorMessage message={error} onRetry={() => void loadAudit()} /> : null}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[980px] text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3">Data/Ora</th>
-              <th className="px-4 py-3">Utente</th>
-              <th className="px-4 py-3">Azione</th>
-              <th className="px-4 py-3">Entita</th>
-              <th className="px-4 py-3">ID</th>
-              <th className="px-4 py-3">IP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, row) => (
-                <tr key={`audit-skeleton-${row}`} className="border-t">
-                  <td className="px-4 py-3">
-                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-6 w-24 animate-pulse rounded bg-muted" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-4 w-28 animate-pulse rounded bg-muted" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                  </td>
-                </tr>
-              ))
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
-                  Nessun log trovato.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="border-t">
-                  <td className="px-4 py-3">
-                    {formatItalianDateTime(row.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">{row.user.email}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        ACTION_BADGES[row.action] ?? "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {row.action}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{row.entityType ?? "-"}</td>
-                  <td className="px-4 py-3">{row.entityId ?? "-"}</td>
-                  <td className="px-4 py-3">{row.ipAddress ?? "-"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveTable<AuditLogRow>
+        columns={[
+          {
+            key: "action",
+            header: "Azione",
+            isBadge: true,
+            render: (row) => (
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${
+                  ACTION_BADGES[row.action] ?? "bg-muted text-muted-foreground"
+                }`}
+              >
+                {row.action}
+              </span>
+            ),
+          },
+          {
+            key: "user",
+            header: "Utente",
+            isPrimary: true,
+            render: (row) => row.user.email,
+          },
+          {
+            key: "createdAt",
+            header: "Data/Ora",
+            isSecondary: true,
+            render: (row) => formatItalianDateTime(row.createdAt),
+          },
+          {
+            key: "entityType",
+            header: "Entita",
+            render: (row) => row.entityType ?? "-",
+          },
+          {
+            key: "entityId",
+            header: "ID",
+            render: (row) => row.entityId ?? "-",
+          },
+          {
+            key: "ip",
+            header: "IP",
+            render: (row) => row.ipAddress ?? "-",
+          },
+        ] satisfies Column<AuditLogRow>[]}
+        data={rows}
+        keyExtractor={(row) => row.id}
+        loading={loading}
+        skeletonCount={6}
+        emptyMessage="Nessun log trovato."
+      />
 
       <div className="flex items-center justify-between text-sm">
         <span>

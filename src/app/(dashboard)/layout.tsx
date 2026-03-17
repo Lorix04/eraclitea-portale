@@ -114,7 +114,7 @@ export default function DashboardLayout({
         <div className="hidden md:flex">
           <ClientSidebar />
         </div>
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
           <ClientHeader leftSlot={<MobileSidebar role="CLIENT" />}>
             <div className="hidden md:block">
               <ClientSearchCommand />

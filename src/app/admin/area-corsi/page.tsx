@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFetchWithRetry } from "@/hooks/useFetchWithRetry";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { getArrayData } from "@/lib/api-response";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type CategoryRow = {
@@ -83,113 +84,103 @@ export default function AdminAreaCorsiPage() {
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
-            placeholder="Cerca area..."
-            value={searchName}
-            onChange={(event) => setSearchName(event.target.value)}
-            aria-label="Cerca area"
-          />
-        </div>
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={`${sortBy}-${sortOrder}`}
-          onChange={(event) => {
-            const [field, order] = event.target.value.split("-");
-            setSortBy(field);
-            setSortOrder(order as "asc" | "desc");
-          }}
-          aria-label="Ordinamento aree"
-        >
-          <option value="name-asc">Nome A-Z</option>
-          <option value="name-desc">Nome Z-A</option>
-          <option value="createdAt-desc">Piu recenti</option>
-          <option value="createdAt-asc">Piu antiche</option>
-          <option value="coursesCount-desc">Piu corsi</option>
-          <option value="coursesCount-asc">Meno corsi</option>
-        </select>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {categories.length} aree
-          </span>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="inline-flex items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
+              placeholder="Cerca area..."
+              value={searchName}
+              onChange={(event) => setSearchName(event.target.value)}
+              aria-label="Cerca area"
+            />
+          </div>
+        }
+        activeFiltersCount={
+          (sortBy !== "name" || sortOrder !== "asc" ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={`${categories.length} aree`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(event) => {
+              const [field, order] = event.target.value.split("-");
+              setSortBy(field);
+              setSortOrder(order as "asc" | "desc");
+            }}
+            aria-label="Ordinamento aree"
           >
-            <X className="mr-1 h-4 w-4" />
-            Resetta
-          </button>
+            <option value="name-asc">Nome A-Z</option>
+            <option value="name-desc">Nome Z-A</option>
+            <option value="createdAt-desc">Piu recenti</option>
+            <option value="createdAt-asc">Piu antiche</option>
+            <option value="coursesCount-desc">Piu corsi</option>
+            <option value="coursesCount-asc">Meno corsi</option>
+          </select>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {error ? <ErrorMessage message={error} onRetry={() => void refetch()} /> : null}
 
-      {loading || retrying ? (
-        <TableSkeleton rows={5} columns={5} />
-      ) : (
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Descrizione</th>
-                <th className="px-4 py-3">Corsi</th>
-                <th className="px-4 py-3">Clienti</th>
-                <th className="px-4 py-3">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                    Nessuna area.
-                  </td>
-                </tr>
-              ) : (
-                categories.map((category) => (
-                  <tr key={category.id} className="border-t">
-                    <td className="px-4 py-3 font-medium">
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: category.color ?? "#6B7280" }}
-                        />
-                        {category.name}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {category.description || "-"}
-                    </td>
-                    <td className="px-4 py-3">{category._count?.courses ?? 0}</td>
-                    <td className="px-4 py-3">{category._count?.clients ?? 0}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 text-xs">
-                        <Link
-                          href={`/admin/area-corsi/${category.id}`}
-                          className="text-primary"
-                        >
-                          Modifica
-                        </Link>
-                        <button
-                          type="button"
-                          className="text-destructive"
-                          onClick={() => setConfirmId(category.id)}
-                        >
-                          Elimina
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ResponsiveTable<CategoryRow>
+        columns={[
+          {
+            key: "name",
+            header: "Nome",
+            isPrimary: true,
+            render: (c) => (
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: c.color ?? "#6B7280" }}
+                />
+                {c.name}
+              </span>
+            ),
+          },
+          {
+            key: "description",
+            header: "Descrizione",
+            isSecondary: true,
+            render: (c) => c.description || "-",
+          },
+          {
+            key: "courses",
+            header: "Corsi",
+            render: (c) => c._count?.courses ?? 0,
+          },
+          {
+            key: "clients",
+            header: "Clienti",
+            render: (c) => c._count?.clients ?? 0,
+          },
+        ] satisfies Column<CategoryRow>[]}
+        data={categories}
+        keyExtractor={(c) => c.id}
+        loading={loading || retrying}
+        emptyMessage="Nessuna area."
+        actions={(category) => (
+          <div className="flex gap-2 text-xs">
+            <Link
+              href={`/admin/area-corsi/${category.id}`}
+              className="text-primary"
+            >
+              Modifica
+            </Link>
+            <button
+              type="button"
+              className="text-destructive"
+              onClick={() => setConfirmId(category.id)}
+            >
+              Elimina
+            </button>
+          </div>
+        )}
+      />
 
       {confirmId && mounted
         ? createPortal(
@@ -204,7 +195,7 @@ export default function AdminAreaCorsiPage() {
                     verranno rimosse.
                   </p>
                 </div>
-                <div className="modal-footer flex justify-end gap-3">
+                <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"

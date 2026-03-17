@@ -27,7 +27,7 @@ export function BrandedTabs({
   const { primaryColor } = useBranding();
 
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0", className)}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const hoverBg = isActive ? primaryColor : `${primaryColor}15`;
@@ -39,7 +39,7 @@ export function BrandedTabs({
             onClick={() => onTabChange(tab.id)}
             onMouseEnter={() => onTabHover?.(tab.id)}
             className={cn(
-              "branded-tab rounded-full px-4 py-2 text-sm font-medium transition-all",
+              "branded-tab whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all",
               "focus-visible:outline-none"
             )}
             style={{

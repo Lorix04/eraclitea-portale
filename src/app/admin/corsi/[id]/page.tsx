@@ -64,23 +64,23 @@ export default async function AdminCourseDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{course.title}</h1>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <h1 className="break-words text-lg font-semibold md:text-xl">{course.title}</h1>
+          <p className="text-xs text-muted-foreground md:text-sm">
             Dettaglio corso template e relative edizioni.
           </p>
         </div>
         <div className="flex gap-2">
           <Link
             href={`/admin/corsi/${course.id}/edit`}
-            className="rounded-md border px-4 py-2 text-sm"
+            className="rounded-md border px-2 py-1.5 text-xs md:px-4 md:py-2 md:text-sm"
           >
             Modifica corso
           </Link>
           <Link
             href={`/admin/corsi/${course.id}/edizioni/nuova`}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+            className="rounded-md bg-primary px-2 py-1.5 text-xs text-primary-foreground md:px-4 md:py-2 md:text-sm"
           >
             Nuova edizione
           </Link>

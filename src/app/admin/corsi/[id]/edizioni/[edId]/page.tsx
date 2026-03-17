@@ -527,50 +527,54 @@ export default function AdminEditionDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">
+      <div className="flex flex-wrap items-start justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <h1 className="break-words text-lg font-semibold md:text-xl">
             {edition.course?.title} &middot; {edition.client?.ragioneSociale} &middot; Ed. #{edition.editionNumber}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground md:text-sm">
             Gestione dettagli per l&apos;edizione selezionata.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/corsi/${edition.course.id}`}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-md border px-2 py-1.5 text-xs md:px-3 md:py-2 md:text-sm"
           >
             Torna al corso
           </Link>
           <button
             type="button"
-            className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+            title="Duplica edizione"
+            className="inline-flex items-center rounded-md border px-2 py-1.5 text-xs md:px-3 md:py-2 md:text-sm"
             onClick={() => setDuplicateModalOpen(true)}
           >
-            <Copy className="mr-2 h-4 w-4" />
-            Duplica edizione
+            <Copy className="h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
+            <span className="hidden md:inline">Duplica edizione</span>
           </button>
           {!isArchived ? (
             <Link
               href={`/admin/attestati/upload?courseEditionId=${edition.id}&clientId=${edition.client.id}`}
-              className="rounded-md border px-3 py-2 text-sm"
+              title="Carica attestato"
+              className="inline-flex items-center rounded-md border px-2 py-1.5 text-xs md:px-3 md:py-2 md:text-sm"
             >
-              Carica attestato
+              <Upload className="h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
+              <span className="hidden md:inline">Carica attestato</span>
             </Link>
           ) : null}
           <button
             type="button"
-            className="rounded-md bg-destructive px-3 py-2 text-sm text-destructive-foreground"
+            className="inline-flex items-center rounded-md bg-destructive px-2 py-1.5 text-xs text-destructive-foreground md:px-3 md:py-2 md:text-sm"
             onClick={() => setDeleteModalOpen(true)}
           >
-            Elimina edizione
+            <Trash2 className="mr-1 h-3.5 w-3.5 md:mr-2 md:h-4 md:w-4" />
+            Elimina
           </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <EditionStatusBadge status={edition.status} className="px-3 py-1 text-sm" />
+      <div className="flex flex-wrap items-center gap-2 text-xs md:gap-3 md:text-sm">
+        <EditionStatusBadge status={edition.status} className="px-2 py-0.5 text-xs md:px-3 md:py-1 md:text-sm" />
         <span className="text-muted-foreground">
           Lezioni: {edition._count?.lessons ?? 0}
         </span>

@@ -74,7 +74,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${bodyFont.variable} ${displayFont.variable} ${landingBodyFont.variable} ${landingDisplayFont.variable} min-h-screen bg-background text-foreground antialiased font-sans`}
+        className={`${bodyFont.variable} ${displayFont.variable} ${landingBodyFont.variable} ${landingDisplayFont.variable} min-h-screen overflow-x-hidden bg-background text-foreground antialiased font-sans`}
       >
         <Providers>{children}</Providers>
         <CookieBanner />

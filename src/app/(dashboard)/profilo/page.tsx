@@ -29,10 +29,10 @@ export default async function ProfiloPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Profilo</h1>
+      <h1 className="text-xl font-bold md:text-2xl">Profilo</h1>
 
-      <div className="rounded-lg border bg-card p-6">
-        <h2 className="text-lg font-semibold">Dati Azienda</h2>
+      <div className="rounded-lg border bg-card p-4 md:p-6">
+        <h2 className="text-base font-semibold md:text-lg">Dati Azienda</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-sm text-muted-foreground">Ragione Sociale</p>
@@ -56,8 +56,8 @@ export default async function ProfiloPage() {
         </p>
       </div>
 
-      <div id="cambio-password" className="rounded-lg border bg-card p-6">
-        <h2 className="text-lg font-semibold">Cambia Password</h2>
+      <div id="cambio-password" className="rounded-lg border bg-card p-4 md:p-6">
+        <h2 className="text-base font-semibold md:text-lg">Cambia Password</h2>
         <div className="mt-4">
           <ChangePasswordForm />
         </div>

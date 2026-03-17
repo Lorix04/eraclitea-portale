@@ -11,8 +11,9 @@ import {
   TICKET_STATUS_LABELS,
 } from "@/lib/tickets";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 type TicketCategory =
@@ -233,70 +234,77 @@ export default function AdminTicketPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-        <select
-          className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="all">Tutti gli stati</option>
-          <option value="OPEN">Aperti</option>
-          <option value="IN_PROGRESS">In corso</option>
-          <option value="RESOLVED">Risolti</option>
-          <option value="CLOSED">Chiusi</option>
-        </select>
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cerca per oggetto..."
+              className="min-h-[44px] w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+            />
+          </div>
+        }
+        activeFiltersCount={
+          [status !== "all", category !== "all", priority !== "all", clientId !== ""].filter(Boolean).length
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <select
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="all">Tutti gli stati</option>
+            <option value="OPEN">Aperti</option>
+            <option value="IN_PROGRESS">In corso</option>
+            <option value="RESOLVED">Risolti</option>
+            <option value="CLOSED">Chiusi</option>
+          </select>
 
-        <select
-          className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-        >
-          <option value="all">Tutte le categorie</option>
-          {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
-          value={priority}
-          onChange={(event) => setPriority(event.target.value)}
-        >
-          <option value="all">Tutte le priorita</option>
-          {Object.entries(TICKET_PRIORITY_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
-          value={clientId}
-          onChange={(event) => setClientId(event.target.value)}
-        >
-          <option value="">Tutti i clienti</option>
-          {clients
-            .filter((client) => Boolean(client.user?.id))
-            .map((client) => (
-              <option key={client.id} value={client.user?.id ?? ""}>
-                {client.ragioneSociale}
+          <select
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="all">Tutte le categorie</option>
+            {Object.entries(TICKET_CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
-        </select>
+          </select>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cerca per oggetto..."
-            className="min-h-[44px] w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
-          />
+          <select
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={priority}
+            onChange={(event) => setPriority(event.target.value)}
+          >
+            <option value="all">Tutte le priorita</option>
+            {Object.entries(TICKET_PRIORITY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={clientId}
+            onChange={(event) => setClientId(event.target.value)}
+          >
+            <option value="">Tutti i clienti</option>
+            {clients
+              .filter((client) => Boolean(client.user?.id))
+              .map((client) => (
+                <option key={client.id} value={client.user?.id ?? ""}>
+                  {client.ragioneSociale}
+                </option>
+              ))}
+          </select>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {isError ? (
         <ErrorMessage
@@ -305,84 +313,89 @@ export default function AdminTicketPage() {
         />
       ) : null}
 
-      {isLoading ? (
-        <TableSkeleton rows={8} columns={9} />
-      ) : (
-        <div className="rounded-lg border bg-card">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <table className="w-full min-w-[1024px] text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-4 py-3">Stato</th>
-                <th className="px-4 py-3">Priorita</th>
-                <th className="px-4 py-3">Oggetto</th>
-                <th className="px-4 py-3">Categoria</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Messaggi</th>
-                <th className="px-4 py-3">Ultimo aggiornamento</th>
-                <th className="px-4 py-3">Assegnato a</th>
-                <th className="px-4 py-3">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tickets.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                    Nessun ticket trovato con i filtri selezionati.
-                  </td>
-                </tr>
-              ) : (
-                tickets.map((ticket) => (
-                  <tr key={ticket.id} className="border-t">
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(
-                          ticket.status
-                        )}`}
-                      >
-                        {TICKET_STATUS_LABELS[ticket.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${getPriorityBadgeClass(
-                          ticket.priority
-                        )}`}
-                      >
-                        {TICKET_PRIORITY_LABELS[ticket.priority]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="max-w-[300px] truncate" title={ticket.subject}>
-                        {ticket.subject}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">{TICKET_CATEGORY_LABELS[ticket.category]}</td>
-                    <td className="px-4 py-3">{ticket.client.name}</td>
-                    <td className="px-4 py-3">{ticket.messagesCount}</td>
-                    <td className="px-4 py-3">
-                      <span title={new Date(ticket.updatedAt).toLocaleString("it-IT")}>
-                        {formatRelativeDate(ticket.updatedAt)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{ticket.assignedTo?.name ?? "-"}</td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/ticket/${ticket.id}`}
-                        className="inline-flex min-h-[36px] items-center rounded-md border px-2 text-xs hover:bg-muted"
-                        title="Apri ticket"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <ResponsiveTable<TicketListItem>
+        columns={[
+          {
+            key: "status",
+            header: "Stato",
+            isBadge: true,
+            render: (t) => (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(t.status)}`}
+              >
+                {TICKET_STATUS_LABELS[t.status]}
+              </span>
+            ),
+          },
+          {
+            key: "priority",
+            header: "Priorita",
+            isBadge: true,
+            render: (t) => (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-medium ${getPriorityBadgeClass(t.priority)}`}
+              >
+                {TICKET_PRIORITY_LABELS[t.priority]}
+              </span>
+            ),
+          },
+          {
+            key: "subject",
+            header: "Oggetto",
+            isPrimary: true,
+            render: (t) => (
+              <p className="max-w-[300px] truncate" title={t.subject}>
+                {t.subject}
+              </p>
+            ),
+          },
+          {
+            key: "category",
+            header: "Categoria",
+            hideOnCard: true,
+            render: (t) => TICKET_CATEGORY_LABELS[t.category],
+          },
+          {
+            key: "client",
+            header: "Cliente",
+            isSecondary: true,
+            render: (t) => t.client.name,
+          },
+          {
+            key: "messages",
+            header: "Messaggi",
+            render: (t) => t.messagesCount,
+          },
+          {
+            key: "updatedAt",
+            header: "Ultimo aggiornamento",
+            render: (t) => (
+              <span title={new Date(t.updatedAt).toLocaleString("it-IT")}>
+                {formatRelativeDate(t.updatedAt)}
+              </span>
+            ),
+          },
+          {
+            key: "assignedTo",
+            header: "Assegnato a",
+            render: (t) => t.assignedTo?.name ?? "-",
+          },
+        ] satisfies Column<TicketListItem>[]}
+        data={tickets}
+        keyExtractor={(t) => t.id}
+        loading={isLoading}
+        skeletonCount={8}
+        emptyMessage="Nessun ticket trovato con i filtri selezionati."
+        actions={(ticket) => (
+          <Link
+            href={`/admin/ticket/${ticket.id}`}
+            className="inline-flex min-h-[36px] items-center rounded-md border px-2 text-xs hover:bg-muted"
+            title="Apri ticket"
+          >
+            <Eye className="h-4 w-4" />
+          </Link>
+        )}
+      />
 
       {isFetching && !isLoading ? (
         <p className="text-xs text-muted-foreground">Aggiornamento in corso...</p>

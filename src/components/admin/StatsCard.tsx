@@ -15,17 +15,17 @@ export default function StatsCard({
   href?: string;
 }) {
   const content = (
-    <div className="flex items-center justify-between rounded-lg border bg-card p-4">
-      <div>
-        <p className="text-sm text-muted-foreground">{title}</p>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-2xl font-semibold">{value}</span>
+    <div className="flex items-center justify-between rounded-lg border bg-card p-3 md:p-4">
+      <div className="min-w-0">
+        <p className="truncate text-xs text-muted-foreground md:text-sm">{title}</p>
+        <div className="mt-1 flex items-baseline gap-1 md:mt-2 md:gap-2">
+          <span className="text-xl font-semibold md:text-2xl">{value}</span>
           {total !== undefined ? (
-            <span className="text-sm text-muted-foreground">/ {total}</span>
+            <span className="text-xs text-muted-foreground md:text-sm">/ {total}</span>
           ) : null}
         </div>
       </div>
-      <div className="text-muted-foreground">{icon}</div>
+      <div className="shrink-0 text-muted-foreground">{icon}</div>
     </div>
   );
 

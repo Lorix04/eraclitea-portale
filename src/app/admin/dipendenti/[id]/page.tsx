@@ -145,22 +145,22 @@ export default function AdminEmployeeDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <Link href="/admin/dipendenti" className="text-sm text-primary">
+      <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <Link href="/admin/dipendenti" className="text-xs text-primary md:text-sm">
             &larr; Torna ai dipendenti
           </Link>
-          <h1 className="mt-2 text-xl font-semibold">
+          <h1 className="mt-1 break-words text-lg font-semibold md:mt-2 md:text-xl">
             {employee.cognome} {employee.nome}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="break-all text-xs text-muted-foreground md:text-sm">
             CF: {employee.codiceFiscale} - Cliente:{" "}
             {employee.client?.ragioneSociale ?? "-"}
           </p>
         </div>
         <button
           type="button"
-          className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground"
+          className="shrink-0 rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground md:px-4 md:py-2 md:text-sm"
           onClick={() => setDeleteModalOpen(true)}
         >
           Elimina
@@ -273,7 +273,7 @@ export default function AdminEmployeeDetailPage() {
                 <p>Vuoi procedere comunque con la modifica?</p>
               </div>
 
-              <div className="modal-footer flex justify-end gap-2">
+              <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   className="rounded-md border px-4 py-2 text-sm"

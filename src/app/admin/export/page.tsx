@@ -171,7 +171,7 @@ export default function AdminExportPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <label className="flex flex-col gap-2 text-sm">
           Tipo di export
           <select

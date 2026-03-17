@@ -21,7 +21,7 @@ export default function AdminLayout({
         <div className="hidden md:flex">
           <Sidebar role="ADMIN" />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1 overflow-x-hidden">
           <header className="app-header relative z-40 flex items-center justify-between gap-3 px-4 py-3 md:flex-wrap md:gap-4 md:px-6 md:py-4">
             <div className="flex items-center gap-3">
               <MobileSidebar role="ADMIN" />

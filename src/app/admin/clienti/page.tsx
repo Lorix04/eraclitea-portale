@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, LogIn, Search, X } from "lucide-react";
+import { Check, Copy, LogIn, Search } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 type ClientRow = {
   id: string;
@@ -251,196 +252,194 @@ export default function AdminClientiPage() {
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
-            placeholder="Cerca per nome, P.IVA o email..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label="Cerca per nome, P.IVA o email"
-          />
-        </div>
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={isActive}
-          onChange={(event) => setIsActive(event.target.value)}
-          aria-label="Filtro stato clienti"
-        >
-          <option value="all">Tutti</option>
-          <option value="true">Attivi</option>
-          <option value="false">Disattivi</option>
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value)}
-          aria-label="Filtro categoria clienti"
-        >
-          <option value="">Tutte le categorie</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          value={`${sortBy}-${sortOrder}`}
-          onChange={(event) => {
-            const [field, order] = event.target.value.split("-");
-            setSortBy(field);
-            setSortOrder(order as "asc" | "desc");
-          }}
-          aria-label="Ordinamento clienti"
-        >
-          <option value="ragioneSociale-asc">Nome A-Z</option>
-          <option value="ragioneSociale-desc">Nome Z-A</option>
-          <option value="createdAt-desc">Piu recenti</option>
-          <option value="createdAt-asc">Piu antichi</option>
-          <option value="employeesCount-desc">Piu dipendenti</option>
-          <option value="employeesCount-asc">Meno dipendenti</option>
-        </select>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">
-            {clients.length} clienti
-          </span>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
-            onClick={resetFilters}
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
+              placeholder="Cerca per nome, P.IVA o email..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              aria-label="Cerca per nome, P.IVA o email"
+            />
+          </div>
+        }
+        activeFiltersCount={
+          (isActive !== "all" ? 1 : 0) +
+          (categoryFilter !== "" ? 1 : 0) +
+          (sortBy !== "ragioneSociale" || sortOrder !== "asc" ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={`${clients.length} clienti`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={isActive}
+            onChange={(event) => setIsActive(event.target.value)}
+            aria-label="Filtro stato clienti"
           >
-            <X className="mr-1 h-4 w-4" />
-            Resetta
-          </button>
+            <option value="all">Tutti</option>
+            <option value="true">Attivi</option>
+            <option value="false">Disattivi</option>
+          </select>
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            aria-label="Filtro categoria clienti"
+          >
+            <option value="">Tutte le categorie</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(event) => {
+              const [field, order] = event.target.value.split("-");
+              setSortBy(field);
+              setSortOrder(order as "asc" | "desc");
+            }}
+            aria-label="Ordinamento clienti"
+          >
+            <option value="ragioneSociale-asc">Nome A-Z</option>
+            <option value="ragioneSociale-desc">Nome Z-A</option>
+            <option value="createdAt-desc">Piu recenti</option>
+            <option value="createdAt-asc">Piu antichi</option>
+            <option value="employeesCount-desc">Piu dipendenti</option>
+            <option value="employeesCount-asc">Meno dipendenti</option>
+          </select>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {error ? <ErrorMessage message={error} onRetry={() => void loadClients()} /> : null}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[1040px] text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3">Ragione Sociale</th>
-              <th className="px-4 py-3">P.IVA</th>
-              <th className="px-4 py-3">Referente</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="hidden px-4 py-3 md:table-cell">Telefono</th>
-              <th className="hidden px-4 py-3 md:table-cell">Edizioni</th>
-              <th className="px-4 py-3">Categorie</th>
-              <th className="px-4 py-3">Stato</th>
-              <th className="px-4 py-3">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, row) => (
-                <tr key={`client-skel-${row}`} className="border-t">
-                  {Array.from({ length: 9 }).map((__, col) => (
-                    <td key={col} className="px-4 py-3">
-                      <Skeleton className="h-4 w-full" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : clients.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-muted-foreground">
-                  Nessun cliente trovato.
-                </td>
-              </tr>
-            ) : (
-              clients.map((client) => (
-                <tr key={client.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{client.ragioneSociale}</td>
-                  <td className="px-4 py-3">{client.piva}</td>
-                  <td className="px-4 py-3">{client.referenteNome}</td>
-                  <td className="px-4 py-3">{client.user?.email ?? client.referenteEmail}</td>
-                  <td className="hidden px-4 py-3 md:table-cell">
-                    {client.telefono || "-"}
-                  </td>
-                  <td className="hidden px-4 py-3 md:table-cell">
-                    {client.editionsCount ?? 0}
-                  </td>
-                  <td className="px-4 py-3">
-                    {client.categories && client.categories.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {client.categories.map((category) => (
-                          <span
-                            key={category.id}
-                            className="rounded-full px-2 py-1 text-xs text-white"
-                            style={{ backgroundColor: category.color ?? "#6B7280" }}
-                          >
-                            {category.name}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
+      <ResponsiveTable<ClientRow>
+        columns={[
+          {
+            key: "ragioneSociale",
+            header: "Ragione Sociale",
+            isPrimary: true,
+            render: (c) => c.ragioneSociale,
+          },
+          {
+            key: "piva",
+            header: "P.IVA",
+            hideOnCard: true,
+            render: (c) => c.piva,
+          },
+          {
+            key: "referente",
+            header: "Referente",
+            hideOnCard: true,
+            render: (c) => c.referenteNome,
+          },
+          {
+            key: "email",
+            header: "Email",
+            isSecondary: true,
+            render: (c) => c.user?.email ?? c.referenteEmail,
+          },
+          {
+            key: "telefono",
+            header: "Telefono",
+            render: (c) => c.telefono || "-",
+          },
+          {
+            key: "edizioni",
+            header: "Edizioni",
+            render: (c) => c.editionsCount ?? 0,
+          },
+          {
+            key: "categorie",
+            header: "Categorie",
+            isBadge: true,
+            render: (c) =>
+              c.categories && c.categories.length > 0 ? (
+                <span className="inline-flex flex-wrap gap-1">
+                  {c.categories.map((cat) => (
                     <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        client.isActive
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
+                      key={cat.id}
+                      className="rounded-full px-2 py-1 text-xs text-white"
+                      style={{ backgroundColor: cat.color ?? "#6B7280" }}
                     >
-                      {client.isActive ? "Attivo" : "Disattivo"}
+                      {cat.name}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center text-primary"
-                        onClick={() => handleImpersonate(client)}
-                        disabled={!client.user?.id || impersonatingClientId === client.id}
-                        title="Accedi come cliente"
-                      >
-                        <LogIn className="mr-1 h-3.5 w-3.5" />
-                        Accedi come
-                      </button>
-                      <Link
-                        href={`/admin/clienti/${client.id}/edit`}
-                        className="inline-flex min-h-[44px] items-center text-primary"
-                      >
-                        Modifica
-                      </Link>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center text-primary"
-                        onClick={() => handleToggleStatus(client.id)}
-                      >
-                        {client.isActive ? "Disattiva" : "Attiva"}
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center text-primary"
-                        onClick={() => setConfirmResetClient(client)}
-                      >
-                        Reset password
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center text-destructive"
-                        onClick={() => setConfirmClient(client)}
-                      >
-                        Elimina
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          </table>
-        </div>
-      </div>
+                  ))}
+                </span>
+              ) : (
+                "-"
+              ),
+          },
+          {
+            key: "stato",
+            header: "Stato",
+            isBadge: true,
+            render: (c) => (
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${
+                  c.isActive
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {c.isActive ? "Attivo" : "Disattivo"}
+              </span>
+            ),
+          },
+        ] satisfies Column<ClientRow>[]}
+        data={clients}
+        keyExtractor={(c) => c.id}
+        loading={loading}
+        skeletonCount={6}
+        emptyMessage="Nessun cliente trovato."
+        actions={(client) => (
+          <div className="grid grid-cols-2 gap-2 text-xs md:flex md:flex-wrap">
+            <button
+              type="button"
+              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
+              onClick={() => handleImpersonate(client)}
+              disabled={!client.user?.id || impersonatingClientId === client.id}
+              title="Accedi come cliente"
+            >
+              <LogIn className="mr-1 h-3.5 w-3.5" />
+              Accedi come
+            </button>
+            <Link
+              href={`/admin/clienti/${client.id}/edit`}
+              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
+            >
+              Modifica
+            </Link>
+            <button
+              type="button"
+              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
+              onClick={() => handleToggleStatus(client.id)}
+            >
+              {client.isActive ? "Disattiva" : "Attiva"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-[36px] items-center justify-center rounded-md border px-2 py-1 text-primary md:min-h-[44px] md:border-0"
+              onClick={() => setConfirmResetClient(client)}
+            >
+              Reset pwd
+            </button>
+            <button
+              type="button"
+              className="col-span-2 inline-flex min-h-[36px] items-center justify-center rounded-md border border-destructive/30 px-2 py-1 text-destructive md:col-span-1 md:min-h-[44px] md:border-0"
+              onClick={() => setConfirmClient(client)}
+            >
+              Elimina
+            </button>
+          </div>
+        )}
+      />
 
       {confirmClient && mounted
         ? createPortal(
@@ -458,7 +457,7 @@ export default function AdminClientiPage() {
                     ? Questa azione è irreversibile.
                   </p>
                 </div>
-                <div className="modal-footer flex justify-end gap-3">
+                <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"
@@ -500,7 +499,7 @@ export default function AdminClientiPage() {
                     .
                   </p>
                 </div>
-                <div className="modal-footer flex justify-end gap-3">
+                <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
                   <button
                     type="button"
                     className="rounded-md border px-4 py-2 text-sm"

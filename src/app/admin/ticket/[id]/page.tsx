@@ -332,7 +332,7 @@ export default function AdminTicketDetailPage({ params }: { params: { id: string
       <div className="rounded-lg border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <h1 className="text-lg font-semibold">
+            <h1 className="break-words text-base font-semibold md:text-lg">
               Ticket #{data.id.slice(-6).toUpperCase()} - {data.subject}
             </h1>
             <div className="flex flex-wrap items-center gap-2 text-xs">

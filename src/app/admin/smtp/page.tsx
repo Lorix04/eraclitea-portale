@@ -804,7 +804,7 @@ export default function EmailSettingsPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Cerca account..."
-              className="w-64 rounded-lg border px-3 py-1.5 pl-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-lg border px-3 py-1.5 pl-9 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:w-64"
             />
           </div>
         </div>
@@ -1021,7 +1021,7 @@ export default function EmailSettingsPage() {
                 autoFocus
               />
             </div>
-            <div className="modal-footer flex justify-end gap-2">
+            <div className="modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => {

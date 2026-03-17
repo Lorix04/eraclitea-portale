@@ -453,17 +453,17 @@ export default function EmailLogPage() {
       </div>
 
       <div className="rounded-lg border bg-white p-4">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2 md:gap-3">
           <button
             type="button"
             onClick={() => void handleRetryBulk(Array.from(selectedIds))}
             disabled={selectedIds.size === 0 || actionLoading !== null}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs disabled:opacity-50 md:gap-2 md:px-3 md:py-2 md:text-sm"
           >
             {actionLoading === "retry-bulk" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin md:h-4 md:w-4" />
             ) : (
-              <RefreshCcw className="h-4 w-4" />
+              <RefreshCcw className="h-3.5 w-3.5 md:h-4 md:w-4" />
             )}
             Retry selezionate ({selectedIds.size})
           </button>
@@ -471,9 +471,9 @@ export default function EmailLogPage() {
             type="button"
             onClick={() => void handleRetryBulk()}
             disabled={actionLoading !== null}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs disabled:opacity-50 md:gap-2 md:px-3 md:py-2 md:text-sm"
           >
-            <PlayCircle className="h-4 w-4" />
+            <PlayCircle className="h-3.5 w-3.5 md:h-4 md:w-4" />
             Retry tutte ritentabili
           </button>
           <button

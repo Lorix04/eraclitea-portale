@@ -153,8 +153,8 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-lg font-semibold md:text-xl">Dashboard</h1>
+          <p className="text-xs text-muted-foreground md:text-sm">
             Panoramica corsi, scadenze e stato formativo.
           </p>
         </div>
@@ -167,21 +167,21 @@ export default function DashboardPage() {
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.id} className="rounded-lg border bg-card p-4 shadow-sm">
+            <div key={card.id} className="rounded-lg border bg-card p-3 shadow-sm md:p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <span className={`rounded-md p-1.5 ${card.bg}`}>
-                  <Icon className={`h-4 w-4 ${card.accent}`} />
+                <p className="truncate text-xs text-muted-foreground">{card.label}</p>
+                <span className={`shrink-0 rounded-md p-1 md:p-1.5 ${card.bg}`}>
+                  <Icon className={`h-3.5 w-3.5 md:h-4 md:w-4 ${card.accent}`} />
                 </span>
               </div>
-              <p className="mt-3 text-2xl font-semibold">{card.value}</p>
+              <p className="mt-2 text-xl font-semibold md:mt-3 md:text-2xl">{card.value}</p>
             </div>
           );
         })}
       </div>
 
-      <section className="rounded-lg border bg-card p-5 shadow-sm">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
+      <section className="rounded-lg border bg-card p-4 shadow-sm md:p-5">
+        <h2 className="flex items-center gap-2 text-sm font-semibold md:text-base">
           <CalendarClock className="h-4 w-4" />
           Prossime scadenze
         </h2>
@@ -197,9 +197,9 @@ export default function DashboardPage() {
                 return (
                   <li
                     key={`deadline-registry-${index}`}
-                    className="rounded-md border bg-background/70 p-3 text-sm"
+                    className="rounded-md border bg-background/70 p-3 text-xs md:text-sm"
                   >
-                    <p className="font-medium">
+                    <p className="font-medium break-words">
                       Deadline anagrafiche: {item.courseTitle} (Ed. #{item.editionNumber})
                     </p>
                     <p className="text-muted-foreground">
@@ -213,9 +213,9 @@ export default function DashboardPage() {
               return (
                 <li
                   key={`deadline-certificate-${index}`}
-                  className="rounded-md border bg-background/70 p-3 text-sm"
+                  className="rounded-md border bg-background/70 p-3 text-xs md:text-sm"
                 >
-                  <p className="font-medium">
+                  <p className="font-medium break-words">
                     Attestato in scadenza: {item.courseTitle} - {item.employeeName}
                   </p>
                   <p className="text-muted-foreground">
@@ -229,8 +229,8 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section className="rounded-lg border bg-card p-5 shadow-sm">
-        <h2 className="text-base font-semibold">Edizioni recenti</h2>
+      <section className="rounded-lg border bg-card p-4 shadow-sm md:p-5">
+        <h2 className="text-sm font-semibold md:text-base">Edizioni recenti</h2>
         {data.recentEditions.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             Nessuna edizione disponibile.
@@ -249,15 +249,23 @@ export default function DashboardPage() {
               return (
                 <div
                   key={edition.id}
-                  className="rounded-md border bg-background/70 p-4"
+                  className="rounded-md border bg-background/70 p-3 md:p-4"
                 >
-                  <p className="text-sm font-semibold">
+                  <p className="text-sm font-semibold break-words">
                     {edition.courseTitle} - Ed. #{edition.editionNumber}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Periodo: {edition.startDate ? formatItalianDate(edition.startDate) : "-"} -{" "}
-                    {edition.endDate ? formatItalianDate(edition.endDate) : "-"} | Dipendenti: {" "}
-                    {edition.registrationCount}
+                    <span className="md:hidden">
+                      {edition.startDate ? formatItalianDate(edition.startDate) : "-"} - {edition.endDate ? formatItalianDate(edition.endDate) : "-"}
+                    </span>
+                    <span className="hidden md:inline">
+                      Periodo: {edition.startDate ? formatItalianDate(edition.startDate) : "-"} -{" "}
+                      {edition.endDate ? formatItalianDate(edition.endDate) : "-"} | Dipendenti: {" "}
+                      {edition.registrationCount}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground md:hidden">
+                    Dipendenti: {edition.registrationCount}
                   </p>
 
                   {showDeadlineWarning && edition.deadlineRegistry ? (

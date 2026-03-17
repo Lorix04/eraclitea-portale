@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, Search, Upload, X } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -281,9 +282,9 @@ function ClientDipendentiContent() {
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full md:w-64">
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 pl-9 text-sm"
@@ -292,8 +293,18 @@ function ClientDipendentiContent() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+        }
+        activeFiltersCount={
+          (editionId ? 1 : 0) +
+          (certStatus !== "all" ? 1 : 0) +
+          (sortOrder !== "asc" ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={`${totalCount} dipendenti trovati`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
           <select
-            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={editionId}
             onChange={(event) => setEditionId(event.target.value)}
             aria-label="Filtro edizione"
@@ -306,7 +317,7 @@ function ClientDipendentiContent() {
             ))}
           </select>
           <select
-            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={certStatus}
             onChange={(event) => setCertStatus(event.target.value)}
             aria-label="Filtro attestati"
@@ -316,7 +327,7 @@ function ClientDipendentiContent() {
             <option value="without">Senza attestato</option>
           </select>
           <select
-            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={sortOrder}
             onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
             aria-label="Ordinamento dipendenti"
@@ -324,21 +335,8 @@ function ClientDipendentiContent() {
             <option value="asc">Nome A-Z</option>
             <option value="desc">Nome Z-A</option>
           </select>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {totalCount} dipendenti trovati
-            </span>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
-              onClick={resetFilters}
-            >
-              <X className="mr-1 h-4 w-4" />
-              Resetta
-            </button>
-          </div>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {isError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">

@@ -9,15 +9,15 @@ import {
   Plus,
   Search,
   Trash2,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 type TeacherRow = TeacherFormValue & {
   _count?: { assignments?: number };
@@ -274,8 +274,8 @@ export default function AdminDocentiPage() {
         </button>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
+      <MobileFilterPanel
+        searchBar={
           <div className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -285,9 +285,16 @@ export default function AdminDocentiPage() {
               className="min-h-[44px] w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
             />
           </div>
-
+        }
+        activeFiltersCount={
+          [activeFilter !== "all", categoryIdFilter !== "", provinceFilter !== "", regionFilter !== ""].filter(Boolean).length
+        }
+        onReset={resetFilters}
+        resultCount={<>{teachers.length} docenti</>}
+      >
+        <div className="space-y-3 md:space-y-0 md:flex md:flex-wrap md:items-end md:gap-3">
           <select
-            className="min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full md:w-auto min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
             value={activeFilter}
             onChange={(event) => setActiveFilter(event.target.value as ActiveFilter)}
           >
@@ -296,11 +303,7 @@ export default function AdminDocentiPage() {
             <option value="false">Inattivi</option>
           </select>
 
-          <span className="text-sm text-muted-foreground">{teachers.length} docenti</span>
-        </div>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex min-w-[180px] flex-col gap-1 text-xs text-muted-foreground">
+          <label className="flex w-full md:min-w-[180px] md:w-auto flex-col gap-1 text-xs text-muted-foreground">
             Area
             <select
               className="min-h-[40px] rounded-md border bg-background px-3 py-2 text-sm text-foreground"
@@ -316,7 +319,7 @@ export default function AdminDocentiPage() {
             </select>
           </label>
 
-          <label className="flex min-w-[220px] flex-col gap-1 text-xs text-muted-foreground">
+          <label className="flex w-full md:min-w-[220px] md:w-auto flex-col gap-1 text-xs text-muted-foreground">
             Provincia
             <input
               list="teacher-page-province-options"
@@ -335,7 +338,7 @@ export default function AdminDocentiPage() {
             </datalist>
           </label>
 
-          <label className="flex min-w-[200px] flex-col gap-1 text-xs text-muted-foreground">
+          <label className="flex w-full md:min-w-[200px] md:w-auto flex-col gap-1 text-xs text-muted-foreground">
             Regione
             <select
               className="min-h-[40px] rounded-md border bg-background px-3 py-2 text-sm text-foreground"
@@ -350,17 +353,8 @@ export default function AdminDocentiPage() {
               ))}
             </select>
           </label>
-
-          <button
-            type="button"
-            className="inline-flex min-h-[40px] items-center rounded-md border px-3 py-2 text-sm"
-            onClick={resetFilters}
-          >
-            <X className="mr-2 h-4 w-4" />
-            Resetta filtri
-          </button>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {teachersQuery.isError ? (
         <ErrorMessage
@@ -369,113 +363,118 @@ export default function AdminDocentiPage() {
         />
       ) : null}
 
-      {teachersQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={9} />
-      ) : (
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <table className="w-full min-w-[1040px] text-sm">
-            <thead className="bg-muted/40 text-left">
-              <tr>
-                <th className="px-4 py-3">Nome completo</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Telefono</th>
-                <th className="px-4 py-3">Specializzazione</th>
-                <th className="px-4 py-3">Provincia</th>
-                <th className="px-4 py-3">Aree</th>
-                <th className="px-4 py-3">Lezioni assegnate</th>
-                <th className="px-4 py-3">Stato</th>
-                <th className="px-4 py-3">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teachers.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                    Nessun docente trovato.
-                  </td>
-                </tr>
+      <ResponsiveTable<TeacherRow>
+        columns={[
+          {
+            key: "name",
+            header: "Nome completo",
+            isPrimary: true,
+            render: (t) => `${t.firstName} ${t.lastName}`,
+          },
+          {
+            key: "email",
+            header: "Email",
+            isSecondary: true,
+            render: (t) => t.email || "-",
+          },
+          {
+            key: "phone",
+            header: "Telefono",
+            render: (t) => t.phone || "-",
+          },
+          {
+            key: "specialization",
+            header: "Specializzazione",
+            render: (t) => t.specialization || "-",
+          },
+          {
+            key: "province",
+            header: "Provincia",
+            render: (t) => formatProvince(t.province),
+          },
+          {
+            key: "categories",
+            header: "Aree",
+            isBadge: true,
+            render: (t) =>
+              t.categories && t.categories.length > 0 ? (
+                <span className="inline-flex flex-wrap items-center gap-1">
+                  {t.categories.slice(0, 2).map((cat) => (
+                    <span
+                      key={cat.id}
+                      className="rounded-full px-2 py-0.5 text-[11px] text-white"
+                      style={{ backgroundColor: cat.color ?? "#6B7280" }}
+                    >
+                      {cat.name}
+                    </span>
+                  ))}
+                  {t.categories.length > 2 ? (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      +{t.categories.length - 2}
+                    </span>
+                  ) : null}
+                </span>
               ) : (
-                teachers.map((teacher) => (
-                  <tr key={teacher.id} className="border-t">
-                    <td className="px-4 py-3 font-medium">
-                      {teacher.firstName} {teacher.lastName}
-                    </td>
-                    <td className="px-4 py-3">{teacher.email || "-"}</td>
-                    <td className="px-4 py-3">{teacher.phone || "-"}</td>
-                    <td className="px-4 py-3">{teacher.specialization || "-"}</td>
-                    <td className="px-4 py-3">{formatProvince(teacher.province)}</td>
-                    <td className="px-4 py-3">
-                      {teacher.categories && teacher.categories.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-1">
-                          {teacher.categories.slice(0, 2).map((category) => (
-                            <span
-                              key={category.id}
-                              className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                              style={{ backgroundColor: category.color ?? "#6B7280" }}
-                            >
-                              {category.name}
-                            </span>
-                          ))}
-                          {teacher.categories.length > 2 ? (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                              +{teacher.categories.length - 2}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{teacher._count?.assignments ?? 0}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${
-                          teacher.active
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {teacher.active ? "Attivo" : "Inattivo"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/docenti/${teacher.id}`}
-                          className="rounded-md border px-2 py-1 text-xs"
-                        >
-                          Visualizza
-                        </Link>
-                        <button
-                          type="button"
-                          className="inline-flex min-h-[32px] items-center rounded-md border px-2 py-1 text-xs"
-                          onClick={() => {
-                            setEditingTeacher(teacher);
-                            setModalOpen(true);
-                          }}
-                        >
-                          <Pencil className="mr-1 h-3.5 w-3.5" />
-                          Modifica
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex min-h-[32px] items-center rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
-                          onClick={() => setTeacherToDelete(teacher)}
-                        >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" />
-                          Elimina
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            </table>
+                "-"
+              ),
+          },
+          {
+            key: "assignments",
+            header: "Lezioni assegnate",
+            render: (t) => t._count?.assignments ?? 0,
+          },
+          {
+            key: "status",
+            header: "Stato",
+            isBadge: true,
+            render: (t) => (
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${
+                  t.active
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {t.active ? "Attivo" : "Inattivo"}
+              </span>
+            ),
+          },
+        ] satisfies Column<TeacherRow>[]}
+        data={teachers}
+        keyExtractor={(t) => t.id!}
+        loading={teachersQuery.isLoading}
+        skeletonCount={8}
+        emptyMessage="Nessun docente trovato."
+        actions={(teacher) => (
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/admin/docenti/${teacher.id}`}
+              className="rounded-md border px-2 py-1 text-xs"
+            >
+              Visualizza
+            </Link>
+            <button
+              type="button"
+              className="inline-flex min-h-[32px] items-center rounded-md border px-2 py-1 text-xs"
+              onClick={() => {
+                setEditingTeacher(teacher);
+                setModalOpen(true);
+              }}
+            >
+              <Pencil className="mr-1 h-3.5 w-3.5" />
+              Modifica
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-[32px] items-center rounded-md border border-red-200 px-2 py-1 text-xs text-red-700"
+              onClick={() => setTeacherToDelete(teacher)}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              Elimina
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      />
 
       <TeacherModal
         open={modalOpen}

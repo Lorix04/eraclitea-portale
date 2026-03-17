@@ -3,12 +3,13 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, Copy, Plus, Search, Trash2, X } from "lucide-react";
+import { Copy, Plus, Search, Trash2 } from "lucide-react";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
 import { useDebounce } from "@/hooks/useDebounce";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
@@ -240,15 +241,6 @@ function AdminEdizioniContent() {
     setSortOrder("desc");
   };
 
-  const sortedColumns = useMemo(
-    () =>
-      SORT_COLUMNS.map((column) => ({
-        ...column,
-        isActive: sortBy === column.key,
-      })),
-    [sortBy]
-  );
-
   const getLuoghiDisplay = (edition: EditionRow) => {
     const luoghiUnici = Array.from(
       new Set(
@@ -307,21 +299,32 @@ function AdminEdizioniContent() {
         </button>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-4">
+      <MobileFilterPanel
+        searchBar={
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               placeholder="Cerca per corso o cliente..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-[240px] rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm md:w-[240px]"
               aria-label="Cerca per corso o cliente"
             />
           </div>
-
+        }
+        activeFiltersCount={
+          (clientId ? 1 : 0) +
+          (status !== "all" ? 1 : 0) +
+          (categoryId ? 1 : 0) +
+          (dateFrom ? 1 : 0) +
+          (dateTo ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={`${editions.length} edizioni trovate`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
           <select
-            className="w-[200px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
             value={clientId || "all"}
             onChange={(event) =>
               setClientId(event.target.value === "all" ? "" : event.target.value)
@@ -336,7 +339,7 @@ function AdminEdizioniContent() {
           </select>
 
           <select
-            className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[180px]"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
@@ -348,7 +351,7 @@ function AdminEdizioniContent() {
           </select>
 
           <select
-            className="w-[200px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
             value={categoryId || "all"}
             onChange={(event) =>
               setCategoryId(
@@ -363,158 +366,151 @@ function AdminEdizioniContent() {
               </option>
             ))}
           </select>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 md:w-auto">
             <span className="text-sm text-muted-foreground">Da:</span>
             <input
               type="date"
               value={dateFrom}
               onChange={(event) => setDateFrom(event.target.value)}
-              className="w-[150px] rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border bg-background px-2 py-2 text-sm md:w-[150px] md:px-3"
               aria-label="Data da"
             />
+          </div>
+          <div className="flex w-full items-center gap-2 md:w-auto">
             <span className="text-sm text-muted-foreground">A:</span>
             <input
               type="date"
               value={dateTo}
               onChange={(event) => setDateTo(event.target.value)}
-              className="w-[150px] rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border bg-background px-2 py-2 text-sm md:w-[150px] md:px-3"
               aria-label="Data a"
             />
           </div>
-
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md border px-2 py-1 text-xs"
-            onClick={resetFilters}
-          >
-            <X className="mr-1 h-4 w-4" />
-            Resetta filtri
-          </button>
-
-          <span className="ml-auto text-sm text-muted-foreground">
-            {editions.length} edizioni trovate
-          </span>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {error ? <ErrorMessage message={error} onRetry={() => void fetchEditions()} /> : null}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              {sortedColumns.map((column) => (
-                <th key={column.key} className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => handleSort(column.key)}
-                    className="inline-flex items-center gap-2 text-sm font-semibold"
-                  >
-                    {column.label}
-                    <ArrowUpDown
-                      className={`h-3.5 w-3.5 ${
-                        column.isActive
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                  </button>
-                </th>
-              ))}
-              <th className="px-4 py-3">Presenza min.</th>
-              <th className="px-4 py-3">Luogo</th>
-              <th className="px-4 py-3">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, row) => (
-                <tr key={`edition-skel-${row}`} className="border-t">
-                  {Array.from({ length: 11 }).map((__, col) => (
-                    <td key={col} className="px-4 py-3">
-                      <Skeleton className="h-4 w-full" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : editions.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="px-4 py-6 text-center text-muted-foreground">
-                  Nessuna edizione trovata.
-                </td>
-              </tr>
-            ) : (
-              editions.map((edition) => (
-                <tr key={edition.id} className="border-t">
-                  <td className="px-4 py-3">{edition.course?.title ?? "-"}</td>
-                  <td className="px-4 py-3">
-                    {edition.client?.ragioneSociale ?? "-"}
-                  </td>
-                  <td className="px-4 py-3">#{edition.editionNumber}</td>
-                  <td className="px-4 py-3">
-                    {edition.startDate ? formatItalianDate(edition.startDate) : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {edition.endDate ? formatItalianDate(edition.endDate) : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {edition.deadlineRegistry
-                      ? formatItalianDate(edition.deadlineRegistry)
-                      : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        STATUS_BADGE[edition.status]
-                      }`}
-                    >
-                      {STATUS_LABELS[edition.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {edition._count?.registrations ?? 0}
-                  </td>
-                  <td className="px-4 py-3">{getPresenzaMinimaDisplay(edition)}</td>
-                  <td className="px-4 py-3">{getLuoghiDisplay(edition)}</td>
-                  <td className="px-4 py-3">
-                    {edition.course?.id ? (
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/admin/corsi/${edition.course.id}/edizioni/${edition.id}`}
-                          className="inline-flex items-center rounded-md border px-2 py-1 text-xs text-primary"
-                        >
-                          Apri
-                        </Link>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                          onClick={() => setDuplicateTarget(edition)}
-                        >
-                          <Copy className="h-3 w-3" />
-                          Duplica
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive"
-                          onClick={() => setDeleteTarget(edition)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          Elimina
-                        </button>
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ResponsiveTable<EditionRow>
+        columns={[
+          {
+            key: "course",
+            header: "Corso",
+            isPrimary: true,
+            sortable: true,
+            render: (e) => e.course?.title ?? "-",
+          },
+          {
+            key: "client",
+            header: "Cliente",
+            isSecondary: true,
+            sortable: true,
+            render: (e) => e.client?.ragioneSociale ?? "-",
+          },
+          {
+            key: "editionNumber",
+            header: "Edizione",
+            sortable: true,
+            hideOnCard: true,
+            render: (e) => `#${e.editionNumber}`,
+          },
+          {
+            key: "startDate",
+            header: "Inizio",
+            sortable: true,
+            render: (e) =>
+              e.startDate ? formatItalianDate(e.startDate) : "-",
+          },
+          {
+            key: "endDate",
+            header: "Fine",
+            sortable: true,
+            render: (e) =>
+              e.endDate ? formatItalianDate(e.endDate) : "-",
+          },
+          {
+            key: "deadlineRegistry",
+            header: "Deadline",
+            sortable: true,
+            hideOnCard: true,
+            render: (e) =>
+              e.deadlineRegistry
+                ? formatItalianDate(e.deadlineRegistry)
+                : "-",
+          },
+          {
+            key: "status",
+            header: "Stato",
+            isBadge: true,
+            sortable: true,
+            render: (e) => (
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${STATUS_BADGE[e.status]}`}
+              >
+                {STATUS_LABELS[e.status]}
+              </span>
+            ),
+          },
+          {
+            key: "participants",
+            header: "Partecipanti",
+            sortable: true,
+            render: (e) => e._count?.registrations ?? 0,
+          },
+          {
+            key: "presenzaMinima",
+            header: "Presenza min.",
+            hideOnCard: true,
+            render: (e) => getPresenzaMinimaDisplay(e),
+          },
+          {
+            key: "luogo",
+            header: "Luogo",
+            render: (e) => getLuoghiDisplay(e),
+          },
+        ] satisfies Column<EditionRow>[]}
+        data={editions}
+        keyExtractor={(e) => e.id}
+        loading={loading}
+        skeletonCount={6}
+        emptyMessage="Nessuna edizione trovata."
+        sortKey={sortBy}
+        sortOrder={sortOrder}
+        onSort={(key) =>
+          handleSort(key as (typeof SORT_COLUMNS)[number]["key"])
+        }
+        actions={(edition) =>
+          edition.course?.id ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/corsi/${edition.course.id}/edizioni/${edition.id}`}
+                className="inline-flex items-center rounded-md border px-2 py-1 text-xs text-primary"
+              >
+                Apri
+              </Link>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
+                onClick={() => setDuplicateTarget(edition)}
+              >
+                <Copy className="h-3 w-3" />
+                Duplica
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive"
+                onClick={() => setDeleteTarget(edition)}
+              >
+                <Trash2 className="h-3 w-3" />
+                Elimina
+              </button>
+            </div>
+          ) : (
+            "-"
+          )
+        }
+      />
 
       {deleteTarget ? (
         <DeleteEditionModal
@@ -569,7 +565,7 @@ export default function AdminEdizioniPage() {
     <Suspense
       fallback={
         <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <Skeleton className="h-4 w-40" />
+          <div className="h-4 w-40 animate-pulse rounded bg-muted" />
         </div>
       }
     >

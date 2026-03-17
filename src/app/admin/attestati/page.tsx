@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download, Pencil, Plus, Search, Trash2, User, X } from "lucide-react";
+import { Download, Pencil, Plus, Search, Trash2, User } from "lucide-react";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
 type CertificateRow = {
@@ -372,10 +373,40 @@ export default function AdminAttestatiPage() {
         <ErrorMessage message={error} onRetry={() => void fetchCertificates()} />
       ) : null}
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-4">
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              placeholder="Cerca per nome file..."
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm md:w-[200px]"
+              aria-label="Cerca per nome file"
+            />
+          </div>
+        }
+        activeFiltersCount={
+          (clientId ? 1 : 0) +
+          (courseId ? 1 : 0) +
+          (employeeId ? 1 : 0) +
+          (courseEditionId ? 1 : 0) +
+          (sortOrder !== "desc" ? 1 : 0) +
+          (expiryStatus !== "all" ? 1 : 0) +
+          (searchEmployee ? 1 : 0) +
+          (period !== "all" ? 1 : 0) +
+          (dateFrom ? 1 : 0) +
+          (dateTo ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={resultLabel}
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-4">
           <select
-            className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[180px]"
             value={clientId ?? "all"}
             onChange={(event) => {
               const value = event.target.value;
@@ -392,7 +423,7 @@ export default function AdminAttestatiPage() {
           </select>
 
           <select
-            className="w-[200px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[200px]"
             value={courseId ?? "all"}
             onChange={(event) => {
               const value = event.target.value;
@@ -410,7 +441,7 @@ export default function AdminAttestatiPage() {
 
           {clientId ? (
             <select
-              className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[180px]"
               value={employeeId ?? "all"}
               onChange={(event) => {
                 const value = event.target.value;
@@ -428,7 +459,7 @@ export default function AdminAttestatiPage() {
           ) : null}
 
           <select
-            className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[180px]"
             value={courseEditionId ?? "all"}
             onChange={(event) => {
               const value = event.target.value;
@@ -446,19 +477,7 @@ export default function AdminAttestatiPage() {
           </select>
 
           <select
-            className="w-[180px] rounded-md border bg-background px-3 py-2 text-sm"
-            value={sortOrder}
-            onChange={(event) => {
-              setSortOrder(event.target.value as "asc" | "desc");
-              setPage(1);
-            }}
-          >
-            <option value="desc">Più recenti prima</option>
-            <option value="asc">Più antichi prima</option>
-          </select>
-
-          <select
-            className="w-[220px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[180px]"
             value={expiryStatus}
             onChange={(event) => {
               setExpiryStatus(event.target.value);
@@ -470,22 +489,18 @@ export default function AdminAttestatiPage() {
             <option value="expiring">In scadenza (&lt; 90gg)</option>
             <option value="expired">Scaduti</option>
           </select>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              placeholder="Cerca per nome file..."
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              className="w-[200px] rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
-              aria-label="Cerca per nome file"
-            />
-          </div>
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[180px]"
+            value={sortOrder}
+            onChange={(event) => {
+              setSortOrder(event.target.value as "asc" | "desc");
+              setPage(1);
+            }}
+          >
+            <option value="desc">Piu recenti prima</option>
+            <option value="asc">Piu antichi prima</option>
+          </select>
 
           <div className="relative">
             <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -496,13 +511,13 @@ export default function AdminAttestatiPage() {
                 setSearchEmployee(event.target.value);
                 setPage(1);
               }}
-              className="w-[200px] rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm lg:w-[200px]"
               aria-label="Cerca per dipendente"
             />
           </div>
 
           <select
-            className="w-[160px] rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm lg:w-[160px]"
             value={period}
             onChange={(event) => {
               setPeriod(event.target.value);
@@ -516,7 +531,7 @@ export default function AdminAttestatiPage() {
             <option value="year">Ultimo anno</option>
           </select>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 lg:w-auto">
             <span className="text-sm text-muted-foreground">Da:</span>
             <input
               type="date"
@@ -526,9 +541,11 @@ export default function AdminAttestatiPage() {
                 setPeriod("all");
                 setPage(1);
               }}
-              className="w-[150px] rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border bg-background px-2 py-2 text-sm lg:w-[150px] lg:px-3"
               aria-label="Data da"
             />
+          </div>
+          <div className="flex w-full items-center gap-2 lg:w-auto">
             <span className="text-sm text-muted-foreground">A:</span>
             <input
               type="date"
@@ -538,160 +555,122 @@ export default function AdminAttestatiPage() {
                 setPeriod("all");
                 setPage(1);
               }}
-              className="w-[150px] rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-md border bg-background px-2 py-2 text-sm lg:w-[150px] lg:px-3"
               aria-label="Data a"
             />
           </div>
-
-          <div className="ml-auto flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{resultLabel}</span>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-md border px-2 py-1 text-xs"
-              onClick={resetFilters}
-            >
-              <X className="mr-1 h-4 w-4" />
-              Resetta
-            </button>
-          </div>
         </div>
-      </div>
+      </MobileFilterPanel>
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[1180px] text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3">Nome File</th>
-              <th className="px-4 py-3">Dipendente</th>
-              <th className="px-4 py-3">Cliente</th>
-              <th className="px-4 py-3">Corso</th>
-              <th className="px-4 py-3">Data Rilascio</th>
-              <th className="px-4 py-3">Data Scadenza</th>
-              <th className="px-4 py-3">Stato</th>
-              <th className="px-4 py-3">Caricato</th>
-              <th className="px-4 py-3 text-right">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, index) => (
-                <tr key={`skeleton-${index}`} className="border-t">
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-40" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-32" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-28" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-36" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-24" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-24" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-6 w-24 rounded-full" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Skeleton className="h-4 w-24" />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-8 rounded-md" />
-                      <Skeleton className="h-8 w-8 rounded-md" />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : certificates.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="py-8 text-center text-muted-foreground">
-                  Nessun attestato trovato
-                </td>
-              </tr>
-            ) : (
-              certificates.map((cert) => {
-                const fileName = cert.filePath
-                  ? getFileName(cert.filePath)
-                  : "Attestato";
-                const uploadedAt = cert.uploadedAt || cert.createdAt || null;
-                return (
-                  <tr key={cert.id} className="border-t">
-                    <td className="max-w-[280px] truncate px-4 py-3 font-medium" title={fileName}>
-                      {fileName}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/dipendenti/${cert.employeeId}`}
-                        className="text-primary hover:underline"
-                      >
-                        {cert.employee?.nome} {cert.employee?.cognome}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.client?.ragioneSociale || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.courseEdition ? (
-                        <span>{getEditionLabel(cert.courseEdition, true)}</span>
-                      ) : (
-                        <span className="italic text-muted-foreground">Esterno</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.achievedAt ? formatItalianDate(cert.achievedAt) : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.expiresAt ? formatItalianDate(cert.expiresAt) : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getExpiryBadge(cert.expiresAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {uploadedAt ? formatItalianDate(uploadedAt) : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
-                          onClick={() => setEditCertificateId(cert.id)}
-                          title="Modifica attestato"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
-                          onClick={() => handleDownload(cert.id, fileName)}
-                          title="Scarica"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="min-h-[44px] rounded-md border px-2 py-1 text-xs text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteClick(cert, fileName)}
-                          title="Elimina"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-          </table>
-        </div>
-      </div>
+      <ResponsiveTable<CertificateRow>
+        columns={[
+          {
+            key: "employee",
+            header: "Dipendente",
+            isPrimary: true,
+            render: (cert) => (
+              <Link
+                href={`/admin/dipendenti/${cert.employeeId}`}
+                className="text-primary hover:underline"
+              >
+                {cert.employee?.nome} {cert.employee?.cognome}
+              </Link>
+            ),
+          },
+          {
+            key: "fileName",
+            header: "Nome File",
+            isSecondary: true,
+            render: (cert) => {
+              const name = cert.filePath ? getFileName(cert.filePath) : "Attestato";
+              return (
+                <span className="max-w-[280px] truncate" title={name}>
+                  {name}
+                </span>
+              );
+            },
+          },
+          {
+            key: "client",
+            header: "Cliente",
+            hideOnCard: true,
+            render: (cert) => cert.client?.ragioneSociale || "-",
+          },
+          {
+            key: "course",
+            header: "Corso",
+            render: (cert) =>
+              cert.courseEdition ? (
+                <span>{getEditionLabel(cert.courseEdition, true)}</span>
+              ) : (
+                <span className="italic text-muted-foreground">Esterno</span>
+              ),
+          },
+          {
+            key: "achievedAt",
+            header: "Data Rilascio",
+            render: (cert) =>
+              cert.achievedAt ? formatItalianDate(cert.achievedAt) : "-",
+          },
+          {
+            key: "expiresAt",
+            header: "Data Scadenza",
+            render: (cert) =>
+              cert.expiresAt ? formatItalianDate(cert.expiresAt) : "-",
+          },
+          {
+            key: "status",
+            header: "Stato",
+            isBadge: true,
+            render: (cert) => getExpiryBadge(cert.expiresAt),
+          },
+          {
+            key: "uploadedAt",
+            header: "Caricato",
+            hideOnCard: true,
+            render: (cert) => {
+              const uploaded = cert.uploadedAt || cert.createdAt || null;
+              return uploaded ? formatItalianDate(uploaded) : "-";
+            },
+          },
+        ] satisfies Column<CertificateRow>[]}
+        data={certificates}
+        keyExtractor={(cert) => cert.id}
+        loading={loading}
+        skeletonCount={6}
+        emptyMessage="Nessun attestato trovato"
+        actions={(cert) => {
+          const fileName = cert.filePath ? getFileName(cert.filePath) : "Attestato";
+          return (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
+                onClick={() => setEditCertificateId(cert.id)}
+                title="Modifica attestato"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="min-h-[44px] rounded-md border px-2 py-1 text-xs"
+                onClick={() => handleDownload(cert.id, fileName)}
+                title="Scarica"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="min-h-[44px] rounded-md border px-2 py-1 text-xs text-destructive hover:text-destructive"
+                onClick={() => handleDeleteClick(cert, fileName)}
+                title="Elimina"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          );
+        }}
+      />
 
       {totalPages > 1 ? (
         <div className="flex items-center justify-between">

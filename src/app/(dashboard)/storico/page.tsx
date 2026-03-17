@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Download, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Loader2, Search } from "lucide-react";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { toast } from "sonner";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -198,38 +199,47 @@ export default function StoricoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cerca corso..."
-          className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-        />
-        <select
-          value={year}
-          onChange={(event) => setYear(event.target.value)}
-          className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Tutti gli anni</option>
-          {filterOptions.years.map((yearOption) => (
-            <option key={yearOption} value={String(yearOption)}>
-              {yearOption}
-            </option>
-          ))}
-        </select>
-        <select
-          value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
-          className="min-h-[44px] w-full rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Tutte le aree</option>
-          {filterOptions.categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cerca corso..."
+              className="min-h-[44px] w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm"
+            />
+          </div>
+        }
+        activeFiltersCount={(year ? 1 : 0) + (categoryId ? 1 : 0)}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+          >
+            <option value="">Tutti gli anni</option>
+            {filterOptions.years.map((yearOption) => (
+              <option key={yearOption} value={String(yearOption)}>
+                {yearOption}
+              </option>
+            ))}
+          </select>
+          <select
+            value={categoryId}
+            onChange={(event) => setCategoryId(event.target.value)}
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
+          >
+            <option value="">Tutte le aree</option>
+            {filterOptions.categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </MobileFilterPanel>
 
       {loading ? (
         <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">

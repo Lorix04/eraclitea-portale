@@ -1037,7 +1037,7 @@ export default function GuidePageClient({ role, userName }: GuidePageClientProps
             Nessuna sezione disponibile per la ricerca corrente.
           </p>
         ) : (
-          <ol className="grid gap-2 sm:grid-cols-2">
+          <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {visibleSections.map((section, index) => (
               <li key={section.id}>
                 <button
@@ -1045,9 +1045,9 @@ export default function GuidePageClient({ role, userName }: GuidePageClientProps
                   onClick={() => scrollToSection(section.id)}
                   className="inline-flex w-full items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left text-sm transition hover:bg-amber-50"
                 >
-                  <span className="text-xs font-semibold text-amber-600">{index + 1}.</span>
-                  <section.icon className="h-4 w-4 text-amber-500" />
-                  <span className="line-clamp-1">
+                  <span className="shrink-0 text-xs font-semibold text-amber-600">{index + 1}.</span>
+                  <section.icon className="h-4 w-4 shrink-0 text-amber-500" />
+                  <span className="min-w-0 break-words">
                     {highlightText(section.title, normalizedQuery)}
                   </span>
                 </button>

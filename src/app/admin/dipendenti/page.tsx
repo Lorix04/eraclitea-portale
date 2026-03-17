@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, Upload, UserPlus, X } from "lucide-react";
+import { Search, Upload, UserPlus } from "lucide-react";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -15,6 +15,7 @@ import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
@@ -296,9 +297,9 @@ function AdminDipendentiContent() {
         </Link>
       </div>
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative w-full md:w-64">
+      <MobileFilterPanel
+        searchBar={
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
@@ -308,8 +309,42 @@ function AdminDipendentiContent() {
               aria-label="Cerca nome, cognome o codice fiscale"
             />
           </div>
+        }
+        activeFiltersCount={
+          [clientId !== "", editionId !== "", certStatus !== "all", sortOrder !== "desc"].filter(Boolean).length
+        }
+        onReset={resetFilters}
+        resultCount={<>{totalCount} dipendenti trovati</>}
+        actions={
+          <>
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+              onClick={() => {
+                if (!clientId) {
+                  toast.error("Seleziona un cliente specifico prima di importare");
+                  return;
+                }
+                setImportModalOpen(true);
+              }}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importa CSV/Excel
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+              onClick={() => setAddModalOpen(true)}
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Aggiungi dipendente
+            </button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 md:flex md:flex-wrap md:items-center">
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
             value={clientId}
             onChange={(event) => setClientId(event.target.value)}
             aria-label="Filtro cliente"
@@ -322,7 +357,7 @@ function AdminDipendentiContent() {
             ))}
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
             value={editionId}
             onChange={(event) => setEditionId(event.target.value)}
             aria-label="Filtro edizione"
@@ -335,7 +370,7 @@ function AdminDipendentiContent() {
             ))}
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
             value={certStatus}
             onChange={(event) => setCertStatus(event.target.value)}
             aria-label="Filtro attestati"
@@ -345,7 +380,7 @@ function AdminDipendentiContent() {
             <option value="without">Senza attestato</option>
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
             value={sortOrder}
             onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}
             aria-label="Ordinamento dipendenti"
@@ -353,43 +388,8 @@ function AdminDipendentiContent() {
             <option value="desc">Piu recenti</option>
             <option value="asc">Piu vecchi</option>
           </select>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
-            onClick={() => {
-              if (!clientId) {
-                toast.error("Seleziona un cliente specifico prima di importare");
-                return;
-              }
-              setImportModalOpen(true);
-            }}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Importa CSV/Excel
-          </button>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-            onClick={() => setAddModalOpen(true)}
-          >
-            <UserPlus className="mr-2 h-4 w-4" />
-            Aggiungi dipendente
-          </button>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {totalCount} dipendenti trovati
-            </span>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
-              onClick={resetFilters}
-            >
-              <X className="mr-1 h-4 w-4" />
-              Resetta
-            </button>
-          </div>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {error ? (
         <ErrorMessage

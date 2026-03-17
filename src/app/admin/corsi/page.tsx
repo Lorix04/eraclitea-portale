@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
+import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 
 type Course = {
   id: string;
@@ -178,8 +179,8 @@ export default function AdminCorsiPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+      <MobileFilterPanel
+        searchBar={
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -190,8 +191,18 @@ export default function AdminCorsiPage() {
               aria-label="Cerca per titolo corso"
             />
           </div>
+        }
+        activeFiltersCount={
+          (categoryFilter !== "all" ? 1 : 0) +
+          (visibilityType !== "all" ? 1 : 0) +
+          (sortBy !== "createdAt" || sortOrder !== "desc" ? 1 : 0)
+        }
+        onReset={resetFilters}
+        resultCount={`${courses.length} corsi`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
             aria-label="Filtro area corsi"
@@ -204,7 +215,7 @@ export default function AdminCorsiPage() {
             ))}
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={visibilityType}
             onChange={(event) => setVisibilityType(event.target.value)}
             aria-label="Filtro visibilita corsi"
@@ -215,7 +226,7 @@ export default function AdminCorsiPage() {
             <option value="BY_CATEGORY">Per area</option>
           </select>
           <select
-            className="rounded-md border bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-auto"
             value={`${sortBy}-${sortOrder}`}
             onChange={(event) => {
               const [field, order] = event.target.value.split("-");
@@ -229,122 +240,103 @@ export default function AdminCorsiPage() {
             <option value="title-asc">Titolo A-Z</option>
             <option value="title-desc">Titolo Z-A</option>
           </select>
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {courses.length} corsi
-            </span>
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm text-muted-foreground"
-            >
-              <X className="mr-1 h-4 w-4" />
-              Resetta
-            </button>
-          </div>
         </div>
-      </div>
+      </MobileFilterPanel>
 
       {error ? <ErrorMessage message={error} onRetry={() => void loadCourses()} /> : null}
 
-      <div className="overflow-hidden rounded-lg border bg-card">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-[1080px] text-sm">
-          <thead className="bg-muted/40 text-left">
-            <tr>
-              <th className="px-4 py-3">Titolo</th>
-              <th className="px-4 py-3">Area</th>
-              <th className="px-4 py-3">Ore</th>
-              <th className="px-4 py-3">Visibilita</th>
-              <th className="px-4 py-3">Edizioni attive</th>
-              <th className="px-4 py-3">Totale edizioni</th>
-              <th className="px-4 py-3">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, row) => (
-                <tr key={`course-skel-${row}`} className="border-t">
-                  {Array.from({ length: 7 }).map((__, col) => (
-                    <td key={col} className="px-4 py-3">
-                      <Skeleton className="h-4 w-full" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : courses.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
-                  Nessun corso trovato.
-                </td>
-              </tr>
-            ) : (
-              courses.map((course) => (
-                <tr key={course.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{course.title}</td>
-                  <td className="px-4 py-3">
-                    {course.categories && course.categories.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {course.categories.map((entry) => {
-                          const category = entry.category ?? entry;
-                          return (
-                            <span
-                              key={category.id ?? `${course.id}-${category.name}`}
-                              className="rounded-full px-2 py-1 text-xs text-white"
-                              style={{ backgroundColor: category.color ?? "#6B7280" }}
-                            >
-                              {category.name ?? "-"}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{course.durationHours ?? "-"}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${
-                        VISIBILITY_BADGE[course.visibilityType ?? ""] ??
-                        "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {VISIBILITY_LABELS[course.visibilityType ?? ""] ?? "-"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{course.activeEditions ?? 0}</td>
-                  <td className="px-4 py-3">{course._count?.editions ?? 0}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/admin/corsi/${course.id}`}
-                        className="text-xs text-primary"
+      <ResponsiveTable<Course>
+        columns={[
+          {
+            key: "title",
+            header: "Titolo",
+            isPrimary: true,
+            render: (c) => c.title,
+          },
+          {
+            key: "area",
+            header: "Area",
+            isBadge: true,
+            render: (c) =>
+              c.categories && c.categories.length > 0 ? (
+                <span className="inline-flex flex-wrap gap-1">
+                  {c.categories.map((entry) => {
+                    const cat = entry.category ?? entry;
+                    return (
+                      <span
+                        key={cat.id ?? `${c.id}-${cat.name}`}
+                        className="rounded-full px-2 py-1 text-xs text-white"
+                        style={{ backgroundColor: cat.color ?? "#6B7280" }}
                       >
-                        Dettaglio
-                      </Link>
-                      <Link
-                        href={`/admin/corsi/${course.id}/edit`}
-                        className="text-xs text-primary"
-                      >
-                        Modifica
-                      </Link>
-                      <button
-                        type="button"
-                        className="text-xs text-destructive"
-                        onClick={() => handleDeleteClick(course)}
-                      >
-                        Elimina
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          </table>
-        </div>
-      </div>
+                        {cat.name ?? "-"}
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : (
+                "-"
+              ),
+          },
+          {
+            key: "hours",
+            header: "Ore",
+            render: (c) => c.durationHours ?? "-",
+          },
+          {
+            key: "visibility",
+            header: "Visibilita",
+            isBadge: true,
+            render: (c) => (
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${
+                  VISIBILITY_BADGE[c.visibilityType ?? ""] ??
+                  "bg-muted text-muted-foreground"
+                }`}
+              >
+                {VISIBILITY_LABELS[c.visibilityType ?? ""] ?? "-"}
+              </span>
+            ),
+          },
+          {
+            key: "activeEditions",
+            header: "Edizioni attive",
+            render: (c) => c.activeEditions ?? 0,
+          },
+          {
+            key: "totalEditions",
+            header: "Totale edizioni",
+            render: (c) => c._count?.editions ?? 0,
+          },
+        ] satisfies Column<Course>[]}
+        data={courses}
+        keyExtractor={(c) => c.id}
+        loading={loading}
+        skeletonCount={6}
+        emptyMessage="Nessun corso trovato."
+        actions={(course) => (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/admin/corsi/${course.id}`}
+              className="text-xs text-primary"
+            >
+              Dettaglio
+            </Link>
+            <Link
+              href={`/admin/corsi/${course.id}/edit`}
+              className="text-xs text-primary"
+            >
+              Modifica
+            </Link>
+            <button
+              type="button"
+              className="text-xs text-destructive"
+              onClick={() => handleDeleteClick(course)}
+            >
+              Elimina
+            </button>
+          </div>
+        )}
+      />
 
       <DeleteConfirmModal
         isOpen={deleteModalOpen}

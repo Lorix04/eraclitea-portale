@@ -297,7 +297,7 @@ export function LessonForm({
         </label>
       </div>
 
-      <div className={stickyFooter ? "modal-footer flex justify-end gap-2" : "flex justify-end gap-2"}>
+      <div className={stickyFooter ? "modal-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end" : "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"}>
         <button
           type="button"
           className="rounded-md border px-4 py-2 text-sm"

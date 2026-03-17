@@ -54,11 +54,11 @@ export default function DashboardCards({
 }: DashboardCardsProps) {
   const { primaryColor } = useBranding();
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="card-surface rounded-2xl p-6">
+    <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+      <div className="card-surface rounded-2xl p-4 md:p-6">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5" style={{ color: primaryColor }} />
-          <h3 className="text-lg font-semibold">Corsi disponibili</h3>
+          <h3 className="text-base font-semibold md:text-lg">Corsi disponibili</h3>
         </div>
         <div className="mt-4 space-y-3">
           {availableCourses.length === 0 ? (
@@ -88,8 +88,8 @@ export default function DashboardCards({
         </div>
       </div>
 
-      <div className="card-surface rounded-2xl p-6">
-        <h3 className="text-lg font-semibold">Anagrafiche da compilare</h3>
+      <div className="card-surface rounded-2xl p-4 md:p-6">
+        <h3 className="text-base font-semibold md:text-lg">Anagrafiche da compilare</h3>
         <div className="mt-4 space-y-4">
           {pendingCourses.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -126,10 +126,10 @@ export default function DashboardCards({
         </div>
       </div>
 
-      <div className="card-surface rounded-2xl p-6">
+      <div className="card-surface rounded-2xl p-4 md:p-6">
         <div className="flex items-center gap-2">
           <Award className="h-5 w-5" style={{ color: primaryColor }} />
-          <h3 className="text-lg font-semibold">Ultimi attestati</h3>
+          <h3 className="text-base font-semibold md:text-lg">Ultimi attestati</h3>
         </div>
         <div className="mt-4 space-y-3">
           {latestCertificates.length === 0 ? (
@@ -161,26 +161,26 @@ export default function DashboardCards({
         </div>
       </div>
 
-      <div className="card-surface rounded-2xl p-6">
-        <h3 className="text-lg font-semibold">Riepilogo</h3>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="rounded-xl border bg-muted/30 p-4 text-center">
-            <div className="text-3xl font-bold">{stats.totalEmployees}</div>
-            <div className="text-sm text-muted-foreground">Dipendenti</div>
+      <div className="card-surface rounded-2xl p-4 md:p-6">
+        <h3 className="text-base font-semibold md:text-lg">Riepilogo</h3>
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border bg-muted/30 p-3 text-center md:p-4">
+            <div className="text-2xl font-bold md:text-3xl">{stats.totalEmployees}</div>
+            <div className="text-xs text-muted-foreground md:text-sm">Dipendenti</div>
           </div>
-          <div className="rounded-xl border bg-muted/30 p-4 text-center">
-            <div className="text-3xl font-bold">{stats.totalCertificates}</div>
-            <div className="text-sm text-muted-foreground">Attestati</div>
+          <div className="rounded-xl border bg-muted/30 p-3 text-center md:p-4">
+            <div className="text-2xl font-bold md:text-3xl">{stats.totalCertificates}</div>
+            <div className="text-xs text-muted-foreground md:text-sm">Attestati</div>
           </div>
-          <div className="rounded-xl border bg-muted/30 p-4 text-center">
-            <div className="text-3xl font-bold">{stats.coursesCompleted}</div>
-            <div className="text-sm text-muted-foreground">Corsi completati</div>
+          <div className="rounded-xl border bg-muted/30 p-3 text-center md:p-4">
+            <div className="text-2xl font-bold md:text-3xl">{stats.coursesCompleted}</div>
+            <div className="text-xs text-muted-foreground md:text-sm">Corsi completati</div>
           </div>
-          <div className="rounded-xl border bg-muted/30 p-4 text-center">
-            <div className="text-3xl font-bold text-orange-600">
+          <div className="rounded-xl border bg-muted/30 p-3 text-center md:p-4">
+            <div className="text-2xl font-bold text-orange-600 md:text-3xl">
               {stats.expiringCerts}
             </div>
-            <div className="text-sm text-muted-foreground">In scadenza</div>
+            <div className="text-xs text-muted-foreground md:text-sm">In scadenza</div>
           </div>
         </div>
       </div>
