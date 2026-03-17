@@ -116,7 +116,9 @@ export default function DashboardLayout({
         </div>
         <div className="flex flex-1 flex-col">
           <ClientHeader leftSlot={<MobileSidebar role="CLIENT" />}>
-            <ClientSearchCommand />
+            <div className="hidden md:block">
+              <ClientSearchCommand />
+            </div>
             <NotificationBell />
             <ClientUserDropdown />
           </ClientHeader>

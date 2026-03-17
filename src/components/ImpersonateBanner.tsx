@@ -55,7 +55,7 @@ export default function ImpersonateBanner() {
     <>
       <div className="h-11" aria-hidden />
       <div className="fixed inset-x-0 top-0 z-[10001] border-b border-amber-300 bg-amber-400 px-4 py-2 text-amber-950 shadow-sm">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-center gap-3 text-center text-sm font-medium">
+        <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center justify-center gap-2 text-center text-xs font-medium md:gap-3 md:text-sm">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
             Stai visualizzando come{" "}

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Sidebar from "@/components/Sidebar";
 import ClientSidebar from "@/components/ClientSidebar";
 
@@ -11,28 +13,58 @@ type MobileSidebarProps = {
 
 export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const closingRef = useRef(false);
+  const pathname = usePathname();
+  const prevPathRef = useRef(pathname);
 
+  const handleClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setVisible(false);
+    setTimeout(() => {
+      const dialog = dialogRef.current;
+      if (dialog?.open) dialog.close();
+      setOpen(false);
+      closingRef.current = false;
+    }, 300);
+  }, []);
+
+  // Open: showModal then trigger animation
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     if (open) {
       if (!dialog.open) dialog.showModal();
-      return;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
     }
-
-    if (dialog.open) dialog.close();
   }, [open]);
 
+  // Sync native dialog close (e.g. Escape key)
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    const handleClose = () => setOpen(false);
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
+    const onDialogClose = () => {
+      setVisible(false);
+      setOpen(false);
+      closingRef.current = false;
+    };
+    dialog.addEventListener("close", onDialogClose);
+    return () => dialog.removeEventListener("close", onDialogClose);
   }, []);
+
+  // Auto-close on route change
+  useEffect(() => {
+    if (prevPathRef.current !== pathname && open) {
+      handleClose();
+    }
+    prevPathRef.current = pathname;
+  }, [pathname, open, handleClose]);
 
   return (
     <>
@@ -51,19 +83,24 @@ export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
         aria-label="Menu mobile"
       >
         <div
-          className="fixed inset-0 bg-black/40"
-          onClick={() => setOpen(false)}
+          className={cn(
+            "fixed inset-0 transition-opacity duration-300",
+            visible ? "bg-black/40" : "bg-black/0"
+          )}
+          onClick={handleClose}
         />
 
         <aside
-          className="fixed left-0 top-0 flex h-full w-[82vw] max-w-[320px] flex-col bg-card shadow-2xl"
+          className={cn(
+            "fixed left-0 top-0 flex h-full w-[82vw] max-w-[320px] flex-col bg-card shadow-2xl transition-transform duration-300 ease-out",
+            visible ? "translate-x-0" : "-translate-x-full"
+          )}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <span className="text-sm font-semibold">Menu</span>
+          <div className="flex items-center justify-end border-b px-4 py-3">
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={handleClose}
               className="rounded-md p-1 hover:bg-muted"
               aria-label="Chiudi menu"
             >
@@ -75,12 +112,12 @@ export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
             {role === "ADMIN" ? (
               <Sidebar
                 role="ADMIN"
-                onNavigate={() => setOpen(false)}
+                onNavigate={handleClose}
                 className="h-auto w-full border-r-0 shadow-none"
               />
             ) : (
               <ClientSidebar
-                onNavigate={() => setOpen(false)}
+                onNavigate={handleClose}
                 className="h-auto w-full border-r-0 shadow-none"
               />
             )}
