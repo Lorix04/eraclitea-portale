@@ -6,9 +6,10 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Sidebar from "@/components/Sidebar";
 import ClientSidebar from "@/components/ClientSidebar";
+import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 
 type MobileSidebarProps = {
-  role?: "CLIENT" | "ADMIN";
+  role?: "CLIENT" | "ADMIN" | "TEACHER";
 };
 
 export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
@@ -112,6 +113,11 @@ export default function MobileSidebar({ role = "CLIENT" }: MobileSidebarProps) {
             {role === "ADMIN" ? (
               <Sidebar
                 role="ADMIN"
+                onNavigate={handleClose}
+                className="h-auto w-full border-r-0 shadow-none"
+              />
+            ) : role === "TEACHER" ? (
+              <TeacherSidebar
                 onNavigate={handleClose}
                 className="h-auto w-full border-r-0 shadow-none"
               />

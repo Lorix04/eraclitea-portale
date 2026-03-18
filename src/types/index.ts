@@ -1,4 +1,4 @@
-﻿export type Role = "ADMIN" | "CLIENT";
+﻿export type Role = "ADMIN" | "CLIENT" | "TEACHER";
 
 export type CourseStatus = "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
 

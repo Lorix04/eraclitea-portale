@@ -9,12 +9,15 @@ import { validateBody, validateQuery } from "@/lib/api-utils";
 const querySchema = z.object({
   search: z.string().optional(),
   active: z.enum(["true", "false"]).optional(),
+  status: z.enum(["INACTIVE", "PENDING", "ONBOARDING", "ACTIVE", "SUSPENDED"]).optional(),
   categoryId: z.string().cuid().optional(),
   province: z.string().trim().min(1).max(10).optional(),
   region: z.string().trim().min(1).max(100).optional(),
   includeAssignments: z.enum(["true", "false"]).optional(),
   editionId: z.string().optional(),
 });
+
+const optStr = z.string().trim().max(200).optional().or(z.literal(""));
 
 const teacherSchema = z.object({
   firstName: z.string().trim().min(1, "Nome obbligatorio").max(100),
@@ -28,6 +31,27 @@ const teacherSchema = z.object({
   bio: z.string().trim().max(5000).optional().or(z.literal("")),
   notes: z.string().trim().max(5000).optional().or(z.literal("")),
   active: z.boolean().optional(),
+  birthDate: z.string().optional().or(z.literal("")),
+  birthPlace: optStr,
+  birthProvince: z.string().trim().max(10).optional().or(z.literal("")),
+  gender: z.enum(["M", "F"]).optional().nullable(),
+  fiscalCode: z.string().trim().max(16).optional().or(z.literal("")),
+  address: optStr,
+  city: optStr,
+  postalCode: z.string().trim().max(10).optional().or(z.literal("")),
+  fax: z.string().trim().max(50).optional().or(z.literal("")),
+  mobile: z.string().trim().max(50).optional().or(z.literal("")),
+  emailSecondary: z.string().trim().email().optional().or(z.literal("")),
+  pec: z.string().trim().email().optional().or(z.literal("")),
+  vatNumber: z.string().trim().max(20).optional().or(z.literal("")),
+  iban: z.string().trim().max(34).optional().or(z.literal("")),
+  vatExempt: z.boolean().optional(),
+  publicEmployee: z.boolean().optional().nullable(),
+  educationLevel: z.string().trim().max(100).optional().or(z.literal("")),
+  profession: optStr,
+  employerName: optStr,
+  sdiCode: z.string().trim().max(20).optional().or(z.literal("")),
+  registrationNumber: z.string().trim().max(50).optional().or(z.literal("")),
 });
 
 export async function GET(request: Request) {
@@ -45,6 +69,7 @@ export async function GET(request: Request) {
     const {
       search,
       active,
+      status,
       categoryId,
       province,
       region,
@@ -54,6 +79,7 @@ export async function GET(request: Request) {
       validation.data;
     const where: Prisma.TeacherWhereInput = {
       ...(active ? { active: active === "true" } : {}),
+      ...(status ? { status } : {}),
       ...(province
         ? {
             province: {
@@ -174,26 +200,45 @@ export async function POST(request: Request) {
     }
 
     const data = validation.data;
+    const n = (v: string | undefined | null) =>
+      v && v.trim() ? v.trim() : null;
 
     const teacher = await prisma.teacher.create({
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email?.trim() ? data.email.trim() : null,
-        phone: data.phone?.trim() ? data.phone.trim() : null,
-        province: data.province?.trim()
-          ? data.province.trim().toUpperCase()
-          : null,
-        region: data.region?.trim() ? data.region.trim() : null,
-        specialization: data.specialization?.trim() ? data.specialization.trim() : null,
-        bio: data.bio?.trim() ? data.bio.trim() : null,
-        notes: data.notes?.trim() ? data.notes.trim() : null,
+        email: n(data.email),
+        phone: n(data.phone),
+        province: data.province?.trim() ? data.province.trim().toUpperCase() : null,
+        region: n(data.region),
+        specialization: n(data.specialization),
+        bio: n(data.bio),
+        notes: n(data.notes),
         active: data.active ?? true,
         categories: data.categoryIds?.length
-          ? {
-              connect: data.categoryIds.map((id) => ({ id })),
-            }
+          ? { connect: data.categoryIds.map((id) => ({ id })) }
           : undefined,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        birthPlace: n(data.birthPlace),
+        birthProvince: data.birthProvince?.trim() ? data.birthProvince.trim().toUpperCase() : null,
+        gender: data.gender || null,
+        fiscalCode: data.fiscalCode?.trim() ? data.fiscalCode.trim().toUpperCase() : null,
+        address: n(data.address),
+        city: n(data.city),
+        postalCode: n(data.postalCode),
+        fax: n(data.fax),
+        mobile: n(data.mobile),
+        emailSecondary: n(data.emailSecondary),
+        pec: n(data.pec),
+        vatNumber: n(data.vatNumber),
+        iban: n(data.iban),
+        vatExempt: data.vatExempt ?? false,
+        publicEmployee: data.publicEmployee ?? null,
+        educationLevel: n(data.educationLevel),
+        profession: n(data.profession),
+        employerName: n(data.employerName),
+        sdiCode: n(data.sdiCode) || "0000000",
+        registrationNumber: n(data.registrationNumber),
       },
       include: {
         categories: {

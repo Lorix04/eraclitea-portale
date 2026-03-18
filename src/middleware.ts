@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -20,6 +20,18 @@ function isClientRoute(pathname: string) {
     pathname.startsWith("/storico") ||
     pathname.startsWith("/profilo")
   );
+}
+
+function isTeacherRoute(pathname: string) {
+  return pathname.startsWith("/docente");
+}
+
+function isTeacherOnboarding(pathname: string) {
+  return pathname.startsWith("/onboarding/docente");
+}
+
+function isTeacherRegistration(pathname: string) {
+  return pathname.startsWith("/registrazione/docente");
 }
 
 function isGuideRoute(pathname: string) {
@@ -47,6 +59,7 @@ export async function middleware(req: NextRequest) {
   const effectiveRole = isImpersonatingClient ? "CLIENT" : token?.role;
   const mustChangePassword = token?.mustChangePassword === true;
   const forcedChangePasswordPath = "/profilo/cambia-password";
+  const teacherStatus = token?.teacherStatus;
 
   if (pathname.startsWith("/api/")) {
     const ip =
@@ -56,13 +69,16 @@ export async function middleware(req: NextRequest) {
       !isAuthApiRoute &&
       token?.role === "ADMIN" &&
       !isImpersonatingClient;
+    const isTeacherTokenApi = pathname.startsWith("/api/teacher/validate-token");
     const rateLimitTier = isAuthApiRoute
       ? "login"
-      : isAdminAuthenticatedApi
-        ? "admin"
-        : token
-          ? "authenticated"
-          : "public";
+      : isTeacherTokenApi
+        ? "public"
+        : isAdminAuthenticatedApi
+          ? "admin"
+          : token
+            ? "authenticated"
+            : "public";
     const rateLimitIdentifier =
       rateLimitTier === "authenticated" || rateLimitTier === "admin"
         ? `${rateLimitTier}:${tokenUserId ?? ip}`
@@ -157,12 +173,23 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Teacher registration is public (no auth required)
+  if (isTeacherRegistration(pathname)) {
+    return NextResponse.next();
+  }
+
   if (pathname === "/") {
     if (effectiveRole === "ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
     }
     if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    if (effectiveRole === "TEACHER") {
+      if (teacherStatus === "ACTIVE") {
+        return NextResponse.redirect(new URL("/docente", req.url));
+      }
+      return NextResponse.redirect(new URL("/onboarding/docente", req.url));
     }
     return NextResponse.next();
   }
@@ -181,6 +208,12 @@ export async function middleware(req: NextRequest) {
     if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
+    if (effectiveRole === "TEACHER") {
+      if (teacherStatus === "ACTIVE") {
+        return NextResponse.redirect(new URL("/docente", req.url));
+      }
+      return NextResponse.redirect(new URL("/onboarding/docente", req.url));
+    }
     return NextResponse.next();
   }
 
@@ -197,9 +230,40 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Teacher onboarding routes
+  if (isTeacherOnboarding(pathname)) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+    if (effectiveRole !== "TEACHER") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    if (teacherStatus === "ACTIVE") {
+      return NextResponse.redirect(new URL("/docente", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Teacher portal routes
+  if (isTeacherRoute(pathname)) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+    if (effectiveRole !== "TEACHER") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    if (teacherStatus !== "ACTIVE") {
+      return NextResponse.redirect(new URL("/onboarding/docente", req.url));
+    }
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/admin")) {
     if (effectiveRole === "CLIENT") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    if (effectiveRole === "TEACHER") {
+      return NextResponse.redirect(new URL("/docente", req.url));
     }
     if (!token) {
       return NextResponse.redirect(new URL("/login", req.url));
@@ -214,6 +278,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
     if (effectiveRole !== "CLIENT") {
+      if (effectiveRole === "TEACHER") {
+        return NextResponse.redirect(new URL("/docente", req.url));
+      }
       return NextResponse.redirect(new URL("/admin", req.url));
     }
   }
@@ -238,7 +305,10 @@ export const config = {
     "/storico/:path*",
     "/profilo/:path*",
     "/guida/:path*",
-    "/admin/ticket/:path*",
     "/admin/:path*",
+    "/admin/ticket/:path*",
+    "/docente/:path*",
+    "/onboarding/docente/:path*",
+    "/registrazione/docente/:path*",
   ],
 };

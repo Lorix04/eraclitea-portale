@@ -5,10 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Eye,
   GraduationCap,
+  Mail,
   Pencil,
   Plus,
   Search,
   Trash2,
+  UserCheck,
+  UserX,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import ActionMenu from "@/components/ui/ActionMenu";
@@ -28,11 +32,11 @@ type CategoryOption = {
   name: string;
 };
 
-type ActiveFilter = "all" | "true" | "false";
+type StatusFilter = "all" | "ACTIVE" | "PENDING" | "ONBOARDING" | "INACTIVE" | "SUSPENDED";
 
 type TeacherFilters = {
   search: string;
-  active: ActiveFilter;
+  status: StatusFilter;
   categoryId: string;
   province: string;
   region: string;
@@ -59,7 +63,7 @@ function normalizeText(value: string) {
 async function fetchTeachers(filters: TeacherFilters) {
   const params = new URLSearchParams();
   if (filters.search.trim()) params.set("search", filters.search.trim());
-  if (filters.active !== "all") params.set("active", filters.active);
+  if (filters.status !== "all") params.set("status", filters.status);
   if (filters.categoryId) params.set("categoryId", filters.categoryId);
   if (filters.province) params.set("province", filters.province);
   if (filters.region) params.set("region", filters.region);
@@ -91,13 +95,14 @@ async function fetchCategories() {
 
 export default function AdminDocentiPage() {
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryIdFilter, setCategoryIdFilter] = useState("");
   const [provinceFilter, setProvinceFilter] = useState("");
   const [provinceFilterQuery, setProvinceFilterQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
+  const [invitingTeacherId, setInvitingTeacherId] = useState<string | null>(null);
 
   const { province: provinceOptions, regioni } = useProvinceRegioni();
 
@@ -105,7 +110,7 @@ export default function AdminDocentiPage() {
     queryKey: [
       "admin-teachers",
       search,
-      activeFilter,
+      statusFilter,
       categoryIdFilter,
       provinceFilter,
       regionFilter,
@@ -113,7 +118,7 @@ export default function AdminDocentiPage() {
     queryFn: () =>
       fetchTeachers({
         search,
-        active: activeFilter,
+        status: statusFilter,
         categoryId: categoryIdFilter,
         province: provinceFilter,
         region: regionFilter,
@@ -210,11 +215,35 @@ export default function AdminDocentiPage() {
 
   const resetFilters = () => {
     setSearch("");
-    setActiveFilter("all");
+    setStatusFilter("all");
     setCategoryIdFilter("");
     setProvinceFilter("");
     setProvinceFilterQuery("");
     setRegionFilter("");
+  };
+
+  const handleSendInvite = async (teacherId: string, email?: string | null) => {
+    if (!email) {
+      toast.error("Il docente non ha un indirizzo email");
+      return;
+    }
+    setInvitingTeacherId(teacherId);
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}/invite`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error ?? "Errore invio invito");
+        return;
+      }
+      toast.success(json.message ?? "Invito inviato");
+      await teachersQuery.refetch();
+    } catch {
+      toast.error("Errore invio invito");
+    } finally {
+      setInvitingTeacherId(null);
+    }
   };
 
   const handleDeleteConfirm = async (id: string) => {
@@ -242,6 +271,25 @@ export default function AdminDocentiPage() {
     return name ? `${sigla} - ${name}` : sigla;
   };
 
+  const handleStatusAction = async (teacherId: string, endpoint: string, successMsg: string) => {
+    try {
+      const res = await fetch(`/api/admin/teachers/${teacherId}/${endpoint}`, { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(json.error ?? "Errore"); return; }
+      toast.success(successMsg);
+      await teachersQuery.refetch();
+    } catch { toast.error("Errore nell'operazione"); }
+  };
+
+  const statusCounts = useMemo(() => {
+    const c = { ACTIVE: 0, PENDING: 0, ONBOARDING: 0, INACTIVE: 0, SUSPENDED: 0 };
+    teachers.forEach((t) => {
+      const s = (t as any).status as string;
+      if (s in c) c[s as keyof typeof c]++;
+    });
+    return c;
+  }, [teachers]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -253,6 +301,16 @@ export default function AdminDocentiPage() {
           <p className="text-sm text-muted-foreground">
             Gestisci l&apos;anagrafica e la disponibilita dei docenti.
           </p>
+          {teachers.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {teachers.length} totali
+              {statusCounts.ACTIVE > 0 && <> · <span className="text-emerald-600">{statusCounts.ACTIVE} attivi</span></>}
+              {statusCounts.PENDING > 0 && <> · <span className="text-amber-600">{statusCounts.PENDING} in attesa</span></>}
+              {statusCounts.ONBOARDING > 0 && <> · <span className="text-blue-600">{statusCounts.ONBOARDING} in corso</span></>}
+              {statusCounts.SUSPENDED > 0 && <> · <span className="text-red-600">{statusCounts.SUSPENDED} sospesi</span></>}
+              {statusCounts.INACTIVE > 0 && <> · {statusCounts.INACTIVE} non attivi</>}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -280,7 +338,7 @@ export default function AdminDocentiPage() {
           </div>
         }
         activeFiltersCount={
-          [activeFilter !== "all", categoryIdFilter !== "", provinceFilter !== "", regionFilter !== ""].filter(Boolean).length
+          [statusFilter !== "all", categoryIdFilter !== "", provinceFilter !== "", regionFilter !== ""].filter(Boolean).length
         }
         onReset={resetFilters}
         resultCount={<>{teachers.length} docenti</>}
@@ -288,12 +346,15 @@ export default function AdminDocentiPage() {
         <div className="space-y-3 md:space-y-0 md:flex md:flex-wrap md:items-end md:gap-3">
           <select
             className="w-full md:w-auto min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
-            value={activeFilter}
-            onChange={(event) => setActiveFilter(event.target.value as ActiveFilter)}
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
           >
             <option value="all">Tutti</option>
-            <option value="true">Attivi</option>
-            <option value="false">Inattivi</option>
+            <option value="ACTIVE">Attivo</option>
+            <option value="PENDING">In attesa</option>
+            <option value="ONBOARDING">In corso</option>
+            <option value="INACTIVE">Non attivo</option>
+            <option value="SUSPENDED">Sospeso</option>
           </select>
 
           <label className="flex w-full md:min-w-[180px] md:w-auto flex-col gap-1 text-xs text-muted-foreground">
@@ -362,7 +423,25 @@ export default function AdminDocentiPage() {
             key: "name",
             header: "Nome completo",
             isPrimary: true,
-            render: (t) => `${t.firstName} ${t.lastName}`,
+            render: (t) => {
+              const s = (t as any).status as string;
+              const sub =
+                s === "PENDING"
+                  ? "Invito inviato"
+                  : s === "ONBOARDING"
+                    ? "Registrazione in corso"
+                    : null;
+              return (
+                <span>
+                  {t.firstName} {t.lastName}
+                  {sub && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      ({sub})
+                    </span>
+                  )}
+                </span>
+              );
+            },
           },
           {
             key: "email",
@@ -420,17 +499,22 @@ export default function AdminDocentiPage() {
             key: "status",
             header: "Stato",
             isBadge: true,
-            render: (t) => (
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  t.active
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                {t.active ? "Attivo" : "Inattivo"}
-              </span>
-            ),
+            render: (t) => {
+              const s = (t as any).status as string | undefined;
+              const cfg: Record<string, { cls: string; label: string }> = {
+                ACTIVE: { cls: "bg-emerald-100 text-emerald-700", label: "Attivo" },
+                PENDING: { cls: "bg-amber-100 text-amber-700", label: "In attesa" },
+                ONBOARDING: { cls: "bg-blue-100 text-blue-700", label: "In corso" },
+                INACTIVE: { cls: "bg-gray-100 text-gray-700", label: "Non attivo" },
+                SUSPENDED: { cls: "bg-red-100 text-red-700", label: "Sospeso" },
+              };
+              const { cls, label } = cfg[s ?? ""] ?? (t.active ? cfg.ACTIVE : cfg.INACTIVE);
+              return (
+                <span className={`rounded-full px-2 py-1 text-xs ${cls}`}>
+                  {label}
+                </span>
+              );
+            },
           },
         ] satisfies Column<TeacherRow>[]}
         data={teachers}
@@ -448,30 +532,92 @@ export default function AdminDocentiPage() {
               href: `/admin/docenti/${teacher.id}`,
               shortcutKey: "o",
             }}
-            secondaryActions={[
-              {
-                key: "edit",
-                label: "Modifica",
-                icon: Pencil,
-                variant: "default",
-                onClick: () => {
-                  setEditingTeacher(teacher);
-                  setModalOpen(true);
+            secondaryActions={(() => {
+              const s = (teacher as any).status as string;
+              const actions = [
+                {
+                  key: "edit",
+                  label: "Modifica",
+                  icon: Pencil,
+                  variant: "default" as const,
+                  onClick: () => {
+                    setEditingTeacher(teacher);
+                    setModalOpen(true);
+                  },
+                  shortcutKey: "e",
                 },
-                shortcutKey: "e",
-              },
-              {
-                key: "delete",
-                label: "Elimina",
-                icon: Trash2,
-                variant: "danger",
-                requireConfirm: true,
-                confirmMessage: `Eliminare ${teacher.firstName} ${teacher.lastName}?`,
-                onClick: () => handleDeleteConfirm(teacher.id!),
-                shortcutKey: "Delete",
-                shortcutLabel: "Del",
-              },
-            ]}
+                // INACTIVE: Invia invito
+                {
+                  key: "invite",
+                  label: "Invia invito",
+                  icon: Mail,
+                  variant: "info" as const,
+                  onClick: () => handleSendInvite(teacher.id!, teacher.email),
+                  disabled: invitingTeacherId === teacher.id,
+                  hidden: s !== "INACTIVE",
+                },
+                // PENDING: Reinvia invito + Annulla invito
+                {
+                  key: "reinvite",
+                  label: "Reinvia invito",
+                  icon: Mail,
+                  variant: "info" as const,
+                  onClick: () => handleSendInvite(teacher.id!, teacher.email),
+                  disabled: invitingTeacherId === teacher.id,
+                  hidden: s !== "PENDING",
+                },
+                {
+                  key: "cancel-invite",
+                  label: "Annulla invito",
+                  icon: XCircle,
+                  variant: "warning" as const,
+                  onClick: () => handleStatusAction(teacher.id!, "cancel-invite", "Invito annullato"),
+                  hidden: s !== "PENDING",
+                },
+                // ONBOARDING: Sollecita
+                {
+                  key: "remind",
+                  label: "Sollecita completamento",
+                  icon: Mail,
+                  variant: "info" as const,
+                  onClick: () => handleStatusAction(teacher.id!, "remind", "Sollecito inviato"),
+                  hidden: s !== "ONBOARDING",
+                },
+                // ACTIVE: Sospendi
+                {
+                  key: "suspend",
+                  label: "Sospendi",
+                  icon: UserX,
+                  variant: "danger" as const,
+                  requireConfirm: true,
+                  confirmMessage: `Sospendere ${teacher.firstName} ${teacher.lastName}?`,
+                  onClick: () => handleStatusAction(teacher.id!, "suspend", "Docente sospeso"),
+                  hidden: s !== "ACTIVE",
+                },
+                // SUSPENDED: Riattiva
+                {
+                  key: "reactivate",
+                  label: "Riattiva",
+                  icon: UserCheck,
+                  variant: "success" as const,
+                  onClick: () => handleStatusAction(teacher.id!, "reactivate", "Docente riattivato"),
+                  hidden: s !== "SUSPENDED",
+                },
+                // Always: Delete
+                {
+                  key: "delete",
+                  label: "Elimina",
+                  icon: Trash2,
+                  variant: "danger" as const,
+                  requireConfirm: true,
+                  confirmMessage: `Eliminare ${teacher.firstName} ${teacher.lastName}?`,
+                  onClick: () => handleDeleteConfirm(teacher.id!),
+                  shortcutKey: "Delete",
+                  shortcutLabel: "Del",
+                },
+              ];
+              return actions;
+            })()}
             size="sm"
           />
         )}

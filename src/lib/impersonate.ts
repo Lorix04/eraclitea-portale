@@ -12,7 +12,7 @@ type BaseContext = {
   session: Session;
   userId: string;
   clientId: string | null;
-  role: "ADMIN" | "CLIENT";
+  role: "ADMIN" | "CLIENT" | "TEACHER";
   isImpersonating: boolean;
   originalAdminId?: string;
   impersonatedClientName?: string | null;
@@ -27,7 +27,7 @@ export type EffectiveClientContext = BaseContext & {
 export type EffectiveUserIdentity = {
   userId: string;
   clientId: string | null;
-  role: "ADMIN" | "CLIENT";
+  role: "ADMIN" | "CLIENT" | "TEACHER";
   isImpersonating: boolean;
   originalAdminId?: string;
 };

@@ -7,7 +7,13 @@
       "Bash(grep -r 'grid grid-cols-2' /c/dev/project/src/app/admin/smtp/log --include=*.tsx -B 3 -A 3)",
       "Bash(grep -r modal-footer /c/dev/project/src/components --include=*.tsx -B 1 -A 5)",
       "Bash(grep -n \"flex.*items-center\\\\|flex.*gap\\\\|ArrowLeft\\\\|Trash2\\\\|Copy\\\\|Upload\\\\|Download\" /c/dev/project/src/app/admin/corsi/[id]/edizioni/[edId]/page.tsx)",
-      "Bash(ls c:/dev/project/src/app/\\\\\\(dashboard\\\\\\)/)"
+      "Bash(ls c:/dev/project/src/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(npx prisma@5 generate)",
+      "Bash(npx prisma@5 migrate dev --name add_teacher_portal_fields --create-only)",
+      "Bash(npx prisma@5 migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script)",
+      "Bash(mkdir -p /c/dev/project/src/app/api/teacher/messages/[threadId])",
+      "Bash(mkdir -p /c/dev/project/src/app/api/admin/teacher-messages/[threadId])",
+      "Bash(npx tsc:*)"
     ]
   }
 }

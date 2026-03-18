@@ -46,6 +46,14 @@ export default function LoginPage() {
       router.replace("/admin");
       return;
     }
+    if (session?.user?.role === "TEACHER") {
+      if (session.user.teacherStatus === "ACTIVE") {
+        router.replace("/docente");
+      } else {
+        router.replace("/onboarding/docente");
+      }
+      return;
+    }
     router.replace("/dashboard");
   };
 

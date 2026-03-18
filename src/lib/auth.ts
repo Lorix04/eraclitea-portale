@@ -1,4 +1,4 @@
-﻿import type { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -30,6 +30,25 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Teacher-specific validation
+        if (user.role === "TEACHER") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: user.id },
+          });
+
+          if (!teacher) {
+            return null;
+          }
+
+          if (teacher.status === "INACTIVE" || teacher.status === "SUSPENDED") {
+            return null;
+          }
+
+          if (teacher.status === "PENDING") {
+            return null;
+          }
+        }
+
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
@@ -52,11 +71,25 @@ export const authOptions: NextAuthOptions = {
         token.clientId = (user as any).clientId ?? null;
         token.mustChangePassword = Boolean((user as any).mustChangePassword);
         token.id = user.id;
+
+        // Load teacher data for TEACHER role
+        if (token.role === "TEACHER") {
+          const teacher = await prisma.teacher.findUnique({
+            where: { userId: user.id },
+            select: { id: true, status: true },
+          });
+          token.teacherId = teacher?.id ?? null;
+          token.teacherStatus = teacher?.status ?? null;
+        }
       }
 
       if (trigger === "update" && session) {
         if (typeof (session as any).mustChangePassword === "boolean") {
           token.mustChangePassword = (session as any).mustChangePassword;
+        }
+        // Allow updating teacherStatus on session update
+        if (typeof (session as any).teacherStatus === "string") {
+          token.teacherStatus = (session as any).teacherStatus;
         }
       }
 
@@ -65,9 +98,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "ADMIN" | "CLIENT";
+        session.user.role = token.role as "ADMIN" | "CLIENT" | "TEACHER";
         session.user.clientId = (token.clientId as string | null) ?? null;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.teacherId = (token.teacherId as string | null) ?? null;
+        session.user.teacherStatus = (token.teacherStatus as string | null) ?? null;
       }
       return session;
     },

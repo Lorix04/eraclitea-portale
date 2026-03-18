@@ -28,11 +28,21 @@ model User {
   assignedTickets    Ticket[]        @relation("AssignedTickets")
   ticketMessages     TicketMessage[] @relation("TicketMessages")
   notifications      Notification[]
+  teacher            Teacher?
 }
 
 enum Role {
   ADMIN
   CLIENT
+  TEACHER
+}
+
+enum TeacherStatus {
+  INACTIVE
+  PENDING
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
 }
 
 enum VisibilityType {
@@ -147,13 +157,61 @@ model Teacher {
   cvPath          String?
   cvOriginalName  String?
   notes           String?
-  active          Boolean  @default(true)
+  active          Boolean  @default(true) // @deprecated — usa status. Mantenuto per retrocompatibilità
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  assignments      TeacherAssignment[]
-  unavailabilities TeacherUnavailability[]
-  categories       Category[]
+  // Dati anagrafici
+  birthDate         DateTime?
+  birthPlace        String?
+  birthProvince     String?
+  gender            String?
+  fiscalCode        String?
+
+  // Residenza
+  address           String?
+  city              String?
+  postalCode        String?
+
+  // Contatti aggiuntivi
+  fax               String?
+  mobile            String?
+  emailSecondary    String?
+  pec               String?
+
+  // Dati professionali
+  vatNumber         String?
+  iban              String?
+  vatExempt         Boolean  @default(false)
+  publicEmployee    Boolean?
+  educationLevel    String?
+  profession        String?
+  employerName      String?
+  sdiCode           String?
+  registrationNumber String?
+
+  // Documento d'identità
+  idDocumentPath    String?
+  idDocumentName    String?
+
+  // Stato e onboarding
+  status            TeacherStatus @default(INACTIVE)
+
+  // Collegamento utente auth
+  userId            String?  @unique
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Token invito
+  inviteToken       String?  @unique
+  inviteTokenExpiry DateTime?
+  inviteSentAt      DateTime?
+
+  // Relazioni esistenti
+  assignments        TeacherAssignment[]
+  unavailabilities   TeacherUnavailability[]
+  categories         Category[]
+  signedDocuments    TeacherSignedDocument[]
+  messages           TeacherMessage[]
 }
 
 model TeacherAssignment {
@@ -183,6 +241,42 @@ model TeacherUnavailability {
   teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([teacherId, date])
+}
+
+model TeacherSignedDocument {
+  id              String   @id @default(cuid())
+  teacherId       String
+  teacher         Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  documentType    String   // es: "ATTO_NOTORIETA"
+
+  // Dichiarazioni
+  declaration1    Boolean  @default(false)
+  declaration2    Boolean  @default(false)
+  declaration3    Boolean  @default(false)
+  declaration4    Boolean  @default(false)
+  declaration5    Boolean  @default(false)
+
+  privacyAccepted Boolean  @default(false)
+
+  // Firma
+  signatureImage  String?  @db.Text
+  signedAt        DateTime?
+  signedFromIp    String?
+
+  // PDF generato
+  pdfPath         String?
+  pdfOriginalName String?
+
+  // Luogo e data dichiarati
+  declarationPlace String?
+  declarationDate  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([documentType])
 }
 
 model Category {
@@ -422,6 +516,7 @@ model Notification {
   ticketId   String?
   ticket     Ticket?         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   isGlobal  Boolean          @default(false)
+  readAt    DateTime?
   createdAt DateTime         @default(now())
   reads     NotificationRead[]
 
@@ -449,6 +544,10 @@ enum NotificationType {
   TICKET_REPLY
   TICKET_NEW_MESSAGE
   TICKET_STATUS_CHANGED
+  LESSON_ASSIGNED
+  LESSON_UPDATED
+  LESSON_CANCELLED
+  TEACHER_MESSAGE_RECEIVED
 }
 
 enum TicketStatus {
@@ -517,6 +616,25 @@ model NotificationRead {
   readAt         DateTime     @default(now())
 
   @@unique([notificationId, clientId])
+}
+
+model TeacherMessage {
+  id            String   @id @default(cuid())
+  teacherId     String
+  teacher       Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  threadId      String
+  subject       String?
+  content       String   @db.Text
+  senderRole    String
+  senderId      String
+  senderName    String?
+  readByTeacher Boolean  @default(false)
+  readByAdmin   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([threadId])
+  @@index([teacherId, readByTeacher])
 }
 
 model AuditLog {

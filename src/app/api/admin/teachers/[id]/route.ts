@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { deleteTeacherCv } from "@/lib/teacher-cv-storage";
 
+const optStr = z.string().trim().max(200).optional().or(z.literal(""));
+
 const teacherUpdateSchema = z.object({
   firstName: z.string().trim().min(1, "Nome obbligatorio").max(100).optional(),
   lastName: z.string().trim().min(1, "Cognome obbligatorio").max(100).optional(),
@@ -18,6 +20,29 @@ const teacherUpdateSchema = z.object({
   bio: z.string().trim().max(5000).optional().or(z.literal("")),
   notes: z.string().trim().max(5000).optional().or(z.literal("")),
   active: z.boolean().optional(),
+  status: z.enum(["INACTIVE", "PENDING", "ONBOARDING", "ACTIVE", "SUSPENDED"]).optional(),
+  // New fields
+  birthDate: z.string().optional().or(z.literal("")),
+  birthPlace: optStr,
+  birthProvince: z.string().trim().max(10).optional().or(z.literal("")),
+  gender: z.enum(["M", "F"]).optional().nullable(),
+  fiscalCode: z.string().trim().max(16).optional().or(z.literal("")),
+  address: optStr,
+  city: optStr,
+  postalCode: z.string().trim().max(10).optional().or(z.literal("")),
+  fax: z.string().trim().max(50).optional().or(z.literal("")),
+  mobile: z.string().trim().max(50).optional().or(z.literal("")),
+  emailSecondary: z.string().trim().email().optional().or(z.literal("")),
+  pec: z.string().trim().email().optional().or(z.literal("")),
+  vatNumber: z.string().trim().max(20).optional().or(z.literal("")),
+  iban: z.string().trim().max(34).optional().or(z.literal("")),
+  vatExempt: z.boolean().optional(),
+  publicEmployee: z.boolean().optional().nullable(),
+  educationLevel: z.string().trim().max(100).optional().or(z.literal("")),
+  profession: optStr,
+  employerName: optStr,
+  sdiCode: z.string().trim().max(20).optional().or(z.literal("")),
+  registrationNumber: z.string().trim().max(50).optional().or(z.literal("")),
 });
 
 export async function GET(
@@ -58,6 +83,21 @@ export async function GET(
         },
         unavailabilities: {
           orderBy: [{ date: "asc" }, { startTime: "asc" }],
+        },
+        signedDocuments: {
+          select: {
+            id: true,
+            documentType: true,
+            declaration1: true,
+            declaration2: true,
+            declaration3: true,
+            declaration4: true,
+            declaration5: true,
+            signedAt: true,
+            signedFromIp: true,
+            pdfPath: true,
+          },
+          orderBy: { signedAt: "desc" },
         },
         _count: { select: { assignments: true, unavailabilities: true } },
       },
@@ -102,31 +142,55 @@ export async function PUT(
     }
 
     const data = validation.data;
+    const toNull = (v: string | undefined | null) =>
+      v !== undefined ? (typeof v === "string" && v.trim() ? v.trim() : null) : undefined;
+    const toUpperNull = (v: string | undefined | null) =>
+      v !== undefined ? (typeof v === "string" && v.trim() ? v.trim().toUpperCase() : null) : undefined;
+
     const teacher = await prisma.teacher.update({
       where: { id: context.params.id },
       data: {
         firstName: data.firstName,
         lastName: data.lastName,
-        email: data.email !== undefined ? (data.email.trim() || null) : undefined,
-        phone: data.phone !== undefined ? (data.phone.trim() || null) : undefined,
-        province:
-          data.province !== undefined
-            ? data.province.trim().toUpperCase() || null
-            : undefined,
-        region: data.region !== undefined ? data.region.trim() || null : undefined,
-        specialization:
-          data.specialization !== undefined
-            ? data.specialization.trim() || null
-            : undefined,
+        email: toNull(data.email),
+        phone: toNull(data.phone),
+        province: toUpperNull(data.province),
+        region: toNull(data.region),
+        specialization: toNull(data.specialization),
         categories:
           data.categoryIds !== undefined
             ? {
                 set: data.categoryIds.map((categoryId) => ({ id: categoryId })),
               }
             : undefined,
-        bio: data.bio !== undefined ? data.bio.trim() || null : undefined,
-        notes: data.notes !== undefined ? data.notes.trim() || null : undefined,
+        bio: toNull(data.bio),
+        notes: toNull(data.notes),
         active: data.active,
+        status: data.status,
+        // New fields
+        birthDate: data.birthDate !== undefined
+          ? (data.birthDate ? new Date(data.birthDate) : null)
+          : undefined,
+        birthPlace: toNull(data.birthPlace),
+        birthProvince: toUpperNull(data.birthProvince),
+        gender: data.gender !== undefined ? (data.gender || null) : undefined,
+        fiscalCode: toUpperNull(data.fiscalCode),
+        address: toNull(data.address),
+        city: toNull(data.city),
+        postalCode: toNull(data.postalCode),
+        fax: toNull(data.fax),
+        mobile: toNull(data.mobile),
+        emailSecondary: toNull(data.emailSecondary),
+        pec: toNull(data.pec),
+        vatNumber: toNull(data.vatNumber),
+        iban: toNull(data.iban),
+        vatExempt: data.vatExempt,
+        publicEmployee: data.publicEmployee !== undefined ? data.publicEmployee : undefined,
+        educationLevel: toNull(data.educationLevel),
+        profession: toNull(data.profession),
+        employerName: toNull(data.employerName),
+        sdiCode: toNull(data.sdiCode),
+        registrationNumber: toNull(data.registrationNumber),
       },
       include: {
         categories: {

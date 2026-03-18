@@ -104,7 +104,7 @@ export async function POST(
 
     const teacher = await prisma.teacher.findUnique({
       where: { id: context.params.id },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
     if (!teacher) {
       return NextResponse.json({ error: "Docente non trovato" }, { status: 404 });
@@ -140,6 +140,17 @@ export async function POST(
       })),
       skipDuplicates: true,
     });
+
+    // Create notification for teacher if they have a linked user
+    if (teacher.userId && result.count > 0) {
+      const { createTeacherNotification } = await import("@/lib/teacher-notifications");
+      void createTeacherNotification({
+        userId: teacher.userId,
+        type: "LESSON_ASSIGNED",
+        title: "Nuova lezione assegnata",
+        message: `Ti ${result.count === 1 ? "e stata assegnata 1 nuova lezione" : `sono state assegnate ${result.count} nuove lezioni`}.`,
+      });
+    }
 
     return NextResponse.json({ success: true, created: result.count });
   } catch (error) {
