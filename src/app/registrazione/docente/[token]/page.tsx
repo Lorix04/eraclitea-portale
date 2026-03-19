@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 import {
   AlertCircle,
   Check,
@@ -252,6 +253,7 @@ export default function TeacherRegistrationPage() {
   const [step, setStep] = useState(1);
   const [completed, setCompleted] = useState(false);
   const [finalStatus, setFinalStatus] = useState<string | null>(null);
+  const [autoLogging, setAutoLogging] = useState(false);
 
   // Step 1 state
   const [form, setForm] = useState<Step1Data>(EMPTY_STEP1);
@@ -488,6 +490,29 @@ export default function TeacherRegistrationPage() {
     }
   }, [token, password, confirmPassword, allPasswordValid]);
 
+  // ------- Auto-login handler -------
+  const handleAutoLogin = useCallback(async () => {
+    if (!teacherInfo?.teacherEmail || !password) {
+      window.location.href = "/login";
+      return;
+    }
+    setAutoLogging(true);
+    try {
+      const result = await signIn("credentials", {
+        email: teacherInfo.teacherEmail,
+        password,
+        redirect: false,
+      });
+      if (result?.ok) {
+        window.location.href = finalStatus === "ACTIVE" ? "/docente" : "/onboarding/docente";
+      } else {
+        window.location.href = "/login";
+      }
+    } catch {
+      window.location.href = "/login";
+    }
+  }, [teacherInfo, password, finalStatus]);
+
   // ------- Province change handler -------
   const handleProvinceChange = useCallback(
     (value: string) => {
@@ -529,7 +554,11 @@ export default function TeacherRegistrationPage() {
             Link non valido
           </h2>
           <p className="text-sm text-gray-500 max-w-md">{tokenError}</p>
-          <p className="mt-6 text-sm text-gray-400">
+          <p className="mt-4 text-sm text-gray-500">
+            Se hai gia completato la registrazione,{" "}
+            <Link href="/login" className="font-medium text-[#EAB308] hover:underline">accedi al portale</Link>.
+          </p>
+          <p className="mt-2 text-sm text-gray-400">
             Per assistenza contatta la segreteria.
           </p>
         </div>
@@ -567,12 +596,18 @@ export default function TeacherRegistrationPage() {
               </p>
             </>
           )}
-          <Link
-            href="/login"
-            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#EAB308] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FACC15]"
+          <button
+            type="button"
+            onClick={handleAutoLogin}
+            disabled={autoLogging}
+            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#EAB308] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#FACC15] disabled:opacity-60"
           >
-            {isActive ? "Accedi al portale" : "Accedi al portale per completare"}
-          </Link>
+            {autoLogging ? (
+              <><Loader2 className="h-4 w-4 animate-spin" />Accesso in corso...</>
+            ) : (
+              isActive ? "Accedi al portale" : "Accedi al portale per completare"
+            )}
+          </button>
         </div>
       </PageShell>
     );
