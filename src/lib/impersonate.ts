@@ -6,16 +6,19 @@ import { prisma } from "@/lib/prisma";
 
 export const IMPERSONATE_ADMIN_COOKIE = "impersonate_admin_id";
 export const IMPERSONATE_CLIENT_COOKIE = "impersonate_client_id";
+export const IMPERSONATE_TEACHER_COOKIE = "impersonate_teacher_id";
 export const IMPERSONATE_MAX_AGE_SECONDS = 2 * 60 * 60;
 
 type BaseContext = {
   session: Session;
   userId: string;
   clientId: string | null;
+  teacherId?: string | null;
   role: "ADMIN" | "CLIENT" | "TEACHER";
   isImpersonating: boolean;
   originalAdminId?: string;
   impersonatedClientName?: string | null;
+  impersonatedTeacherName?: string | null;
 };
 
 export type EffectiveUserContext = BaseContext;
@@ -51,7 +54,9 @@ export async function getEffectiveUserContext(): Promise<EffectiveUserContext | 
   const cookieStore = cookies();
   const impersonateAdminId = cookieStore.get(IMPERSONATE_ADMIN_COOKIE)?.value;
   const impersonateClientId = cookieStore.get(IMPERSONATE_CLIENT_COOKIE)?.value;
+  const impersonateTeacherId = cookieStore.get(IMPERSONATE_TEACHER_COOKIE)?.value;
 
+  // Client impersonation
   if (
     session.user.role === "ADMIN" &&
     impersonateAdminId &&
@@ -86,6 +91,44 @@ export async function getEffectiveUserContext(): Promise<EffectiveUserContext | 
         originalAdminId: impersonateAdminId,
         impersonatedClientName:
           impersonatedUser.client?.ragioneSociale ?? impersonatedUser.email,
+      };
+    }
+  }
+
+  // Teacher impersonation
+  if (
+    session.user.role === "ADMIN" &&
+    impersonateAdminId &&
+    impersonateTeacherId &&
+    impersonateAdminId === session.user.id
+  ) {
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: impersonateTeacherId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+        userId: true,
+        user: { select: { id: true, isActive: true } },
+      },
+    });
+
+    if (
+      teacher &&
+      teacher.status === "ACTIVE" &&
+      teacher.userId &&
+      teacher.user?.isActive
+    ) {
+      return {
+        session,
+        userId: teacher.user.id,
+        clientId: null,
+        teacherId: teacher.id,
+        role: "TEACHER",
+        isImpersonating: true,
+        originalAdminId: impersonateAdminId,
+        impersonatedTeacherName: `${teacher.firstName} ${teacher.lastName}`,
       };
     }
   }

@@ -12,6 +12,7 @@ import {
   FileText,
   GraduationCap,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   Phone,
@@ -58,6 +59,7 @@ type Unavailability = {
 };
 
 type TeacherDetail = TeacherFormValue & {
+  userId?: string | null;
   assignments: Assignment[];
   unavailabilities: Unavailability[];
 };
@@ -567,6 +569,31 @@ export default function AdminTeacherDetailPage() {
                 <Pencil className="mr-1.5 h-3.5 w-3.5" />
                 Modifica
               </button>
+
+              {teacherStatus === "ACTIVE" && teacher.userId && (
+                <button
+                  type="button"
+                  className="inline-flex min-h-[36px] w-full items-center justify-center rounded-md bg-blue-500 px-3 py-1.5 text-xs text-white hover:bg-blue-600"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/admin/impersonate-teacher", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ teacherId: teacher.id }),
+                      });
+                      const payload = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        window.location.href = payload?.redirectTo || "/docente";
+                      } else {
+                        toast.error(payload?.error ?? "Errore");
+                      }
+                    } catch { toast.error("Errore di connessione"); }
+                  }}
+                >
+                  <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                  Accedi come docente
+                </button>
+              )}
 
               {teacherStatus === "INACTIVE" && (
                 <button

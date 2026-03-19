@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Eye,
   GraduationCap,
+  LogIn,
   Mail,
   Pencil,
   Plus,
@@ -103,6 +104,7 @@ export default function AdminDocentiPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [invitingTeacherId, setInvitingTeacherId] = useState<string | null>(null);
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
   const { province: provinceOptions, regioni } = useProvinceRegioni();
 
@@ -279,6 +281,27 @@ export default function AdminDocentiPage() {
       toast.success(successMsg);
       await teachersQuery.refetch();
     } catch { toast.error("Errore nell'operazione"); }
+  };
+
+  const handleImpersonate = async (teacher: TeacherRow) => {
+    try {
+      setImpersonatingId(teacher.id!);
+      const res = await fetch("/api/admin/impersonate-teacher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId: teacher.id }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(payload?.error ?? "Errore durante l'impersonazione");
+        return;
+      }
+      window.location.href = payload?.redirectTo || "/docente";
+    } catch {
+      toast.error("Errore di connessione");
+    } finally {
+      setImpersonatingId(null);
+    }
   };
 
   const statusCounts = useMemo(() => {
@@ -524,17 +547,36 @@ export default function AdminDocentiPage() {
         emptyMessage="Nessun docente trovato."
         actions={(teacher) => (
           <ActionMenu
-            primaryAction={{
-              key: "view",
-              label: "Visualizza",
-              icon: Eye,
-              variant: "info",
-              href: `/admin/docenti/${teacher.id}`,
-              shortcutKey: "o",
-            }}
+            primaryAction={
+              (teacher as any).status === "ACTIVE"
+                ? {
+                    key: "impersonate",
+                    label: "Accedi come",
+                    icon: LogIn,
+                    variant: "info",
+                    onClick: () => handleImpersonate(teacher),
+                    disabled: impersonatingId === teacher.id,
+                  }
+                : {
+                    key: "view",
+                    label: "Visualizza",
+                    icon: Eye,
+                    variant: "info",
+                    href: `/admin/docenti/${teacher.id}`,
+                    shortcutKey: "o",
+                  }
+            }
             secondaryActions={(() => {
               const s = (teacher as any).status as string;
               const actions = [
+                {
+                  key: "view",
+                  label: "Visualizza",
+                  icon: Eye,
+                  variant: "default" as const,
+                  href: `/admin/docenti/${teacher.id}`,
+                  hidden: s !== "ACTIVE",
+                },
                 {
                   key: "edit",
                   label: "Modifica",

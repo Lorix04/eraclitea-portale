@@ -8,6 +8,7 @@ const AUTH_ROUTE_PREFIXES = ["/reset-password"];
 const PUBLIC_EXACT_ROUTES = ["/come-funziona"];
 const IMPERSONATE_ADMIN_COOKIE = "impersonate_admin_id";
 const IMPERSONATE_CLIENT_COOKIE = "impersonate_client_id";
+const IMPERSONATE_TEACHER_COOKIE = "impersonate_teacher_id";
 
 function isClientRoute(pathname: string) {
   return (
@@ -43,23 +44,30 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const impersonateAdminId = req.cookies.get(IMPERSONATE_ADMIN_COOKIE)?.value;
   const impersonateClientId = req.cookies.get(IMPERSONATE_CLIENT_COOKIE)?.value;
+  const impersonateTeacherId = req.cookies.get(IMPERSONATE_TEACHER_COOKIE)?.value;
   const tokenUserId =
     (typeof token?.id === "string" && token.id) ||
     (typeof token?.sub === "string" && token.sub) ||
     null;
-  const hasImpersonationCookies = Boolean(
-    impersonateAdminId && impersonateClientId
-  );
   const isImpersonationOwnerMatch =
     !tokenUserId || impersonateAdminId === tokenUserId;
   const isImpersonatingClient =
     token?.role === "ADMIN" &&
-    hasImpersonationCookies &&
+    Boolean(impersonateAdminId && impersonateClientId) &&
     isImpersonationOwnerMatch;
-  const effectiveRole = isImpersonatingClient ? "CLIENT" : token?.role;
+  const isImpersonatingTeacher =
+    token?.role === "ADMIN" &&
+    Boolean(impersonateAdminId && impersonateTeacherId) &&
+    isImpersonationOwnerMatch &&
+    !isImpersonatingClient;
+  const effectiveRole = isImpersonatingClient
+    ? "CLIENT"
+    : isImpersonatingTeacher
+      ? "TEACHER"
+      : token?.role;
   const mustChangePassword = token?.mustChangePassword === true;
   const forcedChangePasswordPath = "/profilo/cambia-password";
-  const teacherStatus = token?.teacherStatus;
+  const teacherStatus = isImpersonatingTeacher ? "ACTIVE" : token?.teacherStatus;
 
   if (pathname.startsWith("/api/")) {
     const ip =
@@ -102,7 +110,9 @@ export async function middleware(req: NextRequest) {
     }
 
     const isReadOnlyMethod = !["GET", "HEAD", "OPTIONS"].includes(req.method);
-    const isImpersonateStopRoute = pathname === "/api/admin/impersonate/stop";
+    const isImpersonateStopRoute =
+      pathname === "/api/admin/impersonate/stop" ||
+      pathname === "/api/admin/impersonate-teacher/stop";
     const isForceChangePasswordApi = pathname === "/api/profilo/cambia-password";
     const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
       req.method
@@ -138,7 +148,7 @@ export async function middleware(req: NextRequest) {
     }
 
     if (
-      isImpersonatingClient &&
+      (isImpersonatingClient || isImpersonatingTeacher) &&
       isReadOnlyMethod &&
       !isImpersonateStopRoute &&
       !isAuthApiRoute
@@ -150,10 +160,12 @@ export async function middleware(req: NextRequest) {
     }
 
     if (
-      isImpersonatingClient &&
+      (isImpersonatingClient || isImpersonatingTeacher) &&
       pathname.startsWith("/api/admin/") &&
       pathname !== "/api/admin/impersonate/status" &&
-      pathname !== "/api/admin/impersonate/stop"
+      pathname !== "/api/admin/impersonate/stop" &&
+      pathname !== "/api/admin/impersonate-teacher/status" &&
+      pathname !== "/api/admin/impersonate-teacher/stop"
     ) {
       return NextResponse.json(
         { error: "Area admin non disponibile durante l'impersonazione" },

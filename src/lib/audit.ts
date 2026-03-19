@@ -27,7 +27,9 @@ type AuditAction =
   | "CSV_EXPORT"
   | "REGISTRY_UPDATE"
   | "IMPERSONATE_START"
-  | "IMPERSONATE_STOP";
+  | "IMPERSONATE_STOP"
+  | "IMPERSONATE_TEACHER_START"
+  | "IMPERSONATE_TEACHER_STOP";
 
 type AuditParams = {
   userId: string;

@@ -3,6 +3,7 @@ import TeacherHeader from "@/components/teacher/TeacherHeader";
 import MobileSidebar from "@/components/MobileSidebar";
 import UserDropdown from "@/components/UserDropdown";
 import NotificationBell from "@/components/NotificationBell";
+import TeacherImpersonateBanner from "@/components/TeacherImpersonateBanner";
 import DisableDarkMode from "@/components/DisableDarkMode";
 import LogoutSync from "@/components/LogoutSync";
 
@@ -11,6 +12,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     <>
       <LogoutSync />
       <DisableDarkMode />
+      <TeacherImpersonateBanner />
       <div className="app-shell flex min-h-screen">
         <div className="hidden md:flex">
           <TeacherSidebar />
