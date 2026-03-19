@@ -29,7 +29,9 @@ type AuditAction =
   | "IMPERSONATE_START"
   | "IMPERSONATE_STOP"
   | "IMPERSONATE_TEACHER_START"
-  | "IMPERSONATE_TEACHER_STOP";
+  | "IMPERSONATE_TEACHER_STOP"
+  | "MATERIAL_UPLOAD"
+  | "MATERIAL_DELETE";
 
 type AuditParams = {
   userId: string;

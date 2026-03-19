@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Building2, Calendar, Clock, MapPin, Users } from "lucide-react";
 import { formatItalianDate } from "@/lib/date-utils";
 import TeacherAttendance from "@/components/teacher/TeacherAttendance";
+
+const TeacherMaterialsTab = lazy(
+  () => import("@/components/teacher/TeacherMaterialsTab")
+);
 
 type AttendanceStatus = "PRESENT" | "ABSENT" | "ABSENT_JUSTIFIED";
 
@@ -55,7 +59,7 @@ const STATUS_LABELS: Record<AttendanceStatus, { label: string; cls: string }> = 
 export default function TeacherLessonDetailPage() {
   const params = useParams();
   const lessonId = params.id as string;
-  const [activeTab, setActiveTab] = useState<"info" | "attendance">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "attendance" | "materiali">("info");
 
   const query = useQuery({
     queryKey: ["teacher-lesson-detail", lessonId],
@@ -121,6 +125,9 @@ export default function TeacherLessonDetailPage() {
         <button type="button" onClick={() => setActiveTab("attendance")}
           className={`px-4 py-2 text-sm border-b-2 transition-colors ${activeTab === "attendance" ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
         >Presenze</button>
+        <button type="button" onClick={() => setActiveTab("materiali")}
+          className={`px-4 py-2 text-sm border-b-2 transition-colors ${activeTab === "materiali" ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+        >Materiali</button>
       </div>
 
       {activeTab === "attendance" && (
@@ -129,6 +136,19 @@ export default function TeacherLessonDetailPage() {
           durationHours={lesson.durationHours}
           canEdit={new Date(lesson.date).setHours(23, 59, 59) <= Date.now() || new Date(lesson.date).toDateString() === new Date().toDateString()}
         />
+      )}
+
+      {activeTab === "materiali" && (
+        <Suspense
+          fallback={
+            <div className="h-40 animate-pulse rounded-lg border bg-muted" />
+          }
+        >
+          <TeacherMaterialsTab
+            courseId={ce.course.id}
+            editionId={ce.id}
+          />
+        </Suspense>
       )}
 
       {activeTab === "info" && (

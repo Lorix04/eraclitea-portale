@@ -114,6 +114,7 @@ model CourseEdition {
   attendances      Attendance[]
   certificates     Certificate[]
   notifications    Notification[]
+  materials        EditionMaterial[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -505,6 +506,32 @@ model Certificate {
   @@index([courseEditionId])
 }
 
+model EditionMaterial {
+  id               String        @id @default(cuid())
+  courseEditionId   String
+  courseEdition     CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
+  fileName         String
+  filePath         String
+  fileSize         Int
+  mimeType         String
+  category         String
+  title            String
+  description      String?
+  sortOrder        Int           @default(0)
+  uploadedById     String
+  uploadedByRole   String
+  uploadedByName   String?
+  status           String        @default("APPROVED")
+  approvedById     String?
+  approvedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([courseEditionId])
+  @@index([courseEditionId, category])
+}
+
 model Notification {
   id        String           @id @default(cuid())
   type      NotificationType
@@ -549,6 +576,9 @@ enum NotificationType {
   LESSON_UPDATED
   LESSON_CANCELLED
   TEACHER_MESSAGE_RECEIVED
+  MATERIAL_UPLOADED
+  MATERIAL_APPROVED
+  MATERIAL_REJECTED
 }
 
 enum TicketStatus {

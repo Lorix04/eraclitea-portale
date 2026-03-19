@@ -47,6 +47,11 @@ const AnagraficheResponsive = dynamic(
   { ssr: false }
 );
 
+const EditionMaterialsTab = dynamic(
+  () => import("@/components/admin/EditionMaterialsTab"),
+  { ssr: false }
+);
+
 const TABS = [
   { id: "info", label: "Info" },
   { id: "lezioni", label: "Lezioni" },
@@ -54,6 +59,7 @@ const TABS = [
   { id: "anagrafiche", label: "Anagrafiche" },
   { id: "presenze", label: "Presenze" },
   { id: "attestati", label: "Attestati" },
+  { id: "materiali", label: "Materiali" },
 ];
 
 type EditionDetail = {
@@ -1022,6 +1028,14 @@ export default function AdminEditionDetailPage({
           </div>
           <CertificateTable certificates={certificates} isLoading={certificatesLoading} />
         </div>
+      ) : null}
+
+      {tab === "materiali" && edition ? (
+        <EditionMaterialsTab
+          courseId={params.id}
+          editionId={params.edId}
+          readOnly={isArchived}
+        />
       ) : null}
 
       {lessonModalOpen && modalMounted

@@ -73,6 +73,7 @@ export async function GET(
   return NextResponse.json({
     data: {
       id: edition.id,
+      courseId: edition.courseId,
       editionNumber: edition.editionNumber,
       clientId: edition.clientId,
       status: edition.status,

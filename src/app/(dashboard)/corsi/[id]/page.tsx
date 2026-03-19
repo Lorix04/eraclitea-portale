@@ -17,6 +17,7 @@ import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
 type CourseDetail = {
   id: string;
+  courseId?: string;
   clientId?: string;
   editionNumber?: number | null;
   title: string;
@@ -95,8 +96,14 @@ const TABS = [
   { value: "anagrafiche", label: "Anagrafiche" },
   { value: "attestati", label: "Attestati" },
   { value: "presenze", label: "Presenze" },
+  { value: "materiali", label: "Materiali" },
   { value: "info", label: "Info" },
 ];
+
+const ClientEditionMaterialsTab = dynamic(
+  () => import("@/components/client/EditionMaterialsTab"),
+  { ssr: false }
+);
 
 const AnagraficheResponsive = dynamic(
   () => import("@/components/AnagraficheResponsive"),
@@ -658,6 +665,13 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             )}
           </div>
         </div>
+      ) : null}
+
+      {tab === "materiali" && course.courseId ? (
+        <ClientEditionMaterialsTab
+          courseId={course.courseId}
+          editionId={course.id}
+        />
       ) : null}
 
       {tab === "info" ? (
