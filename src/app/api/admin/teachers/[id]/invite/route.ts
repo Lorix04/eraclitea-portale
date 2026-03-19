@@ -102,7 +102,7 @@ export async function POST(
           </ol>
         `)}
         ${emailParagraph(`Il link e valido per ${INVITE_EXPIRY_DAYS} giorni.`)}
-        ${emailParagraph("Per qualsiasi domanda, contatta la segreteria.")}
+        ${emailParagraph('Per qualsiasi domanda, contatta la segreteria all\'indirizzo <a href="mailto:segreteria@sapienta.it" style="color:#B8860B;">segreteria@sapienta.it</a>.')}
       `,
       footerNote: "Questa email e stata inviata automaticamente. Non rispondere a questo messaggio.",
     });
