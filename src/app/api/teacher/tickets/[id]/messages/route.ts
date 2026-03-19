@@ -21,15 +21,15 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    if (!session || session.user.role !== "TEACHER" || !session.user.teacherId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const teacherId = session.user.teacherId;
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: context.params.id },
       select: {
         id: true,
-        clientId: true,
         teacherId: true,
         status: true,
         assignedToId: true,
@@ -37,19 +37,17 @@ export async function POST(
       },
     });
 
-    if (!ticket) {
-      return NextResponse.json({ error: "Ticket non trovato" }, { status: 404 });
+    if (!ticket || ticket.teacherId !== teacherId) {
+      return NextResponse.json(
+        { error: "Non autorizzato" },
+        { status: 403 }
+      );
     }
 
-    const isClient = session.user.role === "CLIENT";
-    if (isClient && ticket.clientId !== session.user.id) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
-    }
-
-    if (isClient && ticket.status === "CLOSED") {
+    if (ticket.status === "CLOSED") {
       return NextResponse.json(
         { error: "Il ticket e chiuso. Non e possibile inviare messaggi." },
-        { status: 403 }
+        { status: 400 }
       );
     }
 
@@ -100,11 +98,10 @@ export async function POST(
         attachmentPaths.push(filePath);
       }
 
-      const shouldReopen = isClient
-        ? ticket.status === "RESOLVED"
-        : ticket.status === "CLOSED" || ticket.status === "RESOLVED";
-      const createdMessage = await prisma.$transaction(async (tx) => {
-        const messageRow = await tx.ticketMessage.create({
+      const shouldReopen = ticket.status === "RESOLVED";
+
+      const result = await prisma.$transaction(async (tx) => {
+        const msg = await tx.ticketMessage.create({
           data: {
             ticketId: ticket.id,
             senderId: session.user.id,
@@ -118,78 +115,42 @@ export async function POST(
           data: {
             updatedAt: new Date(),
             ...(shouldReopen
-              ? {
-                  status: "OPEN",
-                  closedAt: null,
-                }
+              ? { status: "OPEN", closedAt: null }
               : {}),
           },
         });
 
-        return messageRow;
+        return msg;
       });
 
       try {
-        if (isClient) {
-          const clientUser = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: {
-              email: true,
-              client: { select: { ragioneSociale: true } },
-            },
+        const adminToNotify = ticket.assignedToId
+          ? [{ id: ticket.assignedToId }]
+          : await prisma.user.findMany({
+              where: { role: "ADMIN", isActive: true },
+              select: { id: true },
+            });
+
+        if (adminToNotify.length > 0) {
+          await prisma.notification.createMany({
+            data: adminToNotify.map((a) => ({
+              userId: a.id,
+              ticketId: ticket.id,
+              type: "TICKET_NEW_MESSAGE" as any,
+              title: "Nuovo messaggio su ticket",
+              message: `Risposta al ticket "${ticket.subject}"`,
+              isGlobal: false,
+            })),
           });
-          const clientName =
-            clientUser?.client?.ragioneSociale ?? clientUser?.email ?? "Cliente";
-
-          const adminIds = ticket.assignedToId
-            ? [ticket.assignedToId]
-            : (
-                await prisma.user.findMany({
-                  where: { role: "ADMIN", isActive: true },
-                  select: { id: true },
-                })
-              ).map((admin) => admin.id);
-
-          if (adminIds.length > 0) {
-            await prisma.notification.createMany({
-              data: adminIds.map((adminId) => ({
-                userId: adminId,
-                ticketId: ticket.id,
-                type: "TICKET_NEW_MESSAGE",
-                title: "Nuovo messaggio ticket",
-                message: `${clientName} ha scritto nel ticket "${ticket.subject}"`,
-                isGlobal: false,
-              })),
-            });
-          }
-        } else {
-          // Notify the ticket opener (client or teacher)
-          let recipientUserId: string | null = ticket.clientId;
-          if (!recipientUserId && ticket.teacherId) {
-            const teacher = await prisma.teacher.findUnique({
-              where: { id: ticket.teacherId },
-              select: { userId: true },
-            });
-            recipientUserId = teacher?.userId ?? null;
-          }
-          if (recipientUserId) {
-            await prisma.notification.create({
-              data: {
-                userId: recipientUserId,
-                ticketId: ticket.id,
-                type: "TICKET_REPLY",
-                title: "Nuova risposta al tuo ticket",
-                message: `Il supporto ha risposto al ticket "${ticket.subject}"`,
-                isGlobal: false,
-              },
-            });
-          }
         }
       } catch (notificationError) {
-        console.error("Errore creazione notifiche ticket:", notificationError);
+        console.error(
+          "Errore creazione notifiche messaggio ticket docente:",
+          notificationError
+        );
       }
 
-      return NextResponse.json(createdMessage, { status: 201 });
+      return NextResponse.json(result, { status: 201 });
     } catch (error) {
       await Promise.all(
         attachmentPaths.map(async (filePath) => {
@@ -201,14 +162,14 @@ export async function POST(
         })
       );
 
-      console.error("Errore invio messaggio ticket:", error);
+      console.error("Errore invio messaggio ticket docente:", error);
       return NextResponse.json(
         { error: "Errore durante l'invio del messaggio" },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error("[TICKET_MESSAGES_POST] Error:", error);
+    console.error("[TEACHER_TICKET_MESSAGES_POST] Error:", error);
     return NextResponse.json(
       { error: "Errore interno del server" },
       { status: 500 }

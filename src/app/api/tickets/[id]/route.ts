@@ -32,6 +32,9 @@ export async function GET(
           client: { select: { id: true, ragioneSociale: true } },
         },
       },
+      teacher: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
       assignedTo: {
         select: { id: true, email: true, role: true },
       },
@@ -70,14 +73,29 @@ export async function GET(
         })
       : [];
 
+    const senderName = ticket.teacher
+      ? `${ticket.teacher.firstName} ${ticket.teacher.lastName}`
+      : ticket.client?.client?.ragioneSociale ?? ticket.client?.email ?? "Sconosciuto";
+
     return NextResponse.json({
       ...ticket,
-      client: {
-        id: ticket.client.id,
-        email: ticket.client.email,
-        role: ticket.client.role,
-        name: ticket.client.client?.ragioneSociale ?? ticket.client.email,
-      },
+      senderType: ticket.teacherId ? "teacher" : "client",
+      client: ticket.client
+        ? {
+            id: ticket.client.id,
+            email: ticket.client.email,
+            role: ticket.client.role,
+            name: ticket.client.client?.ragioneSociale ?? ticket.client.email,
+          }
+        : null,
+      teacher: ticket.teacher
+        ? {
+            id: ticket.teacher.id,
+            name: `${ticket.teacher.firstName} ${ticket.teacher.lastName}`,
+            email: ticket.teacher.email,
+          }
+        : null,
+      senderName,
       assignedTo: ticket.assignedTo
         ? {
             id: ticket.assignedTo.id,
@@ -130,7 +148,7 @@ export async function PUT(
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: context.params.id },
-    select: { id: true, status: true, clientId: true, subject: true },
+    select: { id: true, status: true, clientId: true, teacherId: true, subject: true },
   });
   if (!ticket) {
     return NextResponse.json({ error: "Ticket non trovato" }, { status: 404 });
@@ -204,17 +222,28 @@ export async function PUT(
       CLOSED: "chiuso",
     };
 
-    try {
-      await prisma.notification.create({
-        data: {
-          userId: ticket.clientId,
-          ticketId: ticket.id,
-          type: "TICKET_STATUS_CHANGED",
-          title: `Ticket ${statusLabels[status] ?? "aggiornato"}`,
-          message: `Il tuo ticket "${ticket.subject}" e stato aggiornato a: ${statusLabels[status] ?? status}`,
-          isGlobal: false,
-        },
+    // Notify the ticket opener
+    let notifyUserId: string | null | undefined = ticket.clientId;
+    if (!notifyUserId && ticket.teacherId) {
+      const teacher = await prisma.teacher.findUnique({
+        where: { id: ticket.teacherId },
+        select: { userId: true },
       });
+      notifyUserId = teacher?.userId;
+    }
+    try {
+      if (notifyUserId) {
+        await prisma.notification.create({
+          data: {
+            userId: notifyUserId,
+            ticketId: ticket.id,
+            type: "TICKET_STATUS_CHANGED",
+            title: `Ticket ${statusLabels[status] ?? "aggiornato"}`,
+            message: `Il tuo ticket "${ticket.subject}" e stato aggiornato a: ${statusLabels[status] ?? status}`,
+            isGlobal: false,
+          },
+        });
+      }
     } catch (notificationError) {
       console.error(
         "Errore creazione notifica cambio stato ticket:",
@@ -225,11 +254,13 @@ export async function PUT(
 
     return NextResponse.json({
       ...updated,
-      client: {
-        id: updated.client.id,
-        email: updated.client.email,
-        name: updated.client.client?.ragioneSociale ?? updated.client.email,
-      },
+      client: updated.client
+        ? {
+            id: updated.client.id,
+            email: updated.client.email,
+            name: updated.client.client?.ragioneSociale ?? updated.client.email,
+          }
+        : null,
       assignedTo: updated.assignedTo
         ? {
             id: updated.assignedTo.id,

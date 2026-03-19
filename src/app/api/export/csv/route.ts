@@ -316,8 +316,8 @@ export async function GET(request: Request) {
     rows = tickets.map((ticket) => ({
       "ID / Numero ticket": ticket.id,
       "Oggetto/Titolo": ticket.subject,
-      Cliente: ticket.client.client?.ragioneSociale ?? "",
-      "Utente che ha aperto": ticket.client.email,
+      Cliente: ticket.client?.client?.ragioneSociale ?? "",
+      "Utente che ha aperto": ticket.client?.email ?? "",
       Stato: ticket.status,
       Priorita: ticket.priority,
       "Data apertura": formatItalianDate(ticket.createdAt),

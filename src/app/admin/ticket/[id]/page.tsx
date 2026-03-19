@@ -45,7 +45,7 @@ type TicketMessage = {
   createdAt: string;
   sender: {
     id: string;
-    role: "ADMIN" | "CLIENT";
+    role: "ADMIN" | "CLIENT" | "TEACHER";
     name: string;
     email: string;
   };
@@ -60,11 +60,18 @@ type TicketDetails = {
   createdAt: string;
   updatedAt: string;
   closedAt?: string | null;
+  senderType?: "client" | "teacher";
+  senderName?: string;
   client: {
     id: string;
     email: string;
     name: string;
-  };
+  } | null;
+  teacher: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   assignedTo: {
     id: string;
     name: string;
@@ -374,7 +381,7 @@ export default function AdminTicketDetailPage({ params }: { params: { id: string
                   >
                     <div className="mb-2 flex items-center justify-between gap-2 text-xs">
                       <span className="font-medium">
-                        {isAdminMessage ? "Supporto" : data.client.name}
+                        {isAdminMessage ? "Supporto" : data.senderName ?? data.client?.name ?? "Utente"}
                       </span>
                       <span
                         className="text-muted-foreground"
@@ -585,10 +592,14 @@ export default function AdminTicketDetailPage({ params }: { params: { id: string
               </p>
               <p>
                 <span className="font-medium text-foreground">Aperto da:</span>{" "}
-                {data.client.name}
+                {data.senderName ?? data.client?.name ?? "—"}
+                {data.senderType === "teacher" && (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Docente</span>
+                )}
               </p>
               <p>
-                <span className="font-medium text-foreground">Email:</span> {data.client.email}
+                <span className="font-medium text-foreground">Email:</span>{" "}
+                {data.teacher?.email ?? data.client?.email ?? "—"}
               </p>
               <p>
                 <span className="font-medium text-foreground">Data apertura:</span>{" "}

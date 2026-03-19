@@ -34,10 +34,15 @@ type TicketListItem = {
   priority: TicketPriority;
   updatedAt: string;
   messagesCount: number;
+  senderType?: "client" | "teacher";
   client: {
     id: string;
     name: string;
-  };
+  } | null;
+  teacher: {
+    id: string;
+    name: string;
+  } | null;
   assignedTo: {
     id: string;
     name: string;
@@ -67,6 +72,7 @@ async function fetchTickets(filters: {
   category: string;
   priority: string;
   clientId: string;
+  senderType: string;
   search: string;
 }) {
   const params = new URLSearchParams();
@@ -74,6 +80,7 @@ async function fetchTickets(filters: {
   if (filters.category && filters.category !== "all") params.set("category", filters.category);
   if (filters.priority && filters.priority !== "all") params.set("priority", filters.priority);
   if (filters.clientId) params.set("clientId", filters.clientId);
+  if (filters.senderType && filters.senderType !== "all") params.set("senderType", filters.senderType);
   if (filters.search.trim()) params.set("search", filters.search.trim());
 
   const response = await fetchWithRetry(`/api/tickets?${params.toString()}`);
@@ -151,6 +158,7 @@ export default function AdminTicketPage() {
   const [category, setCategory] = useState("all");
   const [priority, setPriority] = useState("all");
   const [clientId, setClientId] = useState("");
+  const [senderType, setSenderType] = useState("all");
   const [search, setSearch] = useState("");
 
   const debouncedSearch = useDebounce(search, 300);
@@ -169,6 +177,7 @@ export default function AdminTicketPage() {
       category,
       priority,
       clientId,
+      senderType,
       debouncedSearch,
     ],
     queryFn: () =>
@@ -177,6 +186,7 @@ export default function AdminTicketPage() {
         category,
         priority,
         clientId,
+        senderType,
         search: debouncedSearch,
       }),
     retry: false,
@@ -248,10 +258,10 @@ export default function AdminTicketPage() {
           </div>
         }
         activeFiltersCount={
-          [status !== "all", category !== "all", priority !== "all", clientId !== ""].filter(Boolean).length
+          [status !== "all", category !== "all", priority !== "all", clientId !== "", senderType !== "all"].filter(Boolean).length
         }
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
           <select
             className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
             value={status}
@@ -303,6 +313,16 @@ export default function AdminTicketPage() {
                   {client.ragioneSociale}
                 </option>
               ))}
+          </select>
+
+          <select
+            className="w-full min-h-[44px] rounded-md border bg-background px-3 py-2 text-sm"
+            value={senderType}
+            onChange={(event) => setSenderType(event.target.value)}
+          >
+            <option value="all">Tutti i tipi</option>
+            <option value="client">Solo clienti</option>
+            <option value="teacher">Solo docenti</option>
           </select>
         </div>
       </MobileFilterPanel>
@@ -358,9 +378,18 @@ export default function AdminTicketPage() {
           },
           {
             key: "client",
-            header: "Cliente",
+            header: "Mittente",
             isSecondary: true,
-            render: (t) => t.client.name,
+            render: (t) => (
+              <span className="flex items-center gap-1.5">
+                {t.senderType === "teacher" ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Doc</span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Cli</span>
+                )}
+                {t.teacher?.name ?? t.client?.name ?? "—"}
+              </span>
+            ),
           },
           {
             key: "messages",

@@ -11,7 +11,7 @@ import {
   FileText,
   UserCircle,
   Bell,
-  MessageSquare,
+  LifeBuoy,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -40,7 +40,7 @@ const TEACHER_SECTIONS: SidebarSection[] = [
     label: "Comunicazione",
     items: [
       { href: "/docente/notifiche", label: "Notifiche", icon: Bell },
-      { href: "/docente/messaggi", label: "Messaggi", icon: MessageSquare },
+      { href: "/docente/supporto", label: "Supporto", icon: LifeBuoy },
     ],
   },
 ];
@@ -63,12 +63,13 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
     refetchInterval: 60_000,
   });
 
-  const { data: msgCount = 0 } = useQuery({
-    queryKey: ["teacher-msg-unread"],
+  const { data: ticketCount = 0 } = useQuery({
+    queryKey: ["teacher-ticket-open"],
     queryFn: async () => {
-      const res = await fetch("/api/teacher/messages/unread-count");
+      const res = await fetch("/api/teacher/tickets?status=OPEN");
       if (!res.ok) return 0;
-      return ((await res.json()) as { count: number }).count;
+      const data = await res.json();
+      return Array.isArray(data) ? data.length : 0;
     },
     refetchInterval: 60_000,
   });
@@ -123,8 +124,8 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
                   {item.href === "/docente/notifiche" && notifCount > 0 && (
                     <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{notifCount}</span>
                   )}
-                  {item.href === "/docente/messaggi" && msgCount > 0 && (
-                    <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{msgCount}</span>
+                  {item.href === "/docente/supporto" && ticketCount > 0 && (
+                    <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{ticketCount}</span>
                   )}
                 </Link>
               );

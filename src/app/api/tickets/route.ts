@@ -36,6 +36,7 @@ export async function GET(request: Request) {
   const categoryParam = searchParams.get("category");
   const priorityParam = searchParams.get("priority");
   const clientIdParam = searchParams.get("clientId");
+  const senderTypeParam = searchParams.get("senderType");
   const searchParam = searchParams.get("search")?.trim();
 
   const where: Prisma.TicketWhereInput = {};
@@ -45,8 +46,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
     where.clientId = effectiveClient.userId;
-  } else if (clientIdParam) {
-    where.clientId = clientIdParam;
+  } else {
+    if (clientIdParam) {
+      where.clientId = clientIdParam;
+    }
+    if (senderTypeParam === "client") {
+      where.teacherId = null;
+      where.clientId = { not: null };
+    } else if (senderTypeParam === "teacher") {
+      where.teacherId = { not: null };
+    }
   }
 
   if (statusParam) {
@@ -103,6 +112,26 @@ export async function GET(request: Request) {
           },
         },
       },
+      {
+        teacher: {
+          is: {
+            firstName: {
+              contains: searchParam,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        },
+      },
+      {
+        teacher: {
+          is: {
+            lastName: {
+              contains: searchParam,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        },
+      },
     ];
   }
 
@@ -114,6 +143,14 @@ export async function GET(request: Request) {
           id: true,
           email: true,
           client: { select: { id: true, ragioneSociale: true } },
+        },
+      },
+      teacher: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
         },
       },
       assignedTo: {
@@ -147,11 +184,22 @@ export async function GET(request: Request) {
     status: ticket.status,
     priority: ticket.priority,
     clientId: ticket.clientId,
-    client: {
-      id: ticket.client.id,
-      email: ticket.client.email,
-      name: ticket.client.client?.ragioneSociale ?? ticket.client.email,
-    },
+    teacherId: ticket.teacherId,
+    senderType: ticket.teacherId ? "teacher" as const : "client" as const,
+    client: ticket.client
+      ? {
+          id: ticket.client.id,
+          email: ticket.client.email,
+          name: ticket.client.client?.ragioneSociale ?? ticket.client.email,
+        }
+      : null,
+    teacher: ticket.teacher
+      ? {
+          id: ticket.teacher.id,
+          name: `${ticket.teacher.firstName} ${ticket.teacher.lastName}`,
+          email: ticket.teacher.email,
+        }
+      : null,
     assignedTo: ticket.assignedTo
       ? {
           id: ticket.assignedTo.id,

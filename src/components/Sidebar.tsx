@@ -80,10 +80,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
   },
   {
     label: "Comunicazione",
-    items: [
-      { href: "/admin/ticket", label: "Ticket", icon: MessageCircle },
-      { href: "/admin/messaggi-docenti", label: "Messaggi Docenti", icon: MessageCircle },
-    ],
+    items: [{ href: "/admin/ticket", label: "Ticket", icon: MessageCircle }],
   },
   {
     label: "Strumenti",
