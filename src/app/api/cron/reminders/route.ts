@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { safeCompare } from "@/lib/security";
 import { endOfDay, formatDate, startOfDay } from "@/lib/date-utils";
 import {
   sendAdminDeadlineExpiredEmail,
@@ -305,7 +306,7 @@ async function processExpiringCertificates(daysRemaining: 60 | 30) {
 export async function GET(request: Request) {
   const apiKey = request.headers.get("x-api-key");
 
-  if (!apiKey || apiKey !== process.env.CRON_API_KEY) {
+  if (!apiKey || !process.env.CRON_API_KEY || !safeCompare(apiKey, process.env.CRON_API_KEY)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

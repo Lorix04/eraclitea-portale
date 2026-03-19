@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { emailQueue } from "@/lib/email-queue";
+import { safeCompare } from "@/lib/security";
 
 const MAX_AUTO_RETRIES = 3;
 const RETRY_COOLDOWN_MINUTES = 15;
@@ -12,7 +13,7 @@ function getThresholdDate() {
 
 export async function GET(request: Request) {
   const apiKey = request.headers.get("x-api-key");
-  if (!apiKey || apiKey !== process.env.CRON_API_KEY) {
+  if (!apiKey || !process.env.CRON_API_KEY || !safeCompare(apiKey, process.env.CRON_API_KEY)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

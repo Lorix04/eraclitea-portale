@@ -25,8 +25,25 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Account lockout check
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          return null;
+        }
+
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) {
+          // Increment failed attempts and lock if threshold reached
+          const newAttempts = user.failedLoginAttempts + 1;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: newAttempts >= 5 ? 0 : newAttempts,
+              lockedUntil:
+                newAttempts >= 5
+                  ? new Date(Date.now() + 15 * 60 * 1000)
+                  : undefined,
+            },
+          });
           return null;
         }
 
@@ -51,7 +68,11 @@ export const authOptions: NextAuthOptions = {
 
         await prisma.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: new Date() },
+          data: {
+            lastLoginAt: new Date(),
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+          },
         });
 
         return {

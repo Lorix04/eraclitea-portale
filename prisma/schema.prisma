@@ -22,6 +22,8 @@ model User {
   lastLoginAt  DateTime?
   resetToken   String?   @unique
   resetTokenExpiry DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
   auditLogs    AuditLog[]
   uploadedCertificates Certificate[]
   clientTickets      Ticket[]        @relation("ClientTickets")

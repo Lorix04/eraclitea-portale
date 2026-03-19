@@ -3,6 +3,18 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+function getClientIp(req: NextRequest): string {
+  if (req.ip && req.ip !== "::1" && req.ip !== "127.0.0.1") return req.ip;
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const ips = xff.split(",").map((s) => s.trim());
+    const hops = parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10);
+    const idx = Math.max(0, ips.length - hops);
+    if (ips[idx]) return ips[idx];
+  }
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
 const AUTH_ROUTES = ["/login", "/recupera-password"];
 const AUTH_ROUTE_PREFIXES = ["/reset-password"];
 const PUBLIC_EXACT_ROUTES = ["/come-funziona"];
@@ -70,8 +82,7 @@ export async function middleware(req: NextRequest) {
   const teacherStatus = isImpersonatingTeacher ? "ACTIVE" : token?.teacherStatus;
 
   if (pathname.startsWith("/api/")) {
-    const ip =
-      req.ip ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getClientIp(req);
     const isAuthApiRoute = pathname.startsWith("/api/auth/");
     const isAdminAuthenticatedApi =
       !isAuthApiRoute &&
@@ -81,7 +92,7 @@ export async function middleware(req: NextRequest) {
     const rateLimitTier = isAuthApiRoute
       ? "login"
       : isTeacherTokenApi
-        ? "public"
+        ? "login"
         : isAdminAuthenticatedApi
           ? "admin"
           : token

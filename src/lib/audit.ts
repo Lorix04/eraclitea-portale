@@ -54,9 +54,12 @@ export async function logAudit(params: AuditParams): Promise<void> {
 }
 
 export function getClientIP(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const ips = xff.split(",").map((s) => s.trim());
+    const hops = parseInt(process.env.TRUSTED_PROXY_HOPS || "1", 10);
+    const idx = Math.max(0, ips.length - hops);
+    if (ips[idx]) return ips[idx];
+  }
+  return request.headers.get("x-real-ip") || "unknown";
 }

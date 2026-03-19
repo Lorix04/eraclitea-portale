@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateFileContent } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -77,6 +78,14 @@ export async function POST(
     if (!ALLOWED_MIME_TYPES.has(file.type)) {
       return NextResponse.json(
         { error: "Formato non supportato. Usa PDF, JPEG o PNG." },
+        { status: 400 }
+      );
+    }
+
+    const contentValid = await validateFileContent(file, file.type);
+    if (!contentValid) {
+      return NextResponse.json(
+        { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
         { status: 400 }
       );
     }

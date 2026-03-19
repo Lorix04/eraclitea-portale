@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
+import { validateFileContent } from "@/lib/security";
 import {
   saveMaterial,
   deleteMaterial,
@@ -216,6 +217,14 @@ export async function POST(
     if (!MATERIAL_ALLOWED_TYPES.has(file.type)) {
       return NextResponse.json(
         { error: "Tipo di file non consentito" },
+        { status: 400 }
+      );
+    }
+
+    const contentValid = await validateFileContent(file, file.type);
+    if (!contentValid) {
+      return NextResponse.json(
+        { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
         { status: 400 }
       );
     }

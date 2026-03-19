@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateFileContent } from "@/lib/security";
 import { saveTeacherCv } from "@/lib/teacher-cv-storage";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
         );
       }
 
+      const cvContentValid = await validateFileContent(file, file.type);
+      if (!cvContentValid) {
+        return NextResponse.json(
+          { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
+          { status: 400 }
+        );
+      }
+
       const result = await saveTeacherCv(file, teacherId);
 
       await prisma.teacher.update({
@@ -86,6 +95,14 @@ export async function POST(request: Request) {
     if (!ID_ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "Tipo di file non valido. Formati accettati: PDF, JPG, PNG" },
+        { status: 400 }
+      );
+    }
+
+    const idContentValid = await validateFileContent(file, file.type);
+    if (!idContentValid) {
+      return NextResponse.json(
+        { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
         { status: 400 }
       );
     }

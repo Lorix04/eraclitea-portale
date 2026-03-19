@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { saveTeacherCv } from "@/lib/teacher-cv-storage";
+import { validateFileContent } from "@/lib/security";
 import fs from "fs/promises";
 import path from "path";
 
@@ -82,6 +83,14 @@ export async function POST(req: Request) {
         type === "cv" ? "PDF, DOC, DOCX" : "PDF, JPG, PNG";
       return NextResponse.json(
         { error: `Formato non supportato. Formati accettati: ${formats}` },
+        { status: 400 }
+      );
+    }
+
+    const contentValid = await validateFileContent(file, file.type);
+    if (!contentValid) {
+      return NextResponse.json(
+        { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
         { status: 400 }
       );
     }

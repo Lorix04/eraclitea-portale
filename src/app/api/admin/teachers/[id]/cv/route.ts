@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateFileContent } from "@/lib/security";
 import {
   deleteTeacherCv,
   readTeacherCv,
@@ -71,6 +72,14 @@ export async function POST(
     if (!ALLOWED_MIME_TYPES.has(file.type) && !ALLOWED_EXTENSIONS.has(extension)) {
       return NextResponse.json(
         { error: "Formato CV non supportato. Usa PDF, DOC o DOCX." },
+        { status: 400 }
+      );
+    }
+
+    const contentValid = await validateFileContent(file, file.type);
+    if (!contentValid) {
+      return NextResponse.json(
+        { error: "Il contenuto del file non corrisponde al tipo dichiarato" },
         { status: 400 }
       );
     }

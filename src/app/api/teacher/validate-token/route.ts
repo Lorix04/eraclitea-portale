@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { maskEmail } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
