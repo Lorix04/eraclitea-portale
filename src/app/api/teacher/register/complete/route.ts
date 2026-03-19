@@ -80,51 +80,71 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if a user with this email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: teacher.email },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Esiste gia un account con questa email" },
-        { status: 400 }
-      );
-    }
-
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Check if document was already signed during registration
-    const signedDoc = await prisma.teacherSignedDocument.findFirst({
-      where: { teacherId: teacher.id, documentType: "ATTO_NOTORIETA" },
-    });
-    const newStatus = signedDoc ? "ACTIVE" : "ONBOARDING";
-
-    // Create User and link to Teacher in a transaction
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          email: teacher.email!,
-          passwordHash,
-          role: "TEACHER",
-          isActive: true,
-        },
+    // All-or-nothing: create User + link Teacher + update status in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Handle existing user with same email
+      const existingUser = await tx.user.findUnique({
+        where: { email: teacher.email! },
+        include: { teacher: true },
       });
+
+      let userId: string;
+
+      if (existingUser) {
+        if (existingUser.role === "TEACHER" && !existingUser.teacher) {
+          // Orphan user — teacher was deleted, clean up and reuse
+          await tx.user.delete({ where: { id: existingUser.id } });
+          const user = await tx.user.create({
+            data: { email: teacher.email!, passwordHash, role: "TEACHER", isActive: true },
+          });
+          userId = user.id;
+        } else if (existingUser.teacher?.id === teacher.id) {
+          // Same teacher re-completing registration — update password
+          await tx.user.update({
+            where: { id: existingUser.id },
+            data: { passwordHash },
+          });
+          userId = existingUser.id;
+        } else {
+          throw new Error("EMAIL_IN_USE");
+        }
+      } else {
+        const user = await tx.user.create({
+          data: { email: teacher.email!, passwordHash, role: "TEACHER", isActive: true },
+        });
+        userId = user.id;
+      }
+
+      // Check if document was already signed during registration
+      const signedDoc = await tx.teacherSignedDocument.findFirst({
+        where: { teacherId: teacher.id, documentType: "ATTO_NOTORIETA" },
+      });
+      const newStatus = signedDoc ? "ACTIVE" : "ONBOARDING";
 
       await tx.teacher.update({
         where: { id: teacher.id },
         data: {
-          userId: user.id,
+          userId,
           status: newStatus,
           inviteToken: null,
           inviteTokenExpiry: null,
           active: true,
         },
       });
+
+      return { status: newStatus };
     });
 
-    return NextResponse.json({ success: true, status: newStatus });
+    return NextResponse.json({ success: true, status: result.status });
   } catch (error) {
+    if (error instanceof Error && error.message === "EMAIL_IN_USE") {
+      return NextResponse.json(
+        { error: "Esiste gia un account con questa email" },
+        { status: 409 }
+      );
+    }
     console.error("[TEACHER_REGISTER_COMPLETE] Error:", error);
     return NextResponse.json(
       { error: "Errore interno del server" },

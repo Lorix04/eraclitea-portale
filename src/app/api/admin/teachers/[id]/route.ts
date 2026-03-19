@@ -226,7 +226,7 @@ export async function DELETE(
 
     const existing = await prisma.teacher.findUnique({
       where: { id: context.params.id },
-      select: { id: true, cvPath: true },
+      select: { id: true, cvPath: true, userId: true },
     });
 
     if (!existing) {
@@ -235,6 +235,11 @@ export async function DELETE(
 
     await deleteTeacherCv(existing.cvPath);
     await prisma.teacher.delete({ where: { id: context.params.id } });
+
+    // Clean up linked User (TEACHER role) to avoid orphan accounts
+    if (existing.userId) {
+      await prisma.user.delete({ where: { id: existing.userId } }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
