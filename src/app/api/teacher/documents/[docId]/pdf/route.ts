@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import fs from "fs/promises";
 import path from "path";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 const configuredBase = process.env.STORAGE_PATH
   ? path.resolve(process.env.STORAGE_PATH)
@@ -18,10 +17,11 @@ export async function GET(
   context: { params: { docId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
+    const teacherId = ctx.teacherId;
 
     const doc = await prisma.teacherSignedDocument.findUnique({
       where: { id: context.params.docId },
@@ -30,9 +30,6 @@ export async function GET(
         pdfPath: true,
         pdfOriginalName: true,
         teacherId: true,
-        teacher: {
-          select: { userId: true },
-        },
       },
     });
 
@@ -43,13 +40,8 @@ export async function GET(
       );
     }
 
-    // Access check: ADMIN or the teacher who owns the document
-    const isAdmin = session.user.role === "ADMIN";
-    const isOwner =
-      session.user.role === "TEACHER" &&
-      session.user.teacherId === doc.teacherId;
-
-    if (!isAdmin && !isOwner) {
+    // Access check: the teacher (or admin impersonating) must own the document
+    if (doc.teacherId !== teacherId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

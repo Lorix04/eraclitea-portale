@@ -81,19 +81,38 @@ export async function GET(
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
 
-    const { buffer } = await readMaterial(material.filePath);
+    let buffer: Buffer;
+    try {
+      const result = await readMaterial(material.filePath);
+      buffer = result.buffer;
+    } catch (fileErr) {
+      console.error("[MATERIAL_DOWNLOAD] File read error:", {
+        filePath: material.filePath,
+        error: fileErr instanceof Error ? fileErr.message : fileErr,
+      });
+      return NextResponse.json(
+        { error: "File non trovato su disco" },
+        { status: 404 }
+      );
+    }
+
+    const url = new URL(_request.url);
+    const isPreview = url.searchParams.get("preview") === "true";
 
     const encodedFileName = encodeURIComponent(material.fileName).replace(
       /%20/g,
       "+"
     );
 
-    return new NextResponse(buffer, {
+    const disposition = isPreview ? "inline" : "attachment";
+
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": material.mimeType,
-        "Content-Disposition": `attachment; filename="${material.fileName}"; filename*=UTF-8''${encodedFileName}`,
+        "Content-Disposition": `${disposition}; filename="${material.fileName}"; filename*=UTF-8''${encodedFileName}`,
         "Content-Length": String(buffer.length),
+        "Cache-Control": "private, max-age=3600",
       },
     });
   } catch (error) {

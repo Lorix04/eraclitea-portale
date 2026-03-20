@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
 
-/* ─── helpers ─── */
+/* --- helpers --- */
 
 const toNull = (v: string | undefined | null) =>
   v !== undefined ? (typeof v === "string" && v.trim() ? v.trim() : null) : undefined;
 
-/* ─── response shape (shared by GET & PUT) ─── */
+/* --- response shape (shared by GET & PUT) --- */
 
 function teacherToJson(teacher: Record<string, unknown>) {
   return {
@@ -50,24 +49,18 @@ function teacherToJson(teacher: Record<string, unknown>) {
   };
 }
 
-/* ─── GET ─── */
+/* --- GET --- */
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "TEACHER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
-
-    if (!session.user.teacherId) {
-      return NextResponse.json(
-        { error: "Teacher ID mancante" },
-        { status: 400 }
-      );
-    }
+    const teacherId = ctx.teacherId;
 
     const teacher = await prisma.teacher.findUnique({
-      where: { id: session.user.teacherId },
+      where: { id: teacherId },
       select: {
         firstName: true,
         lastName: true,
@@ -118,7 +111,7 @@ export async function GET() {
   }
 }
 
-/* ─── PUT ─── */
+/* --- PUT --- */
 
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(100),
@@ -168,17 +161,11 @@ const updateSchema = z.object({
 
 export async function PUT(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "TEACHER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
-
-    if (!session.user.teacherId) {
-      return NextResponse.json(
-        { error: "Teacher ID mancante" },
-        { status: 400 }
-      );
-    }
+    const teacherId = ctx.teacherId;
 
     const body = await req.json();
     const parsed = updateSchema.safeParse(body);
@@ -199,7 +186,7 @@ export async function PUT(req: NextRequest) {
         : null;
 
     const updated = await prisma.teacher.update({
-      where: { id: session.user.teacherId },
+      where: { id: teacherId },
       data: {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),

@@ -1,22 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-
-async function getTeacherSession() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "TEACHER" || !session.user.teacherId) return null;
-  return session;
-}
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 export async function GET() {
-  const session = await getTeacherSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const teacherId = session.user.teacherId!;
+  const ctx = await getEffectiveTeacherContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  const teacherId = ctx.teacherId;
 
   // Get all messages for this teacher, group by threadId
   const messages = await prisma.teacherMessage.findMany({
@@ -66,10 +60,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getTeacherSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const teacherId = session.user.teacherId!;
+  const ctx = await getEffectiveTeacherContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  const teacherId = ctx.teacherId;
 
   let body: { threadId?: string; subject?: string; content?: string };
   try {
@@ -122,7 +117,7 @@ export async function POST(request: Request) {
       subject: subject?.trim() || null,
       content: content.trim(),
       senderRole: "TEACHER",
-      senderId: session.user.id,
+      senderId: ctx.userId,
       senderName,
       readByTeacher: true,
       readByAdmin: false,

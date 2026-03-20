@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateAttoNotorietaPdf } from "@/lib/teacher-document-pdf";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 const signDocumentSchema = z.object({
   token: z.string().optional(),
@@ -85,22 +84,15 @@ export async function POST(req: Request) {
 
       teacherId = teacher.id;
     } else {
-      const session = await getServerSession(authOptions);
-      if (!session || session.user.role !== "TEACHER") {
+      const ctx = await getEffectiveTeacherContext();
+      if (!ctx) {
         return NextResponse.json(
-          { error: "Unauthorized" },
-          { status: 401 }
+          { error: "Non autorizzato" },
+          { status: 403 }
         );
       }
 
-      if (!session.user.teacherId) {
-        return NextResponse.json(
-          { error: "Teacher ID mancante nella sessione" },
-          { status: 400 }
-        );
-      }
-
-      teacherId = session.user.teacherId;
+      teacherId = ctx.teacherId;
     }
 
     // Load teacher data for PDF

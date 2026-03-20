@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   TICKET_ATTACHMENT_ALLOWED_TYPES,
@@ -12,17 +10,18 @@ import {
   deleteTicketAttachment,
   saveTicketAttachment,
 } from "@/lib/ticket-storage";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "TEACHER" || !session.user.teacherId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
-    const teacherId = session.user.teacherId;
+    const teacherId = ctx.teacherId;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -80,11 +79,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "TEACHER" || !session.user.teacherId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
-    const teacherId = session.user.teacherId;
+    const teacherId = ctx.teacherId;
 
     const formData = await request.formData();
     const subject = String(formData.get("subject") ?? "").trim();
@@ -145,7 +144,7 @@ export async function POST(request: Request) {
 
     try {
       for (const file of files) {
-        const filePath = await saveTicketAttachment(file, session.user.id);
+        const filePath = await saveTicketAttachment(file, ctx.userId);
         attachmentPaths.push(filePath);
       }
 
@@ -164,7 +163,7 @@ export async function POST(request: Request) {
         await tx.ticketMessage.create({
           data: {
             ticketId: createdTicket.id,
-            senderId: session.user.id,
+            senderId: ctx.userId,
             message,
             attachments: attachmentPaths,
           },

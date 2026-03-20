@@ -1,17 +1,16 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 export async function PATCH(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "TEACHER") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getEffectiveTeacherContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
   }
 
   const notification = await prisma.notification.findUnique({
@@ -22,7 +21,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (notification.userId !== session.user.id) {
+  if (notification.userId !== ctx.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

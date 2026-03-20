@@ -53,6 +53,11 @@ export function resolveMaterialPath(relativePath: string): string {
 
 export async function readMaterial(relativePath: string) {
   const absolutePath = resolveMaterialPath(relativePath);
+  try {
+    await fs.access(absolutePath);
+  } catch {
+    throw new Error(`File not found: ${absolutePath} (relative: ${relativePath})`);
+  }
   const buffer = await fs.readFile(absolutePath);
   return { absolutePath, buffer };
 }

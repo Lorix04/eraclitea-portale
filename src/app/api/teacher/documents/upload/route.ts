@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import fs from "fs/promises";
 import path from "path";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import { saveTeacherCv } from "@/lib/teacher-cv-storage";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
-
-async function getTeacherId() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "TEACHER" || !session.user.teacherId) return null;
-  return session.user.teacherId;
-}
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -37,8 +30,11 @@ const configuredBase = process.env.STORAGE_PATH
 
 export async function POST(request: Request) {
   try {
-    const teacherId = await getTeacherId();
-    if (!teacherId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await getEffectiveTeacherContext();
+    if (!ctx) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+    }
+    const teacherId = ctx.teacherId;
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

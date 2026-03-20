@@ -1,17 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-async function getTeacherAuth() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "TEACHER" || !session.user.teacherId)
-    return null;
-  return { teacherId: session.user.teacherId, userId: session.user.id };
-}
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
 
 const attendanceSchema = z.object({
   attendances: z.array(
@@ -28,15 +20,17 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await getTeacherAuth();
-  if (!auth)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getEffectiveTeacherContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  const teacherId = ctx.teacherId;
 
   const lessonId = params.id;
 
   // Verify teacher has assignment for this lesson
   const assignment = await prisma.teacherAssignment.findFirst({
-    where: { teacherId: auth.teacherId, lessonId },
+    where: { teacherId, lessonId },
   });
   if (!assignment) {
     return NextResponse.json({ error: "Not assigned to this lesson" }, { status: 403 });
@@ -136,15 +130,17 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await getTeacherAuth();
-  if (!auth)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getEffectiveTeacherContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  const teacherId = ctx.teacherId;
 
   const lessonId = params.id;
 
   // Verify teacher assignment
   const assignment = await prisma.teacherAssignment.findFirst({
-    where: { teacherId: auth.teacherId, lessonId },
+    where: { teacherId, lessonId },
   });
   if (!assignment) {
     return NextResponse.json({ error: "Not assigned to this lesson" }, { status: 403 });
@@ -194,6 +190,7 @@ export async function POST(
   const courseEditionId = lesson.courseEditionId;
 
   // Upsert attendances in transaction
+  // recordedBy uses session.user.id (the actual logged-in user, not impersonated)
   await prisma.$transaction(async (tx) => {
     for (const item of data.attendances) {
       const normalizedHours =
@@ -212,14 +209,14 @@ export async function POST(
           status: item.status,
           hoursAttended: normalizedHours,
           notes: item.notes ?? null,
-          recordedBy: auth.userId,
+          recordedBy: ctx.session.user.id,
           recordedAt: new Date(),
         },
         update: {
           status: item.status,
           hoursAttended: normalizedHours,
           notes: item.notes ?? null,
-          recordedBy: auth.userId,
+          recordedBy: ctx.session.user.id,
           recordedAt: new Date(),
         },
       });

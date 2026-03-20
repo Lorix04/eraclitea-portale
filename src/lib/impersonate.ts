@@ -154,6 +154,20 @@ export async function getEffectiveClientContext(): Promise<EffectiveClientContex
   };
 }
 
+export type EffectiveTeacherContext = BaseContext & {
+  role: "TEACHER";
+  teacherId: string;
+};
+
+export async function getEffectiveTeacherContext(): Promise<EffectiveTeacherContext | null> {
+  const context = await getEffectiveUserContext();
+  if (!context) return null;
+  if (context.role === "TEACHER" && context.teacherId) {
+    return { ...context, role: "TEACHER", teacherId: context.teacherId };
+  }
+  return null;
+}
+
 export async function getEffectiveUserId(): Promise<EffectiveUserIdentity | null> {
   const context = await getEffectiveUserContext();
   if (!context) {
