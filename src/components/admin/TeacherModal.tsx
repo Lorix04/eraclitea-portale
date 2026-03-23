@@ -147,7 +147,9 @@ export default function TeacherModal({
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [showEmailWarning, setShowEmailWarning] = useState(false);
   const categorySearchInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   // New fields
   const [birthDate, setBirthDate] = useState("");
@@ -362,15 +364,7 @@ export default function TeacherModal({
     return isEdit ? "Modifica docente" : "Nuovo docente";
   }, [isEdit, title]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const errs: FieldErrors = {};
-    if (!firstName.trim()) errs.firstName = "Nome obbligatorio";
-    if (!lastName.trim()) errs.lastName = "Cognome obbligatorio";
-    if (!validateEmail(email)) errs.email = "Email non valida";
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) { setTab("personal"); return; }
-
+  const doSave = async () => {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -448,6 +442,23 @@ export default function TeacherModal({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const errs: FieldErrors = {};
+    if (!firstName.trim()) errs.firstName = "Nome obbligatorio";
+    if (!lastName.trim()) errs.lastName = "Cognome obbligatorio";
+    if (!validateEmail(email)) errs.email = "Email non valida";
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) { setTab("personal"); return; }
+
+    if (!email.trim()) {
+      setShowEmailWarning(true);
+      return;
+    }
+
+    await doSave();
   };
 
   if (!open) return null;
@@ -594,9 +605,10 @@ export default function TeacherModal({
               <>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm">
-                    <FormLabel>Email</FormLabel>
-                    <input type="email" className={`${inputCls} ${errors.email ? "border-red-500" : ""}`} value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }} />
+                    <FormLabel>Email <span className="text-amber-500">*</span></FormLabel>
+                    <input ref={emailInputRef} type="email" className={`${inputCls} ${errors.email ? "border-red-500" : ""}`} value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }} />
                     <FormFieldError message={errors.email} />
+                    <p className="text-xs text-muted-foreground">Necessaria per inviare l&apos;invito di registrazione</p>
                   </label>
                   <label className="flex flex-col gap-1 text-sm">
                     <FormLabel>Email secondaria</FormLabel>
@@ -785,6 +797,49 @@ export default function TeacherModal({
           </div>
         </form>
       </div>
+
+      {/* Email missing warning dialog */}
+      {showEmailWarning ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-xl">
+            <div className="mb-3 flex items-center gap-2 text-amber-600">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+              <h3 className="text-base font-semibold">Email non inserita</h3>
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Senza email non sarà possibile:
+            </p>
+            <ul className="mb-4 space-y-1 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2"><span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />Inviare l&apos;invito di registrazione al docente</li>
+              <li className="flex items-start gap-2"><span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />Inviare notifiche su lezioni assegnate</li>
+              <li className="flex items-start gap-2"><span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />Il docente non potrà accedere al portale</li>
+            </ul>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+                onClick={() => {
+                  setShowEmailWarning(false);
+                  setTab("contacts");
+                  setTimeout(() => emailInputRef.current?.focus(), 100);
+                }}
+              >
+                Torna indietro
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
+                onClick={() => {
+                  setShowEmailWarning(false);
+                  void doSave();
+                }}
+              >
+                Procedi senza email
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -120,10 +120,6 @@ export async function middleware(req: NextRequest) {
       );
     }
 
-    const isReadOnlyMethod = !["GET", "HEAD", "OPTIONS"].includes(req.method);
-    const isImpersonateStopRoute =
-      pathname === "/api/admin/impersonate/stop" ||
-      pathname === "/api/admin/impersonate-teacher/stop";
     const isForceChangePasswordApi = pathname === "/api/profilo/cambia-password";
     const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
       req.method
@@ -154,18 +150,6 @@ export async function middleware(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Cambio password obbligatorio" },
-        { status: 403 }
-      );
-    }
-
-    if (
-      (isImpersonatingClient || isImpersonatingTeacher) &&
-      isReadOnlyMethod &&
-      !isImpersonateStopRoute &&
-      !isAuthApiRoute
-    ) {
-      return NextResponse.json(
-        { error: "Impersonazione attiva in sola lettura" },
         { status: 403 }
       );
     }

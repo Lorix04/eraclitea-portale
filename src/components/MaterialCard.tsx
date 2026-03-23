@@ -32,6 +32,7 @@ export type MaterialItem = {
   createdAt: string;
   status?: "PENDING" | "APPROVED" | "REJECTED";
   rejectionReason?: string | null;
+  sourceCourseMediaId?: string | null;
 };
 
 type MaterialCardProps = {
@@ -117,6 +118,11 @@ export default function MaterialCard({
           {material.fileName}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
+          {material.sourceCourseMediaId ? (
+            <span className="mr-1.5 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500" title="Importato dalla libreria del corso">
+              Dal corso
+            </span>
+          ) : null}
           {categoryLabel} &middot; {formatFileSize(material.fileSize)} &middot;{" "}
           {formatDate(material.createdAt)}
           {material.uploadedByEmail

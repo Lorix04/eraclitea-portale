@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, KeyRound, LogIn, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { Check, Copy, Eye, KeyRound, LogIn, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getArrayData } from "@/lib/api-response";
@@ -387,14 +387,21 @@ export default function AdminClientiPage() {
         actions={(client) => (
           <ActionMenu
             primaryAction={{
-              key: "impersonate",
-              label: "Accedi come",
-              icon: LogIn,
+              key: "view",
+              label: "Visualizza",
+              icon: Eye,
               variant: "info",
-              onClick: () => handleImpersonate(client),
-              disabled: !client.user?.id || impersonatingClientId === client.id,
+              href: `/admin/clienti/${client.id}`,
             }}
             secondaryActions={[
+              {
+                key: "impersonate",
+                label: "Accedi come",
+                icon: LogIn,
+                variant: "info",
+                onClick: () => handleImpersonate(client),
+                disabled: !client.user?.id || impersonatingClientId === client.id,
+              },
               {
                 key: "edit",
                 label: "Modifica",

@@ -95,6 +95,7 @@ model Course {
   visibility       CourseVisibility[]
   visibilityCategories CourseVisibilityCategory[]
   categories       CourseCategory[]
+  materials        CourseMaterial[]
 }
 
 model CourseEdition {
@@ -527,6 +528,7 @@ model EditionMaterial {
   approvedById     String?
   approvedAt       DateTime?
   rejectionReason  String?
+  sourceCourseMediaId String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -686,4 +688,25 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt])
   @@index([action])
+}
+
+model CourseMaterial {
+  id              String   @id @default(cuid())
+  courseId         String
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  fileName        String
+  filePath        String
+  fileSize        Int
+  mimeType        String
+  category        String
+  title           String
+  description     String?
+  sortOrder       Int      @default(0)
+  uploadedById    String
+  uploadedByName  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([courseId, category])
 }

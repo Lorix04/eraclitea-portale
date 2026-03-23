@@ -75,6 +75,16 @@ export async function PUT(
     },
   });
 
+  // Notify assigned teachers if date/time/location changed
+  const relevantFieldChanged =
+    date !== undefined || startTime !== undefined || endTime !== undefined ||
+    durationHours !== undefined || luogo !== undefined;
+  if (relevantFieldChanged) {
+    import("@/lib/teacher-lesson-emails").then(({ sendLessonUpdatedEmails }) => {
+      void sendLessonUpdatedEmails(context.params.lessonId);
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ data: updated });
 }
 

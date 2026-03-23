@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import CourseEditionsTable from "@/components/admin/CourseEditionsTable";
 import VisibilityBadgeList from "@/components/admin/VisibilityBadgeList";
+import CourseDetailTabs from "@/components/admin/CourseDetailTabs";
 
 const VISIBILITY_LABELS: Record<string, string> = {
   ALL: "Tutti",
@@ -130,10 +131,15 @@ export default async function AdminCourseDetailPage({
         ) : null}
       </div>
 
-      <CourseEditionsTable
+      <CourseDetailTabs
         courseId={course.id}
-        courseName={course.title}
-        editions={editionRows}
+        editionsContent={
+          <CourseEditionsTable
+            courseId={course.id}
+            courseName={course.title}
+            editions={editionRows}
+          />
+        }
       />
     </div>
   );

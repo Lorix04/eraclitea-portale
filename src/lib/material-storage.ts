@@ -71,3 +71,49 @@ export async function deleteMaterial(relativePath?: string | null) {
     // ignore missing files
   }
 }
+
+export async function saveCourseMaterial(
+  file: File,
+  courseId: string
+): Promise<{ absolutePath: string; relativePath: string }> {
+  const safeCourseId = sanitizeFileName(courseId);
+  const dir = path.resolve(MATERIALS_STORAGE_DIR, "courses", safeCourseId);
+  await fs.mkdir(dir, { recursive: true });
+
+  const safeName = sanitizeFileName(path.basename(file.name || "file"));
+  const fileName = `${Date.now()}_${safeName}`;
+  const absolutePath = path.resolve(dir, fileName);
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await fs.writeFile(absolutePath, buffer);
+
+  return {
+    absolutePath,
+    relativePath: path
+      .relative(MATERIALS_STORAGE_DIR, absolutePath)
+      .replace(/\\/g, "/"),
+  };
+}
+
+export async function copyCourseMaterialToEdition(
+  sourcePath: string,
+  editionId: string
+): Promise<{ absolutePath: string; relativePath: string }> {
+  const sourceAbsolute = resolveMaterialPath(sourcePath);
+  const safeEditionId = sanitizeFileName(editionId);
+  const dir = path.resolve(MATERIALS_STORAGE_DIR, safeEditionId);
+  await fs.mkdir(dir, { recursive: true });
+
+  const baseName = path.basename(sourceAbsolute);
+  const fileName = `${Date.now()}_${baseName}`;
+  const destAbsolute = path.resolve(dir, fileName);
+
+  await fs.copyFile(sourceAbsolute, destAbsolute);
+
+  return {
+    absolutePath: destAbsolute,
+    relativePath: path
+      .relative(MATERIALS_STORAGE_DIR, destAbsolute)
+      .replace(/\\/g, "/"),
+  };
+}

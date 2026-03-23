@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { handleLogout } from "@/lib/logout";
 import { usePathname } from "next/navigation";
 import {
   Award,
@@ -157,7 +157,7 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
       <div className="mt-auto border-t pt-4" style={{ borderColor: dividerColor }}>
         <button
           type="button"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => void handleLogout()}
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition"
           style={{ color: baseText }}
           onMouseEnter={(event) => {

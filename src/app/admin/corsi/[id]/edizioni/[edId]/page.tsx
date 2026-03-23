@@ -1035,6 +1035,7 @@ export default function AdminEditionDetailPage({
           courseId={params.id}
           editionId={params.edId}
           readOnly={isArchived}
+          courseName={edition.course?.title}
         />
       ) : null}
 

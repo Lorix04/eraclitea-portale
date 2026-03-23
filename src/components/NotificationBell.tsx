@@ -18,11 +18,27 @@ export default function NotificationBell() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const markAsRead = useMarkNotificationRead();
+  const isTeacher = session?.user?.role === "TEACHER";
+  const markAsRead = useMarkNotificationRead(isTeacher);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["notifications"],
+    queryKey: ["notifications", isTeacher ? "teacher" : "default"],
     queryFn: async () => {
+      if (isTeacher) {
+        const [notifRes, countRes] = await Promise.all([
+          fetch("/api/teacher/notifications?limit=10"),
+          fetch("/api/teacher/notifications/unread-count"),
+        ]);
+        if (!notifRes.ok || !countRes.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+        const notificationsJson = await notifRes.json();
+        const countJson = await countRes.json();
+        return {
+          notifications: (notificationsJson.notifications ?? []) as any[],
+          unreadCount: countJson.count ?? 0,
+        };
+      }
       const [notifRes, countRes] = await Promise.all([
         fetch("/api/notifiche?limit=10"),
         fetch("/api/notifiche/count"),
@@ -80,6 +96,15 @@ export default function NotificationBell() {
       return;
     }
 
+    if (isTeacher) {
+      if (item.ticketId) {
+        router.push(`/docente/supporto/${item.ticketId}`);
+        return;
+      }
+      router.push("/docente/notifiche");
+      return;
+    }
+
     if (item.ticketId) {
       router.push(`/supporto/${item.ticketId}`);
       return;
@@ -106,7 +131,10 @@ export default function NotificationBell() {
   const items = data?.notifications?.slice(0, 5) ?? [];
 
   const handleReadAll = async () => {
-    await fetch("/api/notifiche/read-all", { method: "POST" });
+    const endpoint = isTeacher
+      ? "/api/teacher/notifications/read-all"
+      : "/api/notifiche/read-all";
+    await fetch(endpoint, { method: "POST" });
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
   };
 
@@ -141,7 +169,7 @@ export default function NotificationBell() {
                 </button>
               ) : null}
               <Link
-                href={session?.user?.role === "ADMIN" ? "/admin/ticket" : "/notifiche"}
+                href={session?.user?.role === "ADMIN" ? "/admin/ticket" : isTeacher ? "/docente/notifiche" : "/notifiche"}
                 className="link-brand"
               >
                 Vedi tutte

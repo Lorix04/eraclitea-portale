@@ -51,6 +51,17 @@ export async function getEffectiveUserContext(): Promise<EffectiveUserContext | 
     };
   }
 
+  if (session.user.role === "TEACHER") {
+    return {
+      session,
+      userId: session.user.id,
+      clientId: null,
+      teacherId: session.user.teacherId ?? null,
+      role: "TEACHER",
+      isImpersonating: false,
+    };
+  }
+
   const cookieStore = cookies();
   const impersonateAdminId = cookieStore.get(IMPERSONATE_ADMIN_COOKIE)?.value;
   const impersonateClientId = cookieStore.get(IMPERSONATE_CLIENT_COOKIE)?.value;

@@ -1,29 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Archive, AlertTriangle, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Archive, AlertTriangle, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
 import MaterialCategoryFilter from "@/components/MaterialCategoryFilter";
 import MaterialCard, { type MaterialItem } from "@/components/MaterialCard";
 import MaterialUploadModal from "@/components/MaterialUploadModal";
 import MaterialPreviewModal from "@/components/MaterialPreviewModal";
+import ImportCourseMaterialsModal from "@/components/admin/ImportCourseMaterialsModal";
 import { MATERIAL_CATEGORIES } from "@/lib/material-storage-shared";
 
 type EditionMaterialsTabProps = {
   courseId: string;
   editionId: string;
   readOnly?: boolean;
+  courseName?: string;
 };
 
 export default function EditionMaterialsTab({
   courseId,
   editionId,
   readOnly = false,
+  courseName,
 }: EditionMaterialsTabProps) {
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(
     null
   );
@@ -160,6 +164,14 @@ export default function EditionMaterialsTab({
     }
   };
 
+  const existingSourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const m of materials) {
+      if ((m as any).sourceCourseMediaId) ids.add((m as any).sourceCourseMediaId);
+    }
+    return ids;
+  }, [materials]);
+
   const makeDownloadUrl = (materialId: string) =>
     `/api/corsi/${courseId}/edizioni/${editionId}/materials/${materialId}/download`;
 
@@ -178,17 +190,27 @@ export default function EditionMaterialsTab({
           ) : null}
         </div>
         {!readOnly ? (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingMaterial(null);
-              setUploadModalOpen(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Carica materiale
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm hover:bg-muted"
+            >
+              <Download className="h-4 w-4" />
+              Importa dal corso
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingMaterial(null);
+                setUploadModalOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Carica materiale
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -320,6 +342,16 @@ export default function EditionMaterialsTab({
         open={!!previewMaterial}
         onClose={() => setPreviewMaterial(null)}
         material={previewMaterial}
+      />
+
+      <ImportCourseMaterialsModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={() => { setImportModalOpen(false); fetchMaterials(); }}
+        courseId={courseId}
+        editionId={editionId}
+        courseName={courseName ?? ""}
+        existingSourceIds={existingSourceIds}
       />
     </div>
   );

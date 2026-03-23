@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { handleLogout } from "@/lib/logout";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -136,7 +136,7 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
         <div className="mt-auto border-t pt-4">
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => void handleLogout()}
             className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50"
           >
             <LogOut className="h-4 w-4 text-red-500" />

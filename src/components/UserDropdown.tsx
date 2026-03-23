@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { LogOut, User } from "lucide-react";
+import { handleLogout } from "@/lib/logout";
 
 export default function UserDropdown() {
   const { data: session } = useSession();
@@ -64,7 +65,7 @@ export default function UserDropdown() {
             <button
               type="button"
               className="flex items-center gap-2 rounded-md px-3 py-2 text-red-600 hover:bg-red-50"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => void handleLogout()}
             >
               <LogOut className="h-4 w-4" />
               Esci

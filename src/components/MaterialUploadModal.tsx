@@ -41,6 +41,7 @@ export default function MaterialUploadModal({
   const [category, setCategory] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dragActive, setDragActive] = useState(false);
 
   const isEditMode = !!editingMaterial;
 
@@ -130,13 +131,16 @@ export default function MaterialUploadModal({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0] ?? null;
+  const handleFileSelect = (selected: File | null) => {
     setFile(selected);
     if (selected && !title.trim()) {
       setTitle(selected.name.replace(/\.[^/.]+$/, ""));
     }
     setErrors((prev) => ({ ...prev, file: "" }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelect(e.target.files?.[0] ?? null);
   };
 
   return createPortal(
@@ -166,11 +170,39 @@ export default function MaterialUploadModal({
               <div>
                 <label
                   htmlFor="material-file-input"
-                  className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-gray-300 p-6 text-center transition-colors hover:border-gray-400 hover:bg-muted/30"
+                  className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                    dragActive
+                      ? "border-amber-500 bg-amber-50"
+                      : "border-gray-300 hover:border-gray-400 hover:bg-muted/30"
+                  }`}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragActive(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragActive(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragActive(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragActive(false);
+                    const droppedFile = e.dataTransfer.files?.[0] ?? null;
+                    if (droppedFile) {
+                      handleFileSelect(droppedFile);
+                    }
+                  }}
                 >
-                  <Upload className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    Clicca o trascina un file
+                  <Upload className={`h-8 w-8 ${dragActive ? "text-amber-500" : "text-muted-foreground"}`} />
+                  <span className={`text-sm ${dragActive ? "text-amber-700 font-medium" : "text-muted-foreground"}`}>
+                    {dragActive ? "Rilascia il file qui" : "Clicca o trascina un file"}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Max {formatFileSize(MATERIAL_MAX_SIZE_BYTES)}

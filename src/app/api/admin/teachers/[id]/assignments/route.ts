@@ -141,15 +141,10 @@ export async function POST(
       skipDuplicates: true,
     });
 
-    // Create notification for teacher if they have a linked user
-    if (teacher.userId && result.count > 0) {
-      const { createTeacherNotification } = await import("@/lib/teacher-notifications");
-      void createTeacherNotification({
-        userId: teacher.userId,
-        type: "LESSON_ASSIGNED",
-        title: "Nuova lezione assegnata",
-        message: `Ti ${result.count === 1 ? "e stata assegnata 1 nuova lezione" : `sono state assegnate ${result.count} nuove lezioni`}.`,
-      });
+    // Send batch email + notification for assigned lessons
+    if (result.count > 0) {
+      const { sendLessonAssignedEmails } = await import("@/lib/teacher-lesson-emails");
+      void sendLessonAssignedEmails(teacher.id, lessonIds);
     }
 
     return NextResponse.json({ success: true, created: result.count });
@@ -187,19 +182,26 @@ export async function DELETE(
       id = parsed.data.id;
     }
 
-    const deleted = await prisma.teacherAssignment.deleteMany({
-      where: {
-        id,
-        teacherId: context.params.id,
-      },
+    // Fetch assignment details before deleting (for email notification)
+    const assignment = await prisma.teacherAssignment.findFirst({
+      where: { id, teacherId: context.params.id },
+      select: { id: true, lessonId: true, teacherId: true },
     });
 
-    if (deleted.count === 0) {
+    if (!assignment) {
       return NextResponse.json(
         { error: "Assegnazione non trovata" },
         { status: 404 }
       );
     }
+
+    await prisma.teacherAssignment.delete({
+      where: { id: assignment.id },
+    });
+
+    // Send email + notification for removal
+    const { sendLessonRemovedEmail } = await import("@/lib/teacher-lesson-emails");
+    void sendLessonRemovedEmail(assignment.teacherId, assignment.lessonId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

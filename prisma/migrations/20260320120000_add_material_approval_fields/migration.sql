@@ -1,4 +1,2 @@
--- AlterTable
-ALTER TABLE "EditionMaterial" ADD COLUMN "approvedAt" TIMESTAMP(3);
-ALTER TABLE "EditionMaterial" ADD COLUMN "approvedById" TEXT;
-ALTER TABLE "EditionMaterial" ADD COLUMN "rejectionReason" TEXT;
+-- Migration is a no-op: these columns were already included in the
+-- 20260319160000_add_edition_materials CreateTable migration.

@@ -1,11 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export function useMarkNotificationRead() {
+export function useMarkNotificationRead(isTeacher = false) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      await fetch(`/api/notifiche/${notificationId}/read`, { method: "POST" });
+      const endpoint = isTeacher
+        ? `/api/teacher/notifications/${notificationId}/read`
+        : `/api/notifiche/${notificationId}/read`;
+      await fetch(endpoint, { method: "POST" });
     },
     onMutate: async (notificationId) => {
       await queryClient.cancelQueries({ queryKey: ["notifications"] });
