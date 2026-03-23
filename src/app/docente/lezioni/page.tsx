@@ -27,7 +27,7 @@ type LessonItem = {
 type PeriodFilter = "upcoming" | "past" | "all";
 
 export default function TeacherLessonsPage() {
-  const [period, setPeriod] = useState<PeriodFilter>("upcoming");
+  const [period, setPeriod] = useState<PeriodFilter>("all");
   const [courseFilter, setCourseFilter] = useState("");
   const [search, setSearch] = useState("");
 
@@ -58,7 +58,7 @@ export default function TeacherLessonsPage() {
   }, [lessons]);
 
   const resetFilters = () => {
-    setPeriod("upcoming");
+    setPeriod("all");
     setCourseFilter("");
     setSearch("");
   };
@@ -88,7 +88,7 @@ export default function TeacherLessonsPage() {
           </div>
         }
         activeFiltersCount={
-          [period !== "upcoming", courseFilter !== ""].filter(Boolean).length
+          [period !== "all", courseFilter !== ""].filter(Boolean).length
         }
         onReset={resetFilters}
         resultCount={<>{lessons.length} lezioni</>}

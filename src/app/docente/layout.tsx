@@ -6,8 +6,25 @@ import NotificationBell from "@/components/NotificationBell";
 import TeacherImpersonateBanner from "@/components/TeacherImpersonateBanner";
 import DisableDarkMode from "@/components/DisableDarkMode";
 import LogoutSync from "@/components/LogoutSync";
+import { getEffectiveTeacherContext } from "@/lib/impersonate";
+import { prisma } from "@/lib/prisma";
 
-export default function TeacherLayout({ children }: { children: React.ReactNode }) {
+export default async function TeacherLayout({ children }: { children: React.ReactNode }) {
+  let teacherName: string | null = null;
+  try {
+    const ctx = await getEffectiveTeacherContext();
+    if (ctx?.teacherId) {
+      const teacher = await prisma.teacher.findUnique({
+        where: { id: ctx.teacherId },
+        select: { firstName: true, lastName: true },
+      });
+      if (teacher) {
+        teacherName = `${teacher.firstName} ${teacher.lastName}`;
+      }
+    }
+  } catch {
+    // fallback: show header without name
+  }
   return (
     <>
       <LogoutSync />
@@ -18,7 +35,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
           <TeacherSidebar />
         </div>
         <div className="min-w-0 flex-1 overflow-x-hidden">
-          <TeacherHeader leftSlot={<MobileSidebar role="TEACHER" />}>
+          <TeacherHeader teacherName={teacherName} leftSlot={<MobileSidebar role="TEACHER" />}>
             <NotificationBell />
             <UserDropdown />
           </TeacherHeader>
