@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
+import TeacherCvTab from "@/components/admin/TeacherCvTab";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
@@ -182,7 +183,7 @@ export default function AdminTeacherDetailPage() {
     endTime: "",
     reason: "",
   });
-  const [activeTab, setActiveTab] = useState<"calendar" | "lessons" | "documents" | "details">("calendar");
+  const [activeTab, setActiveTab] = useState<"calendar" | "lessons" | "documents" | "cv" | "details">("calendar");
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const cvInputRef = useRef<HTMLInputElement | null>(null);
@@ -700,11 +701,11 @@ export default function AdminTeacherDetailPage() {
         <div className="space-y-0">
           {/* Tab bar */}
           <div className="flex border-b mb-4">
-            {(["calendar", "lessons", "documents", "details"] as const).map((t) => (
+            {(["calendar", "lessons", "documents", "cv", "details"] as const).map((t) => (
               <button key={t} type="button" onClick={() => setActiveTab(t)}
                 className={`px-4 py-2 text-sm border-b-2 transition-colors ${activeTab === t ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               >
-                {t === "calendar" ? "Calendario" : t === "lessons" ? "Lezioni" : t === "documents" ? "Documenti" : "Dettagli"}
+                {t === "calendar" ? "Calendario" : t === "lessons" ? "Lezioni" : t === "documents" ? "Documenti" : t === "cv" ? "CV" : "Dettagli"}
               </button>
             ))}
           </div>
@@ -1116,6 +1117,13 @@ export default function AdminTeacherDetailPage() {
                 )}
               </section>
             </div>
+          )}
+
+          {/* Tab: CV */}
+          {activeTab === "cv" && (
+            <section className="rounded-lg border bg-card p-4">
+              <TeacherCvTab teacherId={id} />
+            </section>
           )}
 
           {/* Tab: Dettagli */}

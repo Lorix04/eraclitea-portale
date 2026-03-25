@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, BookOpen, Calendar, Clock, GraduationCap, MapPin, Users } from "lucide-react";
@@ -60,6 +60,11 @@ export default function TeacherDashboardPage() {
     },
     staleTime: 30_000,
   });
+
+  // Background sync portal teaching experience on dashboard load
+  useEffect(() => {
+    fetch("/api/teacher/cv/sync-portal-experience", { method: "POST" }).catch(() => {});
+  }, []);
 
   const stats = dashboardQuery.data;
   const nextLessons = stats?.nextLessons ?? [];

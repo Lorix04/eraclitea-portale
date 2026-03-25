@@ -5,17 +5,20 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  Download,
   FileText,
   Globe,
   GraduationCap,
   Laptop,
   ScrollText,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CV_SECTIONS, type CvSectionKey } from "@/lib/cv-schemas";
 import CvSection from "./CvSection";
 import CvEntryCard from "./CvEntryCard";
 import CvEntryModal from "./CvEntryModal";
+import ImportCvModal from "./ImportCvModal";
 
 type TeacherCvEditorProps = {
   mode: "registration" | "profile";
@@ -63,6 +66,8 @@ export default function TeacherCvEditor({
   );
   const [modalSection, setModalSection] = useState<CvSectionKey | null>(null);
   const [editingEntry, setEditingEntry] = useState<any | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null); // null = checking
 
   const fetchAll = useCallback(async () => {
     try {
@@ -89,6 +94,16 @@ export default function TeacherCvEditor({
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // Check if AI import is available (ANTHROPIC_API_KEY configured)
+  useEffect(() => {
+    fetch(`${apiBase}/import-pdf`, { method: "POST" })
+      .then((res) => {
+        // 503 = not configured, 400/403 = configured but bad request (means it's available)
+        setAiAvailable(res.status !== 503);
+      })
+      .catch(() => setAiAvailable(false));
+  }, [apiBase]);
 
   // Report validation to parent
   useEffect(() => {
@@ -150,13 +165,60 @@ export default function TeacherCvEditor({
     );
   }
 
+  const hasAnyCvData = Object.values(data).some((arr) => arr.length > 0);
+
+  const handleDownloadPdf = () => {
+    window.open(`${apiBase}/download-pdf`, "_blank");
+  };
+
+  const handleImported = () => {
+    setImportModalOpen(false);
+    fetchAll();
+  };
+
   return (
     <div className="space-y-2">
+      {/* Import / Download buttons */}
+      {(aiAvailable || hasAnyCvData) && (
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+          {aiAvailable && (
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors"
+            >
+              <Upload className="h-4 w-4" />
+              Importa da CV PDF
+            </button>
+          )}
+          {hasAnyCvData && (
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Scarica CV Europass PDF
+            </button>
+          )}
+        </div>
+      )}
+
       {mode === "registration" ? (
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-          Inserisci almeno <strong>1 esperienza lavorativa</strong> e{" "}
-          <strong>1 titolo di studio</strong> per procedere. Le altre sezioni
-          sono opzionali e potrai completarle dal tuo profilo.
+          {aiAvailable ? (
+            <>
+              Hai gia un CV? <button type="button" onClick={() => setImportModalOpen(true)} className="underline font-medium">Importa i dati automaticamente</button>.
+              Oppure inserisci almeno <strong>1 esperienza lavorativa</strong> e{" "}
+              <strong>1 titolo di studio</strong> per procedere.
+            </>
+          ) : (
+            <>
+              Inserisci almeno <strong>1 esperienza lavorativa</strong> e{" "}
+              <strong>1 titolo di studio</strong> per procedere. Le altre sezioni
+              sono opzionali e potrai completarle dal tuo profilo.
+            </>
+          )}
         </div>
       ) : null}
 
@@ -181,6 +243,7 @@ export default function TeacherCvEditor({
                     key={entry.id}
                     section={key}
                     entry={entry}
+                    canEdit={!entry.isFromPortal}
                     onEdit={() => handleEdit(key, entry)}
                     onDelete={() => handleDelete(key, entry.id)}
                   />
@@ -192,6 +255,7 @@ export default function TeacherCvEditor({
                   key={entry.id}
                   section={key}
                   entry={entry}
+                  canEdit={!entry.isFromPortal}
                   onEdit={() => handleEdit(key, entry)}
                   onDelete={() => handleDelete(key, entry.id)}
                 />
@@ -239,6 +303,13 @@ export default function TeacherCvEditor({
           apiBase={apiBase}
         />
       ) : null}
+
+      <ImportCvModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={handleImported}
+        apiBase={apiBase}
+      />
     </div>
   );
 }

@@ -35,6 +35,12 @@ model User {
   teacher            Teacher?
   editionReferents   EditionReferent[]
 
+  // Admin invite fields
+  adminInviteToken       String?   @unique
+  adminInviteTokenExpiry DateTime?
+  adminInviteSentAt      DateTime?
+  adminInviteStatus      String?   // "pending", "completed"
+
   @@index([adminRoleId])
 }
 
@@ -877,11 +883,13 @@ model TeacherTeachingExperience {
   description    String?   @db.Text
   isFromPortal   Boolean   @default(false)
   lessonId       String?
+  courseEditionId String?
   sortOrder      Int       @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@index([teacherId])
+  @@index([teacherId, courseEditionId])
 }
 
 model TeacherPublication {
