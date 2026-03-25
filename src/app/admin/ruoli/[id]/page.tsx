@@ -7,9 +7,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
+  Clock,
   Copy,
+  Loader2,
+  Mail,
   Pencil,
   Shield,
+  Trash2,
   UserMinus,
   UserPlus,
   X,
@@ -24,6 +28,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import RoleModal from "@/components/admin/RoleModal";
 import AssignRoleModal from "@/components/admin/AssignRoleModal";
+import InviteAdminModal from "@/components/admin/InviteAdminModal";
 
 type RoleDetail = {
   id: string;
@@ -32,7 +37,14 @@ type RoleDetail = {
   isSystem: boolean;
   isDefault: boolean;
   permissions: PermissionsMap;
-  users: { id: string; email: string; isActive: boolean; lastLoginAt: string | null }[];
+  users: {
+    id: string;
+    email: string;
+    isActive: boolean;
+    lastLoginAt: string | null;
+    adminInviteStatus: string | null;
+    adminInviteSentAt: string | null;
+  }[];
 };
 
 export default function AdminRoleDetailPage() {
@@ -44,6 +56,8 @@ export default function AdminRoleDetailPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [reinviting, setReinviting] = useState<string | null>(null);
 
   const roleQuery = useQuery({
     queryKey: ["admin-role", roleId],
@@ -243,18 +257,27 @@ export default function AdminRoleDetailPage() {
 
       {/* Assigned users */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Utenti assegnati ({role.users.length})
           </h2>
           {can("ruoli", "assign") ? (
-            <button
-              type="button"
-              onClick={() => setAssignOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-muted"
-            >
-              <UserPlus className="h-4 w-4" /> Assegna utente
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+              >
+                <Mail className="h-4 w-4" /> Invita nuovo utente
+              </button>
+              <button
+                type="button"
+                onClick={() => setAssignOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-muted"
+              >
+                <UserPlus className="h-4 w-4" /> Assegna esistente
+              </button>
+            </div>
           ) : null}
         </div>
         {role.users.length === 0 ? (
@@ -263,31 +286,92 @@ export default function AdminRoleDetailPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {role.users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{user.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {user.isActive ? "Attivo" : "Disattivo"}
-                    {user.lastLoginAt
-                      ? ` · Ultimo accesso: ${new Date(user.lastLoginAt).toLocaleDateString("it-IT")}`
-                      : ""}
-                  </p>
+            {role.users.map((user) => {
+              const isPending = user.adminInviteStatus === "pending";
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPending ? (
+                        <span className="inline-flex items-center gap-1 text-amber-600">
+                          <Clock className="h-3 w-3" />
+                          In attesa di registrazione
+                          {user.adminInviteSentAt
+                            ? ` · Invito: ${new Date(user.adminInviteSentAt).toLocaleDateString("it-IT")}`
+                            : ""}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-emerald-600">Attivo</span>
+                          {user.lastLoginAt
+                            ? ` · Ultimo accesso: ${new Date(user.lastLoginAt).toLocaleDateString("it-IT")}`
+                            : ""}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {can("ruoli", "assign") ? (
+                    <div className="flex gap-1 shrink-0">
+                      {isPending ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={reinviting === user.id}
+                            onClick={async () => {
+                              setReinviting(user.id);
+                              try {
+                                const res = await fetch(`/api/admin/roles/reinvite-user/${user.id}`, { method: "POST" });
+                                const json = await res.json();
+                                if (!res.ok) throw new Error(json.error);
+                                toast.success("Invito reinviato");
+                              } catch (err: any) {
+                                toast.error(err.message);
+                              } finally {
+                                setReinviting(null);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+                          >
+                            {reinviting === user.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                            Reinvia
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm("Annullare l'invito? L'utente verrà eliminato.")) return;
+                              try {
+                                const res = await fetch(`/api/admin/roles/reinvite-user/${user.id}`, { method: "DELETE" });
+                                const json = await res.json();
+                                if (!res.ok) throw new Error(json.error);
+                                toast.success("Invito annullato");
+                                refresh();
+                              } catch (err: any) {
+                                toast.error(err.message);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3 w-3" /> Annulla
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleUnassign(user.id)}
+                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          <UserMinus className="h-3 w-3" /> Rimuovi
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
-                {can("ruoli", "assign") ? (
-                  <button
-                    type="button"
-                    onClick={() => handleUnassign(user.id)}
-                    className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                  >
-                    <UserMinus className="h-3 w-3" /> Rimuovi
-                  </button>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -312,6 +396,19 @@ export default function AdminRoleDetailPage() {
           roleName={role.name}
           onAssigned={() => {
             setAssignOpen(false);
+            refresh();
+          }}
+        />
+      ) : null}
+
+      {inviteOpen ? (
+        <InviteAdminModal
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          roleId={roleId}
+          roleName={role.name}
+          onInvited={() => {
+            setInviteOpen(false);
             refresh();
           }}
         />

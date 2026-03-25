@@ -47,6 +47,10 @@ function isTeacherRegistration(pathname: string) {
   return pathname.startsWith("/registrazione/docente");
 }
 
+function isAdminRegistration(pathname: string) {
+  return pathname.startsWith("/registrazione/admin") || pathname.startsWith("/api/admin-registration");
+}
+
 function isGuideRoute(pathname: string) {
   return pathname === "/guida" || pathname.startsWith("/guida/");
 }
@@ -185,6 +189,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Admin registration is public (no auth required)
+  if (isAdminRegistration(pathname)) {
+    return NextResponse.next();
+  }
+
   if (pathname === "/") {
     if (effectiveRole === "ADMIN") {
       return NextResponse.redirect(new URL("/admin", req.url));
@@ -317,5 +326,7 @@ export const config = {
     "/docente/:path*",
     "/onboarding/docente/:path*",
     "/registrazione/docente/:path*",
+    "/registrazione/admin/:path*",
+    "/api/admin-registration/:path*",
   ],
 };

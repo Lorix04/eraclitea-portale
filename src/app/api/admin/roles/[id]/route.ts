@@ -15,7 +15,14 @@ export async function GET(
     where: { id: context.params.id },
     include: {
       users: {
-        select: { id: true, email: true, isActive: true, lastLoginAt: true },
+        select: {
+          id: true,
+          email: true,
+          isActive: true,
+          lastLoginAt: true,
+          adminInviteStatus: true,
+          adminInviteSentAt: true,
+        },
         orderBy: { email: "asc" },
       },
     },
