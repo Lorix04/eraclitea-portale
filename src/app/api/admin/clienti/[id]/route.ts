@@ -84,7 +84,9 @@ export async function PUT(
 
   const { client, user, categoryIds } = validation.data;
 
-  const updated = await prisma.$transaction(async (tx) => {
+  let updated;
+  try {
+  updated = await prisma.$transaction(async (tx) => {
     const updatedClient = await tx.client.update({
       where: { id: context.params.id },
       data: {
@@ -120,6 +122,16 @@ export async function PUT(
         where: { clientId: updatedClient.id, role: "CLIENT" },
       });
 
+      if (userRecord && user.email && user.email !== userRecord.email) {
+        const emailConflict = await tx.user.findFirst({
+          where: { email: user.email, id: { not: userRecord.id } },
+        });
+        if (emailConflict) {
+          const roleLabel = emailConflict.role === "ADMIN" ? "amministratore" : emailConflict.role === "CLIENT" ? "cliente" : "docente";
+          throw new Error(`Esiste già un ${roleLabel} con l'email ${user.email}`);
+        }
+      }
+
       if (userRecord) {
         await tx.user.update({
           where: { id: userRecord.id },
@@ -135,6 +147,12 @@ export async function PUT(
 
     return updatedClient;
   });
+  } catch (err: any) {
+    if (err.message?.startsWith("Esiste già")) {
+      return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    throw err;
+  }
 
   await logAudit({
     userId: session.user.id,

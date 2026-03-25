@@ -121,9 +121,10 @@ export async function POST(request: Request) {
     where: { email: user.email },
   });
   if (existingUser) {
+    const roleLabel = existingUser.role === "ADMIN" ? "amministratore" : existingUser.role === "CLIENT" ? "cliente" : "docente";
     return NextResponse.json(
-      { error: "Email utente gia in uso" },
-      { status: 400 }
+      { error: `Esiste già un ${roleLabel} con l'email ${user.email}` },
+      { status: 409 }
     );
   }
 

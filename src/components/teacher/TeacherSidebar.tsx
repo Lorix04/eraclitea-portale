@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   BookOpen,
+  BookOpenCheck,
   CalendarOff,
   FileText,
   UserCircle,
@@ -34,6 +35,7 @@ const TEACHER_SECTIONS: SidebarSection[] = [
     items: [
       { href: "/docente/documenti", label: "Documenti", icon: FileText },
       { href: "/docente/profilo", label: "Profilo", icon: UserCircle },
+      { href: "/docente/guida", label: "Guida", icon: BookOpenCheck },
     ],
   },
   {

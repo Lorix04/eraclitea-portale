@@ -17,6 +17,7 @@ import {
   ClipboardCheck,
   Download,
   FileSpreadsheet,
+  FolderOpen,
   History,
   Home,
   LayoutDashboard,
@@ -44,6 +45,7 @@ const sections: SectionConfig[] = [
   { id: "dipendenti", label: "I tuoi Dipendenti", icon: Users },
   { id: "presenze", label: "Presenze e Ore", icon: ClipboardCheck },
   { id: "attestati", label: "Attestati e Certificazioni", icon: Award },
+  { id: "materiali", label: "Materiale Didattico", icon: FolderOpen },
   { id: "storico", label: "Storico Formazione", icon: History },
   { id: "notifiche", label: "Notifiche", icon: Bell },
   { id: "supporto", label: "Supporto e Ticket", icon: LifeBuoy },
@@ -433,7 +435,7 @@ export default function ComeFunzionaPage() {
                 id="presenze"
                 title="Presenze e Ore"
                 icon={ClipboardCheck}
-                description="Controlla lezioni frequentate, ore registrate e percentuale complessiva di presenza rispetto al requisito minimo dell&apos;edizione."
+                description="Le presenze sono tracciate per lezione con il conteggio delle ore effettivamente frequentate. Il sistema calcola la percentuale di frequenza e verifica il raggiungimento della soglia minima richiesta dall&apos;edizione."
               >
                 <MockupWindow title="Riepilogo Presenze">
                   <div className="space-y-3">
@@ -443,7 +445,7 @@ export default function ComeFunzionaPage() {
                           <th className="px-3 py-2 font-medium">Dipendente</th>
                           <th className="px-3 py-2 font-medium">Ore frequentate</th>
                           <th className="px-3 py-2 font-medium">% Presenza</th>
-                          <th className="px-3 py-2 font-medium">Stato</th>
+                          <th className="px-3 py-2 font-medium">Stato soglia</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -451,7 +453,13 @@ export default function ComeFunzionaPage() {
                           <td className="px-3 py-2">Elena Conti</td>
                           <td className="px-3 py-2">28 / 32h</td>
                           <td className="px-3 py-2">87.5%</td>
-                          <td className="px-3 py-2 text-green-600">Sopra soglia</td>
+                          <td className="px-3 py-2 text-green-600">Raggiunta</td>
+                        </tr>
+                        <tr className="border-b bg-white">
+                          <td className="px-3 py-2">Marco Verdi</td>
+                          <td className="px-3 py-2">22.5 / 32h</td>
+                          <td className="px-3 py-2">70.3%</td>
+                          <td className="px-3 py-2 text-amber-600">In corso</td>
                         </tr>
                         <tr className="bg-white">
                           <td className="px-3 py-2">Luca Neri</td>
@@ -461,18 +469,17 @@ export default function ComeFunzionaPage() {
                         </tr>
                       </tbody>
                     </table>
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <span className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-green-700">
-                        <Check className="h-3 w-3" />
-                        Presente
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-1 text-red-700">
-                        <X className="h-3 w-3" />
-                        Assente
-                      </span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="rounded bg-green-100 px-2 py-1 text-green-700">Presente</span>
+                      <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">Parziale (ore ridotte)</span>
+                      <span className="rounded bg-red-100 px-2 py-1 text-red-700">Assente</span>
+                      <span className="rounded bg-blue-100 px-2 py-1 text-blue-700">Assente giustificato</span>
                     </div>
                   </div>
                 </MockupWindow>
+                <InfoNote>
+                  Le ore parziali indicano partecipanti che hanno frequentato solo parte della lezione. La soglia minima puo essere in percentuale, ore o lezioni.
+                </InfoNote>
               </GuideSection>
 
               <GuideSection
@@ -501,6 +508,50 @@ export default function ComeFunzionaPage() {
                     </button>
                   </div>
                 </MockupWindow>
+              </GuideSection>
+
+              <GuideSection
+                id="materiali"
+                title="Materiale Didattico"
+                icon={FolderOpen}
+                description="Per ogni edizione del corso troverai materiale didattico organizzato per categoria: slide, esercitazioni, documenti, normative e modelli. Puoi scaricare i file singolarmente o tutti insieme in un archivio ZIP."
+              >
+                <MockupWindow title="Materiale Didattico">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-md bg-[#EAB308]/10 px-2.5 py-1 font-medium text-[#EAB308]">Tutti (4)</span>
+                      <span className="rounded-md bg-gray-100 px-2.5 py-1 text-gray-600">Slide (2)</span>
+                      <span className="rounded-md bg-gray-100 px-2.5 py-1 text-gray-600">Documenti (1)</span>
+                      <span className="rounded-md bg-gray-100 px-2.5 py-1 text-gray-600">Normativa (1)</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { name: "Slide Modulo 1 — Sicurezza generale", size: "2.3 MB", cat: "Slide" },
+                        { name: "Slide Modulo 2 — Evacuazione", size: "4.1 MB", cat: "Slide" },
+                        { name: "Esercizio pratico antincendio", size: "1.1 MB", cat: "Documenti" },
+                        { name: "Normativa DM 02/09/2021", size: "0.8 MB", cat: "Normativa" },
+                      ].map((file) => (
+                        <div key={file.name} className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2">
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{file.name}</p>
+                            <p className="text-[10px] text-gray-400">{file.cat} · {file.size}</p>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-blue-600">
+                            <span>Anteprima</span>
+                            <Download className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="mt-1 inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700">
+                      <Download className="h-3.5 w-3.5" />
+                      Scarica tutto (ZIP)
+                    </button>
+                  </div>
+                </MockupWindow>
+                <InfoNote>
+                  L&apos;anteprima e disponibile per file PDF e immagini. Per altri formati, scarica il file.
+                </InfoNote>
               </GuideSection>
 
               <GuideSection
@@ -558,25 +609,44 @@ export default function ComeFunzionaPage() {
                 id="supporto"
                 title="Supporto e Ticket"
                 icon={LifeBuoy}
-                description="Apri richieste di assistenza, allega documenti utili e monitora lo stato della lavorazione fino alla risoluzione."
+                description="Se hai bisogno di assistenza, puoi aprire un ticket direttamente dal portale. Seleziona la categoria, scrivi il messaggio e allega file se necessario. Potrai seguire lo stato della richiesta e comunicare con la segreteria tramite la chat integrata."
               >
                 <MockupWindow title="Nuovo Ticket Supporto">
                   <div className="mx-auto w-full max-w-xl space-y-3">
                     <div className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-500">
-                      Oggetto ticket
+                      Oggetto *
                     </div>
                     <div className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-500">
-                      Categoria
+                      Categoria * (Problema tecnico ▼)
                     </div>
-                    <div className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-500">
-                      Descrizione problema
+                    <div className="h-20 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-500">
+                      Descrizione del problema...
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="rounded bg-blue-100 px-2 py-1 text-blue-700">Aperto</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="rounded bg-amber-100 px-2 py-1 text-amber-700">In lavorazione</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="rounded bg-green-100 px-2 py-1 text-green-700">Risolto</span>
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-white px-3 py-3 text-center text-xs text-gray-400">
+                      Allega file (opzionale) · PDF/JPG/PNG, max 5MB, max 3 file
+                    </div>
+                    <div className="flex justify-end">
+                      <button className="rounded-lg bg-[#EAB308] px-4 py-2 text-xs font-semibold text-black">
+                        Apri ticket
+                      </button>
+                    </div>
+                  </div>
+                </MockupWindow>
+                <MockupWindow title="I tuoi Ticket">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">#12 Problema accesso corso</p>
+                        <p className="text-[10px] text-gray-400">20/03/2026 · Problema tecnico</p>
+                      </div>
+                      <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">Aperto</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">#11 Richiesta attestato</p>
+                        <p className="text-[10px] text-gray-400">15/03/2026 · Documentazione</p>
+                      </div>
+                      <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-700">Chiuso</span>
                     </div>
                   </div>
                 </MockupWindow>

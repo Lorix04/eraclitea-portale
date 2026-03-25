@@ -210,6 +210,26 @@ export async function POST(request: Request) {
     const n = (v: string | undefined | null) =>
       v && v.trim() ? v.trim() : null;
 
+    // Check email uniqueness across User and Teacher tables
+    const emailToCheck = data.email?.trim()?.toLowerCase();
+    if (emailToCheck) {
+      const existingUser = await prisma.user.findUnique({ where: { email: emailToCheck } });
+      if (existingUser) {
+        const roleLabel = existingUser.role === "ADMIN" ? "amministratore" : existingUser.role === "CLIENT" ? "cliente" : "docente";
+        return NextResponse.json(
+          { error: `Esiste già un ${roleLabel} con l'email ${emailToCheck}` },
+          { status: 409 }
+        );
+      }
+      const existingTeacher = await prisma.teacher.findFirst({ where: { email: emailToCheck } });
+      if (existingTeacher) {
+        return NextResponse.json(
+          { error: `Esiste già un docente con l'email ${emailToCheck}` },
+          { status: 409 }
+        );
+      }
+    }
+
     const teacher = await prisma.teacher.create({
       data: {
         firstName: data.firstName,

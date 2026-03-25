@@ -154,6 +154,33 @@ export async function PUT(
     const toUpperNull = (v: string | undefined | null) =>
       v !== undefined ? (typeof v === "string" && v.trim() ? v.trim().toUpperCase() : null) : undefined;
 
+    // Check email uniqueness when email is being changed
+    const newEmail = data.email?.trim()?.toLowerCase();
+    if (newEmail) {
+      const existingUser = await prisma.user.findUnique({ where: { email: newEmail } });
+      // Allow if user is linked to this same teacher
+      const currentTeacher = await prisma.teacher.findUnique({
+        where: { id: context.params.id },
+        select: { email: true, userId: true },
+      });
+      if (existingUser && existingUser.id !== currentTeacher?.userId) {
+        const roleLabel = existingUser.role === "ADMIN" ? "amministratore" : existingUser.role === "CLIENT" ? "cliente" : "docente";
+        return NextResponse.json(
+          { error: `Esiste già un ${roleLabel} con l'email ${newEmail}` },
+          { status: 409 }
+        );
+      }
+      const existingTeacher = await prisma.teacher.findFirst({
+        where: { email: newEmail, id: { not: context.params.id } },
+      });
+      if (existingTeacher) {
+        return NextResponse.json(
+          { error: `Esiste già un docente con l'email ${newEmail}` },
+          { status: 409 }
+        );
+      }
+    }
+
     const teacher = await prisma.teacher.update({
       where: { id: context.params.id },
       data: {

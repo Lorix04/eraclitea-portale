@@ -8,7 +8,9 @@ import {
   Award,
   Bell,
   BookOpen,
+  Briefcase,
   Building2,
+  Calendar,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -16,7 +18,10 @@ import {
   ClipboardList,
   Download,
   FileSpreadsheet,
+  FileText,
   FileUp,
+  FolderOpen,
+  Globe,
   GraduationCap,
   History,
   Info,
@@ -24,16 +29,18 @@ import {
   LifeBuoy,
   LogIn,
   Mail,
-  ScrollText,
   Search,
+  ScrollText,
+  Shield,
   UserCircle,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 
-type GuideRole = "ADMIN" | "CLIENT";
+type GuideRole = "ADMIN" | "CLIENT" | "TEACHER";
 
 type MockupKind =
   | "login"
@@ -55,7 +62,25 @@ type MockupKind =
   | "admin-export"
   | "admin-smtp"
   | "admin-audit"
-  | "admin-status";
+  | "admin-status"
+  | "admin-roles"
+  | "admin-referents"
+  | "admin-materials"
+  | "admin-cv"
+  | "admin-impersonate"
+  | "admin-email-teachers"
+  | "admin-area-corsi"
+  | "admin-ticket-teachers"
+  | "client-materials"
+  | "teacher-dashboard"
+  | "teacher-lessons"
+  | "teacher-attendance"
+  | "teacher-materials"
+  | "teacher-availability"
+  | "teacher-documents"
+  | "teacher-cv"
+  | "teacher-ticket"
+  | "teacher-profile";
 
 type GuideSection = {
   id: string;
@@ -569,6 +594,217 @@ function renderMockup(kind: MockupKind): ReactNode {
           </div>
         </MockupCard>
       );
+    case "client-materials":
+      return (
+        <MockupCard title="Materiale didattico">
+          <div className="space-y-2">
+            {[["Slide Modulo 1 — Antincendio.pdf", "2.3 MB", "Slide"], ["Esercizio Pratico.pdf", "1.1 MB", "Esercitazioni"], ["Normativa DM 2021.pdf", "0.8 MB", "Normativa"]].map(([name, size, cat]) => (
+              <div key={name} className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                <div><p className="text-sm font-medium">{name}</p><p className="text-[10px] text-gray-400">{cat} · {size}</p></div>
+                <span className="text-blue-600 text-xs">Scarica</span>
+              </div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "admin-roles":
+      return (
+        <MockupCard title="Editor permessi ruolo">
+          <div className="space-y-1.5">
+            {[["Dashboard", "1/1"], ["Corsi", "3/4"], ["Clienti", "2/6"], ["Docenti", "3/7"]].map(([area, count]) => (
+              <div key={area} className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                <span className="font-medium">{area}</span>
+                <span className="text-xs text-gray-500">{count} permessi</span>
+              </div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "admin-referents":
+      return (
+        <MockupCard title="Referenti edizione">
+          <div className="space-y-2">
+            <div className="rounded-md border bg-white p-3"><p className="font-medium">Maria Rossi</p><p className="text-xs text-gray-500">Segreteria · Assegnato il 23/03/2026</p></div>
+            <div className="rounded-md border bg-white p-3"><p className="font-medium">Luca Bianchi</p><p className="text-xs text-gray-500">Gestione Formazione · Assegnato il 23/03/2026</p></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-materials":
+      return (
+        <MockupCard title="Materiali corso + edizione">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+              <div><p className="font-medium">Slide Modulo 1</p><p className="text-[10px] text-gray-400">Slide · 2.3 MB</p></div>
+              <span className="rounded bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">Dal corso</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md border bg-amber-50 px-3 py-2">
+              <div><p className="font-medium">Dispense Aggiuntive</p><p className="text-[10px] text-amber-600">In attesa di approvazione</p></div>
+              <div className="flex gap-1 text-xs"><span className="text-emerald-600">Approva</span><span className="text-red-600">Rifiuta</span></div>
+            </div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-cv":
+      return (
+        <MockupCard title="CV strutturato docente">
+          <div className="space-y-2">
+            {[["Esperienze lavorative", "3"], ["Formazione", "2"], ["Certificazioni", "4"], ["Esperienza docente", "10"]].map(([s, c]) => (
+              <div key={s} className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                <span>{s}</span><span className="text-lg font-semibold">{c}</span>
+              </div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "admin-impersonate":
+      return (
+        <MockupCard title="Impersonazione docente">
+          <div className="rounded-lg border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Stai visualizzando come <strong>Alfonso Signorini</strong> (Docente) — <span className="underline">Torna all&apos;admin</span>
+          </div>
+        </MockupCard>
+      );
+    case "admin-email-teachers":
+      return (
+        <MockupCard title="Email automatiche docenti">
+          <div className="space-y-2">
+            {[["Lezione assegnata", "Antincendio — 02/03/2026"], ["Lezione rimossa", "Primo Soccorso — 10/03/2026"], ["Lezione modificata", "RSPP — nuova data"]].map(([tipo, det]) => (
+              <div key={tipo} className="rounded-md border bg-white px-3 py-2"><p className="font-medium text-xs">{tipo}</p><p className="text-[10px] text-gray-500">{det}</p></div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "admin-area-corsi":
+      return (
+        <MockupCard title="Aree corsi">
+          <div className="space-y-2">
+            {[["Sicurezza sul lavoro", "12 corsi"], ["Compliance", "5 corsi"], ["Soft Skills", "3 corsi"]].map(([n, c]) => (
+              <div key={n} className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="font-medium">{n}</span><span className="text-xs text-gray-500">{c}</span></div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "admin-ticket-teachers":
+      return (
+        <MockupCard title="Ticket docenti e clienti">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+              <div><p className="font-medium">Problema calendario</p><p className="text-[10px] text-gray-400">Alfonso Signorini</p></div>
+              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">Docente</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+              <div><p className="font-medium">Attestato mancante</p><p className="text-[10px] text-gray-400">Accademia Eraclitea</p></div>
+              <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Cliente</span>
+            </div>
+          </div>
+        </MockupCard>
+      );
+    case "teacher-dashboard":
+      return (
+        <MockupCard title="Dashboard docente">
+          <div className="grid gap-2 sm:grid-cols-4">
+            {[["Prossime lezioni", "3"], ["Totale lezioni", "24"], ["Ore totali", "48h"], ["Corsi attivi", "5"]].map(([l, v]) => (
+              <div key={l} className="rounded-lg border bg-white p-3"><p className="text-[11px] text-gray-500">{l}</p><p className="mt-1 text-lg font-semibold text-gray-800">{v}</p></div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "teacher-lessons":
+      return (
+        <MockupCard title="Le mie lezioni">
+          <div className="space-y-2">
+            <div className="rounded-lg border bg-white p-3">
+              <div className="flex items-center justify-between"><p className="font-semibold">Antincendio livello 3</p><span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Presenze da registrare</span></div>
+              <p className="mt-1 text-xs text-gray-500">02/03/2026 · 09:00-13:00 · 4h · Accademia Eraclitea · Catania</p>
+            </div>
+            <div className="rounded-lg border bg-white p-3">
+              <div className="flex items-center justify-between"><p className="font-semibold">RSPP Modulo C</p><span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Presenze registrate</span></div>
+              <p className="mt-1 text-xs text-gray-500">10/03/2026 · 14:00-18:00 · 4h · Studio Rossi · Roma</p>
+            </div>
+          </div>
+        </MockupCard>
+      );
+    case "teacher-attendance":
+      return (
+        <MockupCard title="Registrazione presenze">
+          <table className="w-full min-w-[500px] border-collapse">
+            <thead><tr className="border-b bg-gray-100 text-left"><th className="px-3 py-2 font-medium">Partecipante</th><th className="px-3 py-2 font-medium">Stato</th><th className="px-3 py-2 font-medium">Ore</th></tr></thead>
+            <tbody>
+              <tr className="border-b bg-white"><td className="px-3 py-2">Elena Conti</td><td className="px-3 py-2"><span className="rounded bg-emerald-100 px-2 py-0.5 text-emerald-700">Presente</span></td><td className="px-3 py-2">4h</td></tr>
+              <tr className="bg-white"><td className="px-3 py-2">Marco Verdi</td><td className="px-3 py-2"><span className="rounded bg-red-100 px-2 py-0.5 text-red-700">Assente</span></td><td className="px-3 py-2">0h</td></tr>
+            </tbody>
+          </table>
+        </MockupCard>
+      );
+    case "teacher-materials":
+      return (
+        <MockupCard title="Materiale lezione">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span>Slide Modulo 1.pdf</span><span className="text-blue-600 text-xs">Scarica</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-amber-50 px-3 py-2"><span>Dispensa aggiuntiva.pdf</span><span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">In attesa</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "teacher-availability":
+      return (
+        <MockupCard title="Gestione disponibilita">
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px]">
+            {["L", "M", "M", "G", "V", "S", "D"].map((d, i) => (<span key={`${d}${i}`} className="font-semibold text-gray-500">{d}</span>))}
+            {Array.from({ length: 14 }).map((_, i) => (
+              <span key={i} className={cn("rounded px-1 py-1", i === 2 || i === 3 ? "bg-amber-200 text-amber-800" : i === 7 ? "bg-gray-200 text-gray-500" : "bg-white border")}>{i + 1}</span>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-gray-500">Oro = lezioni · Grigio = indisponibile</p>
+        </MockupCard>
+      );
+    case "teacher-documents":
+      return (
+        <MockupCard title="Documenti docente">
+          <div className="space-y-2">
+            {[["Dichiarazione sostitutiva", "Firmata il 23/03/2026", "PDF"], ["Curriculum Vitae", "Caricato il 20/03/2026", "PDF"], ["Documento identita", "Caricato il 20/03/2026", "JPG"]].map(([n, d, t]) => (
+              <div key={n} className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><div><p className="font-medium text-sm">{n}</p><p className="text-[10px] text-gray-400">{d} · {t}</p></div><span className="text-blue-600 text-xs">Scarica</span></div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "teacher-cv":
+      return (
+        <MockupCard title="CV strutturato">
+          <div className="space-y-1.5">
+            {[["Esperienze lavorative", "3", true], ["Formazione", "2", true], ["Lingue", "2", false], ["Certificazioni", "4", false], ["Competenze", "5", false], ["Esperienza docente", "8", false]].map(([s, c, req]) => (
+              <div key={s as string} className="flex items-center justify-between rounded-md border bg-white px-3 py-1.5">
+                <span className="text-sm">{s as string}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{c as string}</span>
+                  {req ? <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] text-emerald-600">OK</span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </MockupCard>
+      );
+    case "teacher-ticket":
+      return (
+        <MockupCard title="Supporto docente">
+          <div className="space-y-2">
+            <div className="rounded-md border bg-white px-3 py-2"><p className="font-medium text-sm">Problema con calendario</p><p className="text-[10px] text-gray-400">Aperto · 22/03/2026</p></div>
+            <div className="rounded-md border bg-white px-3 py-2"><p className="font-medium text-sm">Richiesta materiale</p><p className="text-[10px] text-gray-400">Chiuso · 18/03/2026</p></div>
+          </div>
+        </MockupCard>
+      );
+    case "teacher-profile":
+      return (
+        <MockupCard title="Profilo docente">
+          <div className="mx-auto max-w-md space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Cognome</div>
+              <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Nome</div>
+            </div>
+            <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Email (non modificabile)</div>
+            <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Codice Fiscale</div>
+          </div>
+        </MockupCard>
+      );
     default:
       return null;
   }
@@ -576,6 +812,7 @@ function renderMockup(kind: MockupKind): ReactNode {
 
 function getBaseSections(role: GuideRole): GuideSection[] {
   const adminMode = role === "ADMIN";
+  const clientOrAdmin = role === "CLIENT" || role === "ADMIN";
 
   return [
     createSection({
@@ -725,6 +962,30 @@ function getBaseSections(role: GuideRole): GuideSection[] {
       ],
       mockupKind: "history",
     }),
+    ...(clientOrAdmin
+      ? [
+          createSection({
+            id: "materiali-didattici",
+            title: "Materiale Didattico",
+            icon: FolderOpen,
+            intro:
+              "Ogni edizione può avere materiali didattici scaricabili: slide, esercitazioni, documenti normativi e modelli operativi.",
+            paragraphs: [
+              adminMode
+                ? "Come admin puoi caricare materiali a livello di corso (libreria standard) e importarli nelle edizioni. I docenti possono proporre materiali che vanno approvati."
+                : "Come client puoi consultare e scaricare tutti i materiali approvati per le tue edizioni, organizzati per categoria.",
+            ],
+            bullets: [
+              "Apri il dettaglio edizione e vai al tab Materiali.",
+              "Filtra per categoria: Slide, Esercitazioni, Documenti, Normativa, Modelli.",
+              "Scarica singoli file o usa il download ZIP per scaricare tutto.",
+              "Usa l'anteprima inline per PDF e immagini senza scaricarli.",
+            ],
+            note: "I materiali sono organizzati per categoria e possono essere riordinati dall'admin.",
+            mockupKind: "client-materials",
+          }),
+        ]
+      : []),
     createSection({
       id: "notifiche",
       title: "Notifiche",
@@ -922,10 +1183,319 @@ function getAdminExtraSections(): GuideSection[] {
       ],
       mockupKind: "admin-status",
     }),
+    createSection({
+      id: "admin-area-corsi",
+      title: "Area Corsi",
+      icon: Globe,
+      intro: "Le aree corsi sono categorie tematiche che raggruppano corsi omogenei per ambito formativo.",
+      paragraphs: [
+        "Ogni area può essere associata a più corsi e utilizzata come filtro nelle liste e negli export.",
+      ],
+      bullets: [
+        "Crea nuove aree dalla pagina dedicata.",
+        "Associa i corsi alle aree durante la creazione o modifica del corso.",
+        "Usa le aree per filtrare e organizzare il catalogo formativo.",
+      ],
+      mockupKind: "admin-area-corsi",
+    }),
+    createSection({
+      id: "admin-materiali",
+      title: "Materiale Didattico (Admin)",
+      icon: FolderOpen,
+      intro: "Gestisci materiali a livello di corso (libreria standard) e di edizione, con workflow di approvazione per i file proposti dai docenti.",
+      paragraphs: [
+        "I materiali del corso sono una libreria riutilizzabile. Da ogni edizione puoi importare materiali dal corso come copie indipendenti.",
+        "I docenti possono proporre file che appaiono con stato 'In attesa'. L'admin deve approvare o rifiutare prima che diventino visibili.",
+      ],
+      bullets: [
+        "Carica materiali nel tab Materiali del corso per la libreria standard.",
+        "Nell'edizione, usa 'Importa dal corso' per copiare materiali dalla libreria.",
+        "Approva o rifiuta i materiali proposti dai docenti con un click.",
+        "Riordina i materiali con le frecce su/giù.",
+        "Scarica tutto in ZIP per distribuzione offline.",
+      ],
+      note: "I materiali importati dal corso sono copie indipendenti: modifiche al corso non impattano le edizioni e viceversa.",
+      mockupKind: "admin-materials",
+    }),
+    createSection({
+      id: "admin-cv-docenti",
+      title: "CV Docenti",
+      icon: FileText,
+      intro: "Visualizza il curriculum vitae strutturato di ogni docente con 8 sezioni, badge scadenza certificazioni e auto-sincronizzazione delle lezioni erogate.",
+      paragraphs: [
+        "Nel dettaglio docente, il tab CV mostra tutte le sezioni compilate dal docente durante la registrazione o dal profilo.",
+        "Le esperienze come docente vengono generate automaticamente dalle lezioni assegnate nel portale, con badge 'Dal portale'.",
+      ],
+      bullets: [
+        "Apri il tab CV nel dettaglio docente per la vista completa.",
+        "Controlla i badge scadenza sulle certificazioni: verde (valido), giallo (in scadenza), rosso (scaduta).",
+        "Usa 'Aggiorna esperienza portale' per sincronizzare le lezioni erogate.",
+        "Scarica il CV in formato Europass PDF generato automaticamente.",
+      ],
+      mockupKind: "admin-cv",
+    }),
+    createSection({
+      id: "admin-impersonazione",
+      title: "Impersonazione Docente",
+      icon: LogIn,
+      intro: "L'admin può accedere al portale docente come se fosse il docente selezionato, per verificare dati, risolvere problemi o completare operazioni.",
+      paragraphs: [
+        "Un banner giallo in cima al portale indica che si sta visualizzando come un altro utente. Tutte le operazioni vengono eseguite nel contesto del docente.",
+      ],
+      bullets: [
+        "Dalla lista docenti, clicca 'Accedi come' per un docente attivo.",
+        "Naviga il portale docente vedendo dashboard, lezioni, documenti e profilo del docente.",
+        "Clicca 'Torna all'admin' nel banner per tornare alla sessione admin.",
+      ],
+      note: "L'impersonazione funziona anche per i clienti dalla pagina Clienti.",
+      mockupKind: "admin-impersonate",
+    }),
+    createSection({
+      id: "admin-email-docenti",
+      title: "Email Docenti",
+      icon: Mail,
+      intro: "Il portale invia automaticamente email ai docenti per eventi legati alle lezioni, inviti e notifiche operative.",
+      paragraphs: [
+        "Quando un docente viene assegnato, rimosso o una lezione viene modificata, riceve un'email automatica con i dettagli aggiornati.",
+      ],
+      bullets: [
+        "Assegnazione lezione: email con corso, data, orario e luogo.",
+        "Rimozione da lezione: email di notifica con dettagli della lezione rimossa.",
+        "Modifica lezione: email a tutti i docenti assegnati con i nuovi dettagli.",
+        "Invito registrazione: email con link per completare la registrazione al portale.",
+      ],
+      mockupKind: "admin-email-teachers",
+    }),
+    createSection({
+      id: "admin-ticket-docenti",
+      title: "Ticket Docenti",
+      icon: LifeBuoy,
+      intro: "I ticket dei docenti appaiono nella stessa pagina Ticket degli admin, con badge per distinguere il mittente.",
+      paragraphs: [
+        "Ogni ticket ha un badge 'Docente' o 'Cliente' per identificare rapidamente la provenienza della richiesta.",
+      ],
+      bullets: [
+        "Filtra i ticket per tipo mittente: docenti o clienti.",
+        "Rispondi ai ticket docenti come per quelli clienti.",
+        "Chiudi i ticket risolti per mantenere la lista pulita.",
+      ],
+      mockupKind: "admin-ticket-teachers",
+    }),
+    createSection({
+      id: "admin-referenti",
+      title: "Referenti Edizione",
+      icon: UsersRound,
+      intro: "Assegna uno o più referenti (amministratori) a ogni edizione per definire chi è responsabile della gestione operativa.",
+      paragraphs: [
+        "I referenti possono avere permesso 'view-all' per vedere tutte le edizioni o 'view-own' per vedere solo le edizioni a cui sono assegnati.",
+        "Le edizioni senza referenti sono visibili a tutti gli admin.",
+      ],
+      bullets: [
+        "Apri il dettaglio edizione per assegnare i referenti nella sezione dedicata.",
+        "Usa il filtro 'Le mie edizioni' nella lista edizioni per vedere solo le tue.",
+        "La dashboard mostra statistiche filtrate se l'utente ha solo permesso 'view-own'.",
+        "I referenti ricevono notifiche quando vengono assegnati a un'edizione.",
+      ],
+      mockupKind: "admin-referents",
+    }),
+    createSection({
+      id: "admin-ruoli",
+      title: "Ruoli e Permessi",
+      icon: Shield,
+      intro: "Gestisci i ruoli di accesso al portale admin con permessi granulari per area e azione, invito nuovi amministratori e protezione Super Admin.",
+      paragraphs: [
+        "Il sistema include 4 ruoli predefiniti: Super Admin (non modificabile), Segreteria, Solo Lettura e Gestione Formazione. Puoi creare ruoli personalizzati.",
+        "I permessi sono organizzati per area (Corsi, Clienti, Docenti, ecc.) e azione (Visualizza, Crea, Modifica, Elimina, ecc.).",
+      ],
+      bullets: [
+        "Crea nuovi ruoli con editor permessi: checkbox per ogni area e azione.",
+        "Usa i template predefiniti per precompilare i permessi di un nuovo ruolo.",
+        "Duplica un ruolo esistente per partire da una base già configurata.",
+        "Invita nuovi admin: inserisci nome e email, il sistema invia un link di registrazione.",
+        "La sidebar del portale nasconde automaticamente le voci per cui l'utente non ha permesso.",
+      ],
+      note: "Il Super Admin ha accesso completo e non può essere modificato o eliminato. Deve sempre esistere almeno un Super Admin.",
+      mockupKind: "admin-roles",
+    }),
+  ];
+}
+
+function getTeacherSections(): GuideSection[] {
+  return [
+    createSection({
+      id: "teacher-accesso",
+      title: "Accesso al Portale Docente",
+      icon: LogIn,
+      intro: "Accedi al portale con le credenziali impostate durante la registrazione. L'invito arriva via email con link dedicato.",
+      paragraphs: [
+        "La registrazione docente prevede 4 step: dati personali, CV e competenze, firma dichiarazione sostitutiva, scelta password.",
+        "Dopo la registrazione, accedi con email e password dalla pagina di login.",
+      ],
+      bullets: [
+        "Ricevi l'invito via email con il link di registrazione.",
+        "Compila i dati personali nello Step 1.",
+        "Inserisci almeno 1 esperienza lavorativa e 1 titolo di studio nello Step 2.",
+        "Firma la dichiarazione sostitutiva nello Step 3.",
+        "Scegli la tua password nello Step 4.",
+      ],
+      note: "Il link di invito è valido per 7 giorni. Se scade, chiedi alla segreteria di reinviarlo.",
+      mockupKind: "login",
+    }),
+    createSection({
+      id: "teacher-dashboard",
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      intro: "La dashboard mostra le statistiche delle tue lezioni, il calendario mensile e le prossime attività da completare.",
+      paragraphs: [
+        "I pallini gold sul calendario indicano giorni con lezioni, i pallini grigi indicano indisponibilità. Il cerchio indica oggi.",
+        "Il widget 'Presenze da registrare' evidenzia le lezioni passate per cui non hai ancora registrato le presenze.",
+      ],
+      bullets: [
+        "Controlla le statistiche: lezioni prossime, totali, ore totali, corsi attivi.",
+        "Usa il calendario per una vista mensile delle tue attività.",
+        "Completa le presenze in sospeso dal widget dedicato.",
+      ],
+      mockupKind: "teacher-dashboard",
+    }),
+    createSection({
+      id: "teacher-lezioni",
+      title: "Le mie Lezioni",
+      icon: BookOpen,
+      intro: "La pagina lezioni mostra tutte le lezioni a te assegnate con filtri per periodo, corso e stato presenze.",
+      paragraphs: [
+        "Ogni card mostra data, orario, durata, corso, cliente, edizione, luogo e numero partecipanti.",
+        "Il badge 'Presenze da registrare' indica le lezioni passate senza presenze completate.",
+      ],
+      bullets: [
+        "Filtra per periodo: Tutte, Prossime, Passate.",
+        "Usa la ricerca per trovare lezioni per corso, luogo o cliente.",
+        "Clicca 'Dettaglio' per vedere informazioni complete e registrare le presenze.",
+      ],
+      mockupKind: "teacher-lessons",
+    }),
+    createSection({
+      id: "teacher-presenze",
+      title: "Registrazione Presenze",
+      icon: ClipboardCheck,
+      intro: "Registra le presenze dei partecipanti direttamente dalla pagina dettaglio lezione, con supporto per ore parziali e stati differenziati.",
+      paragraphs: [
+        "Per ogni partecipante puoi impostare lo stato: Presente (ore complete), Assente, o Assente Giustificato.",
+        "Se un partecipante ha frequentato solo parte della lezione, inserisci le ore effettive nel campo dedicato.",
+      ],
+      bullets: [
+        "Apri il dettaglio lezione e vai al tab Presenze.",
+        "Usa i pulsanti rapidi 'Segna tutti presenti' o 'Segna tutti assenti'.",
+        "Per ore parziali, modifica il campo ore del singolo partecipante.",
+        "Salva le presenze con il pulsante dedicato.",
+        "Scarica il registro presenze in PDF per archiviazione.",
+      ],
+      note: "Le presenze delle lezioni future sono in sola lettura. Puoi registrare solo lezioni passate o del giorno corrente.",
+      mockupKind: "teacher-attendance",
+    }),
+    createSection({
+      id: "teacher-materiali",
+      title: "Materiale Didattico",
+      icon: FolderOpen,
+      intro: "Accedi ai materiali delle tue lezioni, scaricali o proponi nuovi file che verranno revisionati dall'admin.",
+      paragraphs: [
+        "I materiali approvati sono organizzati per categoria: Slide, Esercitazioni, Documenti, Normativa, Modelli.",
+        "Puoi proporre materiale aggiuntivo con il pulsante 'Proponi file'. Il materiale proposto ha stato 'In attesa' finché l'admin non lo approva.",
+      ],
+      bullets: [
+        "Consulta i materiali nel dettaglio lezione, tab Materiali.",
+        "Scarica singoli file o tutto in formato ZIP.",
+        "Usa l'anteprima inline per PDF e immagini.",
+        "Proponi file: carica e attendi l'approvazione dell'admin.",
+      ],
+      note: "I tuoi file proposti mostrano lo stato: In attesa (arancione), Approvato (verde), Rifiutato (rosso con motivo).",
+      mockupKind: "teacher-materials",
+    }),
+    createSection({
+      id: "teacher-disponibilita",
+      title: "Disponibilità",
+      icon: Calendar,
+      intro: "Gestisci la tua disponibilità indicando i periodi in cui non sei disponibile per lezioni.",
+      paragraphs: [
+        "Il calendario mostra le tue lezioni e i periodi di indisponibilità. Puoi aggiungere indisponibilità per giornata intera o per fascia oraria.",
+        "Seleziona un range di date per creare indisponibilità su più giorni consecutivi.",
+      ],
+      bullets: [
+        "Aggiungi indisponibilità dal calendario o dal pulsante dedicato.",
+        "Specifica se è giornata intera o fascia oraria.",
+        "Inserisci un motivo opzionale.",
+        "Modifica o elimina indisponibilità esistenti.",
+      ],
+      note: "Se un'indisponibilità è in conflitto con una lezione assegnata, viene mostrato un avviso.",
+      mockupKind: "teacher-availability",
+    }),
+    createSection({
+      id: "teacher-documenti",
+      title: "Documenti",
+      icon: FileText,
+      intro: "Nella sezione documenti trovi la dichiarazione sostitutiva firmata, il tuo CV e il documento di identità.",
+      paragraphs: [
+        "Puoi scaricare i documenti firmati e caricarne di nuovi quando necessario.",
+      ],
+      bullets: [
+        "Scarica la dichiarazione sostitutiva firmata in PDF.",
+        "Carica o aggiorna il tuo CV.",
+        "Carica o aggiorna il documento di identità.",
+      ],
+      mockupKind: "teacher-documents",
+    }),
+    createSection({
+      id: "teacher-cv",
+      title: "CV e Competenze",
+      icon: Briefcase,
+      intro: "Il CV strutturato del portale ha 8 sezioni editabili. Le lezioni erogate vengono aggiunte automaticamente come esperienza docente.",
+      paragraphs: [
+        "Le sezioni obbligatorie (Esperienze lavorative e Formazione) devono avere almeno 1 elemento durante la registrazione.",
+        "L'esperienza come docente viene sincronizzata automaticamente dalle lezioni erogate nel portale con badge 'Dal portale'. Queste entry non sono modificabili.",
+      ],
+      bullets: [
+        "Modifica le sezioni CV dal tab 'CV e Competenze' nel profilo.",
+        "Importa i dati da un CV PDF: il sistema analizza il file e precompila le sezioni automaticamente.",
+        "Scarica il CV in formato Europass PDF generato dal portale.",
+        "Le certificazioni mostrano badge di scadenza: verde, giallo o rosso.",
+      ],
+      note: "Le 8 sezioni: Esperienze, Formazione, Lingue, Certificazioni, Competenze tecniche, Corsi frequentati, Esperienza docente, Pubblicazioni.",
+      mockupKind: "teacher-cv",
+    }),
+    createSection({
+      id: "teacher-supporto",
+      title: "Supporto e Ticket",
+      icon: LifeBuoy,
+      intro: "Apri ticket per comunicare con la segreteria, segnalare problemi o fare richieste operative.",
+      paragraphs: [
+        "Ogni ticket mantiene una cronologia di messaggi come una chat. Lo stato evolve da Aperto a In lavorazione a Chiuso.",
+      ],
+      bullets: [
+        "Apri un nuovo ticket con oggetto, categoria e descrizione.",
+        "Allega file opzionali al ticket.",
+        "Segui lo stato e rispondi nella chat del ticket.",
+      ],
+      mockupKind: "teacher-ticket",
+    }),
+    createSection({
+      id: "teacher-profilo",
+      title: "Profilo",
+      icon: UserCircle,
+      intro: "Aggiorna i tuoi dati anagrafici, cambia la password e gestisci le impostazioni del tuo account.",
+      paragraphs: [
+        "L'email non è modificabile dal profilo: contatta l'admin per cambiamenti. Gli altri dati possono essere aggiornati in qualsiasi momento.",
+      ],
+      bullets: [
+        "Aggiorna dati personali, residenza, contatti e dati professionali.",
+        "Cambia password con requisiti: almeno 8 caratteri, maiuscola, numero e carattere speciale.",
+        "Le modifiche al profilo vengono salvate immediatamente.",
+      ],
+      mockupKind: "teacher-profile",
+    }),
   ];
 }
 
 function getGuideSections(role: GuideRole): GuideSection[] {
+  if (role === "TEACHER") return getTeacherSections();
   const baseSections = getBaseSections(role);
   if (role === "CLIENT") return baseSections;
   return [...baseSections, ...getAdminExtraSections()];
@@ -976,7 +1546,9 @@ export default function GuidePageClient({ role, userName }: GuidePageClientProps
   const roleDescription =
     role === "ADMIN"
       ? "Guida operativa completa per amministratori: gestione formazione, anagrafiche, docenti, presenze, attestati e strumenti di controllo."
-      : "Guida operativa completa per clienti: accesso, corsi, anagrafiche, dipendenti, presenze, attestati, notifiche e supporto.";
+      : role === "TEACHER"
+        ? "Guida operativa per docenti: lezioni, presenze, materiali, CV, disponibilità, documenti e supporto."
+        : "Guida operativa completa per clienti: accesso, corsi, anagrafiche, dipendenti, presenze, attestati, notifiche e supporto.";
 
   const toggleSection = (sectionId: string) => {
     if (!isMobile) return;
