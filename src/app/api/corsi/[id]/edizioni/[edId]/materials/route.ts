@@ -11,6 +11,7 @@ import {
   MATERIAL_ALLOWED_TYPES,
   MATERIAL_MAX_SIZE_BYTES,
 } from "@/lib/material-storage";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,12 @@ export async function GET(
     const effectiveClient = await getEffectiveClientContext();
     const isAdminView =
       session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+
+    if (isAdminView) {
+      if (!canAccessArea(session.user.permissions, "materiali", session.user.isSuperAdmin)) {
+        return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+      }
+    }
 
     const clientId = isAdminView
       ? null
@@ -140,6 +147,12 @@ export async function POST(
     const effectiveClient = await getEffectiveClientContext();
     const isAdminView =
       session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+
+    if (isAdminView) {
+      if (!checkApiPermission(session, "materiali", "create")) {
+        return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+      }
+    }
 
     const clientId = isAdminView
       ? null

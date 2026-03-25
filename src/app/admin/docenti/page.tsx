@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -95,6 +96,7 @@ async function fetchCategories() {
 }
 
 export default function AdminDocentiPage() {
+  const { can } = usePermissions();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryIdFilter, setCategoryIdFilter] = useState("");
@@ -335,17 +337,19 @@ export default function AdminDocentiPage() {
             </p>
           )}
         </div>
-        <button
-          type="button"
-          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-          onClick={() => {
-            setEditingTeacher(null);
-            setModalOpen(true);
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuovo Docente
-        </button>
+        {can("docenti", "create") ? (
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+            onClick={() => {
+              setEditingTeacher(null);
+              setModalOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nuovo Docente
+          </button>
+        ) : null}
       </div>
 
       <MobileFilterPanel
@@ -548,7 +552,7 @@ export default function AdminDocentiPage() {
         actions={(teacher) => (
           <ActionMenu
             primaryAction={
-              (teacher as any).status === "ACTIVE"
+              (teacher as any).status === "ACTIVE" && can("docenti", "impersonate")
                 ? {
                     key: "impersonate",
                     label: "Accedi come",
@@ -577,7 +581,7 @@ export default function AdminDocentiPage() {
                   href: `/admin/docenti/${teacher.id}`,
                   hidden: s !== "ACTIVE",
                 },
-                {
+                ...(can("docenti", "edit") ? [{
                   key: "edit",
                   label: "Modifica",
                   icon: Pencil,
@@ -587,9 +591,9 @@ export default function AdminDocentiPage() {
                     setModalOpen(true);
                   },
                   shortcutKey: "e",
-                },
+                }] : []),
                 // INACTIVE: Invia invito
-                {
+                ...(can("docenti", "invite") ? [{
                   key: "invite",
                   label: "Invia invito",
                   icon: Mail,
@@ -597,9 +601,9 @@ export default function AdminDocentiPage() {
                   onClick: () => handleSendInvite(teacher.id!, teacher.email),
                   disabled: invitingTeacherId === teacher.id,
                   hidden: s !== "INACTIVE",
-                },
+                }] : []),
                 // PENDING: Reinvia invito + Annulla invito
-                {
+                ...(can("docenti", "invite") ? [{
                   key: "reinvite",
                   label: "Reinvia invito",
                   icon: Mail,
@@ -607,26 +611,26 @@ export default function AdminDocentiPage() {
                   onClick: () => handleSendInvite(teacher.id!, teacher.email),
                   disabled: invitingTeacherId === teacher.id,
                   hidden: s !== "PENDING",
-                },
-                {
+                }] : []),
+                ...(can("docenti", "invite") ? [{
                   key: "cancel-invite",
                   label: "Annulla invito",
                   icon: XCircle,
                   variant: "warning" as const,
                   onClick: () => handleStatusAction(teacher.id!, "cancel-invite", "Invito annullato"),
                   hidden: s !== "PENDING",
-                },
+                }] : []),
                 // ONBOARDING: Sollecita
-                {
+                ...(can("docenti", "invite") ? [{
                   key: "remind",
                   label: "Sollecita completamento",
                   icon: Mail,
                   variant: "info" as const,
                   onClick: () => handleStatusAction(teacher.id!, "remind", "Sollecito inviato"),
                   hidden: s !== "ONBOARDING",
-                },
+                }] : []),
                 // ACTIVE: Sospendi
-                {
+                ...(can("docenti", "suspend") ? [{
                   key: "suspend",
                   label: "Sospendi",
                   icon: UserX,
@@ -635,18 +639,18 @@ export default function AdminDocentiPage() {
                   confirmMessage: `Sospendere ${teacher.firstName} ${teacher.lastName}?`,
                   onClick: () => handleStatusAction(teacher.id!, "suspend", "Docente sospeso"),
                   hidden: s !== "ACTIVE",
-                },
+                }] : []),
                 // SUSPENDED: Riattiva
-                {
+                ...(can("docenti", "suspend") ? [{
                   key: "reactivate",
                   label: "Riattiva",
                   icon: UserCheck,
                   variant: "success" as const,
                   onClick: () => handleStatusAction(teacher.id!, "reactivate", "Docente riattivato"),
                   hidden: s !== "SUSPENDED",
-                },
+                }] : []),
                 // Always: Delete
-                {
+                ...(can("docenti", "delete") ? [{
                   key: "delete",
                   label: "Elimina",
                   icon: Trash2,
@@ -656,7 +660,7 @@ export default function AdminDocentiPage() {
                   onClick: () => handleDeleteConfirm(teacher.id!),
                   shortcutKey: "Delete",
                   shortcutLabel: "Del",
-                },
+                }] : []),
               ];
               return actions;
             })()}

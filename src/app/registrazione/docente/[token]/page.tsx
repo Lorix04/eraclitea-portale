@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import DocumentSigningForm from "@/components/teacher/DocumentSigningForm";
+import TeacherCvEditor from "@/components/teacher/cv/TeacherCvEditor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,7 +101,7 @@ const EDUCATION_LEVELS = [
   "Altro",
 ];
 
-const STEP_LABELS = ["Dati personali", "Documento", "Password"];
+const STEP_LABELS = ["Dati personali", "Competenze", "Documento", "Password"];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -251,6 +252,7 @@ export default function TeacherRegistrationPage() {
   const [tokenError, setTokenError] = useState<string | null>(null);
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo | null>(null);
   const [step, setStep] = useState(1);
+  const [cvValid, setCvValid] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [finalStatus, setFinalStatus] = useState<string | null>(null);
   const [autoLogging, setAutoLogging] = useState(false);
@@ -1051,8 +1053,26 @@ export default function TeacherRegistrationPage() {
         </div>
       )}
 
-      {/* ========== STEP 2: Firma documento ========== */}
+      {/* ========== STEP 2: Competenze e CV ========== */}
       {step === 2 && (
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Competenze e CV
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Compila il tuo curriculum vitae strutturato.
+            </p>
+          </div>
+          <TeacherCvEditor
+            mode="registration"
+            onValidationChange={(valid) => setCvValid(valid)}
+          />
+        </div>
+      )}
+
+      {/* ========== STEP 3: Firma documento ========== */}
+      {step === 3 && (
         <DocumentSigningForm
           teacher={{
             firstName: form.firstName,
@@ -1067,13 +1087,13 @@ export default function TeacherRegistrationPage() {
           token={token}
           onComplete={() => {
             setStepError(null);
-            setStep(3);
+            setStep(4);
           }}
         />
       )}
 
-      {/* ========== STEP 3: Password ========== */}
-      {step === 3 && (
+      {/* ========== STEP 4: Password ========== */}
+      {step === 4 && (
         <div className="mx-auto max-w-md space-y-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -1149,7 +1169,7 @@ export default function TeacherRegistrationPage() {
       )}
 
       {/* ========== Nav buttons ========== */}
-      {!completed && step !== 2 && (
+      {!completed && step !== 3 && (
         <div className="mt-8 flex items-center justify-between border-t pt-6">
           {step > 1 ? (
             <button
@@ -1185,7 +1205,23 @@ export default function TeacherRegistrationPage() {
             </button>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
+            <button
+              type="button"
+              onClick={() => {
+                setStepError(null);
+                setStep(3);
+              }}
+              disabled={!cvValid}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#EAB308] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#FACC15] disabled:opacity-50"
+              title={!cvValid ? "Inserisci almeno 1 esperienza lavorativa e 1 titolo di studio" : undefined}
+            >
+              Avanti
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+
+          {step === 4 && (
             <button
               type="button"
               onClick={submitComplete}

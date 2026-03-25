@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,11 @@ export async function GET(request: Request) {
   const skip = (safePage - 1) * safeLimit;
 
   const isAdmin = session.user.role === "ADMIN";
+
+  if (isAdmin && !canAccessArea(session.user.permissions, "attestati", session.user.isSuperAdmin)) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+  }
+
   const scopedClientId = isAdmin ? clientId : session.user.clientId;
 
   if (!isAdmin && !scopedClientId) {
@@ -216,6 +222,10 @@ export async function POST() {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!checkApiPermission(session, "attestati", "create")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     return NextResponse.json(

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Eye, KeyRound, LogIn, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getArrayData } from "@/lib/api-response";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
@@ -32,6 +33,7 @@ type ResetPasswordResult = {
 };
 
 export default function AdminClientiPage() {
+  const { can } = usePermissions();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState("all");
@@ -230,12 +232,14 @@ export default function AdminClientiPage() {
             Gestisci aziende clienti e utenti associati.
           </p>
         </div>
-        <Link
-          href="/admin/clienti/nuovo"
-          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        >
-          Nuovo cliente
-        </Link>
+        {can("clienti", "create") ? (
+          <Link
+            href="/admin/clienti/nuovo"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          >
+            Nuovo cliente
+          </Link>
+        ) : null}
       </div>
 
       <MobileFilterPanel
@@ -394,49 +398,49 @@ export default function AdminClientiPage() {
               href: `/admin/clienti/${client.id}`,
             }}
             secondaryActions={[
-              {
+              ...(can("clienti", "impersonate") ? [{
                 key: "impersonate",
                 label: "Accedi come",
                 icon: LogIn,
-                variant: "info",
+                variant: "info" as const,
                 onClick: () => handleImpersonate(client),
                 disabled: !client.user?.id || impersonatingClientId === client.id,
-              },
-              {
+              }] : []),
+              ...(can("clienti", "edit") ? [{
                 key: "edit",
                 label: "Modifica",
                 icon: Pencil,
-                variant: "default",
+                variant: "default" as const,
                 href: `/admin/clienti/${client.id}/edit`,
                 shortcutKey: "e",
-              },
-              {
+              }] : []),
+              ...(can("clienti", "edit") ? [{
                 key: "toggle",
                 label: client.isActive ? "Disattiva" : "Attiva",
                 icon: client.isActive ? UserX : UserCheck,
-                variant: "warning",
+                variant: "warning" as const,
                 onClick: () => handleToggleStatus(client.id),
                 shortcutKey: "a",
-              },
-              {
+              }] : []),
+              ...(can("clienti", "reset-password") ? [{
                 key: "reset",
                 label: "Reset password",
                 icon: KeyRound,
-                variant: "warning",
+                variant: "warning" as const,
                 onClick: () => setConfirmResetClient(client),
                 shortcutKey: "r",
-              },
-              {
+              }] : []),
+              ...(can("clienti", "delete") ? [{
                 key: "delete",
                 label: "Elimina",
                 icon: Trash2,
-                variant: "danger",
+                variant: "danger" as const,
                 requireConfirm: true,
                 confirmMessage: `Eliminare "${client.ragioneSociale}"? Azione irreversibile.`,
                 onClick: () => handleDelete(client.id),
                 shortcutKey: "Delete",
                 shortcutLabel: "Del",
-              },
+              }] : []),
             ]}
           />
         )}

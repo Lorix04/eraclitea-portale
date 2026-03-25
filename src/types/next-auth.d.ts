@@ -12,6 +12,10 @@ declare module "next-auth" {
       mustChangePassword: boolean;
       email?: string | null;
       name?: string | null;
+      adminRoleId?: string | null;
+      adminRoleName?: string | null;
+      permissions?: Record<string, string[]> | null;
+      isSuperAdmin?: boolean;
     };
   }
 }
@@ -24,5 +28,9 @@ declare module "next-auth/jwt" {
     teacherId?: string | null;
     teacherStatus?: string | null;
     mustChangePassword?: boolean;
+    adminRoleId?: string | null;
+    adminRoleName?: string | null;
+    permissions?: Record<string, string[]> | null;
+    isSuperAdmin?: boolean;
   }
 }

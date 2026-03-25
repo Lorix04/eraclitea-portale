@@ -8,6 +8,7 @@ import {
   IMPERSONATE_CLIENT_COOKIE,
   IMPERSONATE_MAX_AGE_SECONDS,
 } from "@/lib/impersonate";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+    }
+    if (!checkApiPermission(session, "clienti", "impersonate")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const body = await request.json().catch(() => null);

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Eye, EyeOff, Loader2, UserCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
+import TeacherCvEditor from "@/components/teacher/cv/TeacherCvEditor";
 
 const EDUCATION_LEVELS = [
   "Licenza media", "Diploma di scuola superiore", "Laurea triennale",
@@ -336,6 +337,12 @@ export default function TeacherProfiloPage() {
             {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvataggio...</> : "Salva modifiche"}
           </button>
         </div>
+      </div>
+
+      {/* === CV e Competenze === */}
+      <div className="rounded-lg border bg-card p-4 md:p-6">
+        <h2 className="text-sm font-semibold mb-4">CV e Competenze</h2>
+        <TeacherCvEditor mode="profile" />
       </div>
 
       {/* === Change password === */}

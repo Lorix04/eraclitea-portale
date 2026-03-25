@@ -9,6 +9,7 @@ import {
   calculateAttendanceStats,
   type AttendanceStatus,
 } from "@/lib/attendance-utils";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 const attendanceSchema = z.object({
   attendances: z
@@ -36,6 +37,12 @@ export async function GET(
   const effectiveClient = await getEffectiveClientContext();
   const isAdminView =
     session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+
+  if (isAdminView) {
+    if (!canAccessArea(session.user.permissions, "presenze", session.user.isSuperAdmin)) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
+  }
 
   const clientId = isAdminView
     ? session.user.clientId ?? null
@@ -152,6 +159,10 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "presenze", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = await validateBody(request, attendanceSchema);

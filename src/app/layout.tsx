@@ -5,8 +5,6 @@ import Providers from "@/app/providers";
 import Toaster from "@/components/Toaster";
 import WebVitals from "@/app/web-vitals";
 import CookieBanner from "@/components/CookieBanner";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const displayFont = Sora({
   subsets: ["latin"],
@@ -80,8 +78,6 @@ export default function RootLayout({
         <CookieBanner />
         <Toaster />
         <WebVitals />
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

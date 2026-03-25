@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { deleteTeacherCv } from "@/lib/teacher-cv-storage";
+import { checkApiPermission } from "@/lib/permissions";
 
 const optStr = z.string().trim().max(200).optional().or(z.literal(""));
 
@@ -53,6 +54,9 @@ export async function GET(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const teacher = await prisma.teacher.findUnique({
@@ -125,6 +129,9 @@ export async function PUT(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = await validateBody(request, teacherUpdateSchema);
@@ -222,6 +229,9 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "delete")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const existing = await prisma.teacher.findUnique({

@@ -22,16 +22,20 @@ import {
   Mail,
   MessageCircle,
   ScrollText,
+  ShieldCheck,
   UserCircle,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { PermissionArea } from "@/lib/permissions";
 
 type SidebarItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  area?: PermissionArea;
 };
 
 type SidebarSection = {
@@ -63,38 +67,39 @@ const ADMIN_SECTIONS: SidebarSection[] = [
   {
     label: "Gestione Formazione",
     items: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/corsi", label: "Corsi", icon: BookOpen },
-      { href: "/admin/edizioni", label: "Edizioni", icon: CalendarRange },
-      { href: "/admin/area-corsi", label: "Area Corsi", icon: FolderTree },
-      { href: "/admin/attestati", label: "Attestati", icon: Award },
+      { href: "/admin", label: "Dashboard", icon: LayoutDashboard, area: "dashboard" },
+      { href: "/admin/corsi", label: "Corsi", icon: BookOpen, area: "corsi" },
+      { href: "/admin/edizioni", label: "Edizioni", icon: CalendarRange, area: "edizioni" },
+      { href: "/admin/area-corsi", label: "Area Corsi", icon: FolderTree, area: "area-corsi" },
+      { href: "/admin/attestati", label: "Attestati", icon: Award, area: "attestati" },
     ],
   },
   {
     label: "Anagrafiche",
     items: [
-      { href: "/admin/clienti", label: "Clienti", icon: Building2 },
-      { href: "/admin/dipendenti", label: "Dipendenti", icon: Users },
-      { href: "/admin/docenti", label: "Docenti", icon: GraduationCap },
+      { href: "/admin/clienti", label: "Clienti", icon: Building2, area: "clienti" },
+      { href: "/admin/dipendenti", label: "Dipendenti", icon: Users, area: "dipendenti" },
+      { href: "/admin/docenti", label: "Docenti", icon: GraduationCap, area: "docenti" },
     ],
   },
   {
     label: "Comunicazione",
-    items: [{ href: "/admin/ticket", label: "Ticket", icon: MessageCircle }],
+    items: [{ href: "/admin/ticket", label: "Ticket", icon: MessageCircle, area: "ticket" }],
   },
   {
     label: "Strumenti",
     items: [
-      { href: "/admin/export", label: "Export", icon: Download },
-      { href: "/admin/guida", label: "Guida", icon: BookOpenCheck },
-      { href: "/admin/audit", label: "Audit", icon: ScrollText },
+      { href: "/admin/export", label: "Export", icon: Download, area: "export" },
+      { href: "/admin/guida", label: "Guida", icon: BookOpenCheck, area: "guida" },
+      { href: "/admin/audit", label: "Audit", icon: ScrollText, area: "audit" },
     ],
   },
   {
     label: "Sistema",
     items: [
-      { href: "/admin/status", label: "Status", icon: Activity },
-      { href: "/admin/smtp", label: "SMTP", icon: Mail },
+      { href: "/admin/status", label: "Status", icon: Activity, area: "status" },
+      { href: "/admin/smtp", label: "SMTP", icon: Mail, area: "smtp" },
+      { href: "/admin/ruoli", label: "Ruoli e Permessi", icon: ShieldCheck, area: "ruoli" },
     ],
   },
 ];
@@ -110,8 +115,21 @@ export default function Sidebar({
   onNavigate,
   className,
 }: SidebarProps) {
-  const sections = role === "ADMIN" ? ADMIN_SECTIONS : CLIENT_SECTIONS;
   const pathname = usePathname();
+  const { canAccess } = usePermissions();
+
+  // Filter admin sections by permissions
+  const rawSections = role === "ADMIN" ? ADMIN_SECTIONS : CLIENT_SECTIONS;
+  const sections = role === "ADMIN"
+    ? rawSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter(
+            (item) => !item.area || canAccess(item.area)
+          ),
+        }))
+        .filter((section) => section.items.length > 0)
+    : rawSections;
   const { data: adminTicketCount = 0 } = useQuery({
     queryKey: ["sidebar-admin-ticket-count"],
     enabled: role === "ADMIN",

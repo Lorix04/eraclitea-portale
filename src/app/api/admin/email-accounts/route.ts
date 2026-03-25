@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
+import { checkApiPermission } from "@/lib/permissions";
 
 const createSchema = z.object({
   name: z.string().trim().min(1, "Nome account obbligatorio"),
@@ -35,6 +36,9 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
   }
+  if (!checkApiPermission(session, "smtp", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+  }
 
   const accounts = await prisma.emailAccount.findMany({
     orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
@@ -61,6 +65,9 @@ export async function POST(request: Request) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

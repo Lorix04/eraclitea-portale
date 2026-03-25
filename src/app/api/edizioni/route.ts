@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
+import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
 
 const querySchema = z.object({
   clientId: z.string().optional(),
@@ -29,12 +30,17 @@ const querySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(500).default(200),
+  myEditions: z.enum(["true", "false"]).optional(),
 });
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canAccessArea(session.user.permissions, "edizioni", session.user.isSuperAdmin)) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = validateQuery(request, querySchema);
@@ -54,6 +60,7 @@ export async function GET(request: Request) {
     sortOrder,
     page,
     limit,
+    myEditions,
   } = validation.data;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 200;
@@ -103,6 +110,20 @@ export async function GET(request: Request) {
     if (dateFrom) dateFilter.gte = new Date(dateFrom);
     if (dateTo) dateFilter.lte = new Date(`${dateTo}T23:59:59.999Z`);
     filters.push({ startDate: dateFilter });
+  }
+
+  // Edition visibility: view-own users see only their editions
+  const visFilter = editionVisibilityFilter(session);
+  if (visFilter) filters.push(visFilter as any);
+
+  // Explicit "my editions" filter (toggle in UI)
+  if (myEditions === "true") {
+    filters.push({
+      OR: [
+        { referents: { some: { userId: session.user.id } } },
+        { referents: { none: {} } },
+      ],
+    } as any);
   }
 
   const where: Prisma.CourseEditionWhereInput =
@@ -157,6 +178,11 @@ export async function GET(request: Request) {
           select: {
             luogo: true,
             _count: { select: { teacherAssignments: true } },
+          },
+        },
+        referents: {
+          include: {
+            user: { select: { id: true, email: true } },
           },
         },
         _count: { select: { registrations: true } },

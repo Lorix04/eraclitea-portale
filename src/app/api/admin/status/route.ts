@@ -4,11 +4,15 @@ import { promises as fs } from "fs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSmtpConfig } from "@/lib/email";
+import { checkApiPermission } from "@/lib/permissions";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "status", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const dbStart = Date.now();

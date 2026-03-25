@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkApiPermission } from "@/lib/permissions";
 
 const duplicateSchema = z.object({
   duplicateLessons: z.boolean().optional(),
@@ -115,6 +116,9 @@ export async function POST(
     const session = await requireAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "edizioni", "duplicate")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const parsedBody = duplicateSchema.safeParse(

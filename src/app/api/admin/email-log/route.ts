@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EMAIL_TYPE_LABEL_MAP } from "@/lib/email-preferences";
+import { checkApiPermission } from "@/lib/permissions";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -23,6 +24,9 @@ export async function GET(request: Request) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "audit", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody, validateQuery } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
 import { Prisma } from "@prisma/client";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -29,6 +30,10 @@ export async function GET(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canAccessArea(session.user.permissions, "edizioni", session.user.isSuperAdmin)) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = validateQuery(request, querySchema);
@@ -131,6 +136,10 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "edizioni", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = await validateBody(request, lessonSchema);

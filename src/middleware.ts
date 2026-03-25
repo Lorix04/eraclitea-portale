@@ -82,16 +82,17 @@ export async function middleware(req: NextRequest) {
   const teacherStatus = isImpersonatingTeacher ? "ACTIVE" : token?.teacherStatus;
 
   if (pathname.startsWith("/api/")) {
+    // NextAuth internal endpoints — skip rate limiting entirely
+    if (pathname.startsWith("/api/auth/")) {
+      return NextResponse.next();
+    }
+
     const ip = getClientIp(req);
-    const isAuthApiRoute = pathname.startsWith("/api/auth/");
     const isAdminAuthenticatedApi =
-      !isAuthApiRoute &&
       token?.role === "ADMIN" &&
       !isImpersonatingClient;
     const isTeacherTokenApi = pathname.startsWith("/api/teacher/validate-token");
-    const rateLimitTier = isAuthApiRoute
-      ? "login"
-      : isTeacherTokenApi
+    const rateLimitTier = isTeacherTokenApi
         ? "login"
         : isAdminAuthenticatedApi
           ? "admin"
@@ -125,7 +126,7 @@ export async function middleware(req: NextRequest) {
       req.method
     );
 
-    if (isMutationMethod && !isAuthApiRoute) {
+    if (isMutationMethod) {
       const host = req.headers.get("host");
       const origin = req.headers.get("origin");
       const referer = req.headers.get("referer");
@@ -145,7 +146,6 @@ export async function middleware(req: NextRequest) {
 
     if (
       mustChangePassword &&
-      !isAuthApiRoute &&
       !isForceChangePasswordApi
     ) {
       return NextResponse.json(

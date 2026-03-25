@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { checkApiPermission } from "@/lib/permissions";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -24,6 +25,9 @@ export async function GET(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "area-corsi", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const category = await prisma.category.findUnique({
@@ -48,6 +52,9 @@ export async function PUT(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "area-corsi", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -136,6 +143,9 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "area-corsi", "delete")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const category = await prisma.category.findUnique({

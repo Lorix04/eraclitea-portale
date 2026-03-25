@@ -13,6 +13,7 @@ import {
   getEffectiveHours,
   type AttendanceStatus,
 } from "@/lib/attendance-utils";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -291,6 +292,12 @@ export async function GET(
   const effectiveClient = await getEffectiveClientContext();
   const isAdminView =
     session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+
+  if (isAdminView) {
+    if (!canAccessArea(session.user.permissions, "presenze", session.user.isSuperAdmin)) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
+  }
 
   const validation = validateQuery(request, querySchema);
   if ("error" in validation) {

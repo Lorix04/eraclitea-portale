@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
+import { checkApiPermission } from "@/lib/permissions";
 
 const updateSchema = z.object({
   status: z.enum(["PRESENT", "ABSENT", "ABSENT_JUSTIFIED"]),
@@ -18,6 +19,10 @@ export async function PUT(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "presenze", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = await validateBody(request, updateSchema);

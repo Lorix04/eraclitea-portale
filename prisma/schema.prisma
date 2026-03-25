@@ -16,6 +16,8 @@ model User {
   role         Role      @default(CLIENT)
   clientId     String?
   client       Client?   @relation(fields: [clientId], references: [id])
+  adminRoleId  String?
+  adminRole    AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
   isActive     Boolean   @default(true)
   mustChangePassword Boolean @default(false)
   createdAt    DateTime  @default(now())
@@ -31,6 +33,21 @@ model User {
   ticketMessages     TicketMessage[] @relation("TicketMessages")
   notifications      Notification[]
   teacher            Teacher?
+  editionReferents   EditionReferent[]
+
+  @@index([adminRoleId])
+}
+
+model AdminRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  isDefault   Boolean  @default(false)
+  permissions Json
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum Role {
@@ -118,6 +135,7 @@ model CourseEdition {
   certificates     Certificate[]
   notifications    Notification[]
   materials        EditionMaterial[]
+  referents        EditionReferent[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -125,6 +143,21 @@ model CourseEdition {
   @@index([courseId])
   @@index([clientId])
   @@index([status])
+}
+
+model EditionReferent {
+  id              String        @id @default(cuid())
+  courseEditionId  String
+  courseEdition    CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt      DateTime      @default(now())
+  assignedById    String?
+  notes           String?
+
+  @@unique([courseEditionId, userId])
+  @@index([courseEditionId])
+  @@index([userId])
 }
 
 model Lesson {
@@ -217,6 +250,16 @@ model Teacher {
   signedDocuments    TeacherSignedDocument[]
   messages           TeacherMessage[]
   tickets            Ticket[]
+
+  // CV strutturato
+  workExperiences       TeacherWorkExperience[]
+  educations            TeacherEducation[]
+  languages             TeacherLanguage[]
+  certifications        TeacherCertification[]
+  skills                TeacherSkill[]
+  trainingCourses       TeacherTrainingCourse[]
+  teachingExperiences   TeacherTeachingExperience[]
+  publications          TeacherPublication[]
 }
 
 model TeacherAssignment {
@@ -709,4 +752,150 @@ model CourseMaterial {
 
   @@index([courseId])
   @@index([courseId, category])
+}
+
+// ── Teacher CV Structured Models ──────────────────────────────
+
+model TeacherWorkExperience {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  jobTitle    String
+  employer    String
+  city        String?
+  sector      String?
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([teacherId, sortOrder])
+}
+
+model TeacherEducation {
+  id           String    @id @default(cuid())
+  teacherId    String
+  teacher      Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title        String
+  institution  String
+  fieldOfStudy String?
+  city         String?
+  startDate    DateTime?
+  endDate      DateTime?
+  grade        String?
+  description  String?   @db.Text
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherLanguage {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  language    String
+  isNative    Boolean  @default(false)
+  listening   String?
+  reading     String?
+  speaking    String?
+  writing     String?
+  certificate String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherCertification {
+  id           String    @id @default(cuid())
+  teacherId    String
+  teacher      Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  name         String
+  issuingBody  String
+  issueDate    DateTime?
+  expiryDate   DateTime?
+  credentialId String?
+  description  String?   @db.Text
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherSkill {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  name      String
+  category  String?
+  level     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherTrainingCourse {
+  id            String    @id @default(cuid())
+  teacherId     String
+  teacher       Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title         String
+  provider      String?
+  date          DateTime?
+  durationHours Float?
+  topic         String?
+  certificate   Boolean   @default(false)
+  description   String?   @db.Text
+  sortOrder     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherTeachingExperience {
+  id             String    @id @default(cuid())
+  teacherId      String
+  teacher        Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  courseTitle     String
+  topic          String?
+  organization   String?
+  targetAudience String?
+  startDate      DateTime?
+  endDate        DateTime?
+  totalHours     Float?
+  location       String?
+  description    String?   @db.Text
+  isFromPortal   Boolean   @default(false)
+  lessonId       String?
+  sortOrder      Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([teacherId])
+}
+
+model TeacherPublication {
+  id          String    @id @default(cuid())
+  teacherId   String
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title       String
+  publisher   String?
+  date        DateTime?
+  url         String?
+  description String?   @db.Text
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([teacherId])
 }

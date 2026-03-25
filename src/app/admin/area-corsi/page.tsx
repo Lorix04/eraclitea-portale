@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Pencil, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Search, Trash2 } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useFetchWithRetry } from "@/hooks/useFetchWithRetry";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
@@ -20,6 +21,7 @@ type CategoryRow = {
 };
 
 export default function AdminAreaCorsiPage() {
+  const { can } = usePermissions();
   const [searchName, setSearchName] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -67,12 +69,14 @@ export default function AdminAreaCorsiPage() {
             Gestisci le aree dei corsi e le associazioni con i clienti.
           </p>
         </div>
-        <Link
-          href="/admin/area-corsi/nuova"
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        >
-          Nuova area
-        </Link>
+        {can("area-corsi", "create") ? (
+          <Link
+            href="/admin/area-corsi/nuova"
+            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          >
+            Nuova area
+          </Link>
+        ) : null}
       </div>
 
       <MobileFilterPanel
@@ -157,25 +161,25 @@ export default function AdminAreaCorsiPage() {
         actions={(category) => (
           <ActionMenu
             primaryAction={{
-              key: "edit",
-              label: "Modifica",
-              icon: Pencil,
+              key: "view",
+              label: can("area-corsi", "edit") ? "Modifica" : "Dettaglio",
+              icon: can("area-corsi", "edit") ? Pencil : Eye,
               variant: "info",
               href: `/admin/area-corsi/${category.id}`,
               shortcutKey: "e",
             }}
             secondaryActions={[
-              {
+              ...(can("area-corsi", "delete") ? [{
                 key: "delete",
                 label: "Elimina",
                 icon: Trash2,
-                variant: "danger",
+                variant: "danger" as const,
                 requireConfirm: true,
                 confirmMessage: "Eliminare questa area? Le associazioni verranno rimosse.",
                 onClick: () => handleDelete(category.id),
                 shortcutKey: "Delete",
                 shortcutLabel: "Del",
-              },
+              }] : []),
             ]}
           />
         )}

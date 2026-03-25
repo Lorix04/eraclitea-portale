@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EMAIL_PREFERENCE_DEFAULTS } from "@/lib/email-preferences";
+import { checkApiPermission } from "@/lib/permissions";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -28,6 +29,9 @@ export async function GET() {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   await ensureEmailPreferencesSeeded();

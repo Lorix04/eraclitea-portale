@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
+import { checkApiPermission } from "@/lib/permissions";
 
 const lessonUpdateSchema = z.object({
   date: z.string().optional(),
@@ -23,6 +24,10 @@ export async function PUT(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "edizioni", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = await validateBody(request, lessonUpdateSchema);
@@ -95,6 +100,10 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "edizioni", "delete")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const edition = await prisma.courseEdition.findFirst({

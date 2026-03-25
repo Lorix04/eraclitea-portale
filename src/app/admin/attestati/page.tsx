@@ -10,6 +10,7 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
 import { EditCertificateModal } from "@/components/admin/EditCertificateModal";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -123,6 +124,7 @@ function getExpiryBadge(expiresAt?: string | null) {
 }
 
 export default function AdminAttestatiPage() {
+  const { can } = usePermissions();
   const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -335,13 +337,15 @@ export default function AdminAttestatiPage() {
             <Download className="mr-2 h-4 w-4" />
             Scarica tutti (ZIP)
           </button>
-          <Link
-            href="/admin/attestati/upload"
-            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Carica attestato
-          </Link>
+          {can("attestati", "upload") ? (
+            <Link
+              href="/admin/attestati/upload"
+              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Carica attestato
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -636,17 +640,17 @@ export default function AdminAttestatiPage() {
                   onClick: () => setEditCertificateId(cert.id),
                   shortcutKey: "e",
                 },
-                {
+                ...(can("attestati", "delete") ? [{
                   key: "delete",
                   label: "Elimina",
                   icon: Trash2,
-                  variant: "danger",
+                  variant: "danger" as const,
                   requireConfirm: true,
                   confirmMessage: `Eliminare "${fileName}"?`,
                   onClick: () => handleDeleteConfirm(cert.id),
                   shortcutKey: "Delete",
                   shortcutLabel: "Del",
-                },
+                }] : []),
               ]}
               size="sm"
             />

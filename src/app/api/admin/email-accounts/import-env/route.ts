@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encrypt } from "@/lib/encryption";
+import { checkApiPermission } from "@/lib/permissions";
 
 function parseFromAddress(from: string): { senderName: string; senderEmail: string } {
   const raw = from.trim();
@@ -23,6 +24,9 @@ export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const count = await prisma.emailAccount.count();
@@ -105,6 +109,9 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const count = await prisma.emailAccount.count();

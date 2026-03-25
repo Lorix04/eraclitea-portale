@@ -11,6 +11,7 @@ import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Course = {
   id: string;
@@ -42,6 +43,7 @@ const VISIBILITY_LABELS: Record<string, string> = {
 };
 
 export default function AdminCorsiPage() {
+  const { can } = usePermissions();
   const [searchTitle, setSearchTitle] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [visibilityType, setVisibilityType] = useState("all");
@@ -143,12 +145,14 @@ export default function AdminCorsiPage() {
             Gestisci i corsi template e le edizioni associate.
           </p>
         </div>
-        <Link
-          href="/admin/corsi/nuovo"
-          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        >
-          Nuovo corso
-        </Link>
+        {can("corsi", "create") ? (
+          <Link
+            href="/admin/corsi/nuovo"
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          >
+            Nuovo corso
+          </Link>
+        ) : null}
       </div>
 
       <MobileFilterPanel
@@ -296,25 +300,25 @@ export default function AdminCorsiPage() {
               shortcutKey: "o",
             }}
             secondaryActions={[
-              {
+              ...(can("corsi", "edit") ? [{
                 key: "edit",
                 label: "Modifica",
                 icon: Pencil,
-                variant: "default",
+                variant: "default" as const,
                 href: `/admin/corsi/${course.id}/edit`,
                 shortcutKey: "e",
-              },
-              {
+              }] : []),
+              ...(can("corsi", "delete") ? [{
                 key: "delete",
                 label: "Elimina",
                 icon: Trash2,
-                variant: "danger",
+                variant: "danger" as const,
                 requireConfirm: true,
                 confirmMessage: `Eliminare "${course.title}"?`,
                 onClick: () => handleDeleteConfirm(course.id),
                 shortcutKey: "Delete",
                 shortcutLabel: "Del",
-              },
+              }] : []),
             ]}
           />
         )}

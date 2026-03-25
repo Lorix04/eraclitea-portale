@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { copyCourseMaterialToEdition } from "@/lib/material-storage";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,10 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "materiali", "create")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const edition = await prisma.courseEdition.findFirst({

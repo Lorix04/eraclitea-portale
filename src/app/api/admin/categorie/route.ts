@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { checkApiPermission } from "@/lib/permissions";
 
 const categorySchema = z.object({
   name: z.string().min(1).max(100),
@@ -22,6 +23,9 @@ export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "area-corsi", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -65,6 +69,9 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "area-corsi", "create")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const body = await request.json();

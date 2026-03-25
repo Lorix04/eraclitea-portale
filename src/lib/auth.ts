@@ -80,6 +80,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           clientId: user.clientId,
+          adminRoleId: user.adminRoleId,
           mustChangePassword: user.mustChangePassword,
         };
       },
@@ -101,6 +102,27 @@ export const authOptions: NextAuthOptions = {
           });
           token.teacherId = teacher?.id ?? null;
           token.teacherStatus = teacher?.status ?? null;
+        }
+
+        // Load admin role data for ADMIN role
+        if (token.role === "ADMIN") {
+          const adminRoleId = (user as any).adminRoleId;
+          if (adminRoleId) {
+            const adminRole = await prisma.adminRole.findUnique({
+              where: { id: adminRoleId },
+              select: { id: true, name: true, permissions: true, isSystem: true },
+            });
+            token.adminRoleId = adminRole?.id ?? null;
+            token.adminRoleName = adminRole?.name ?? null;
+            token.permissions = (adminRole?.permissions as Record<string, string[]>) ?? null;
+            token.isSuperAdmin = adminRole?.isSystem === true;
+          } else {
+            // Legacy admin without role — treat as super admin
+            token.adminRoleId = null;
+            token.adminRoleName = null;
+            token.permissions = null;
+            token.isSuperAdmin = true;
+          }
         }
       }
 
@@ -124,6 +146,10 @@ export const authOptions: NextAuthOptions = {
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
         session.user.teacherId = (token.teacherId as string | null) ?? null;
         session.user.teacherStatus = (token.teacherStatus as string | null) ?? null;
+        session.user.adminRoleId = (token.adminRoleId as string | null) ?? null;
+        session.user.adminRoleName = (token.adminRoleName as string | null) ?? null;
+        session.user.permissions = token.permissions ?? null;
+        session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
       }
       return session;
     },

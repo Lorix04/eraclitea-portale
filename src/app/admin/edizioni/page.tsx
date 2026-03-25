@@ -14,6 +14,7 @@ import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type EditionRow = {
   id: string;
@@ -31,6 +32,9 @@ type EditionRow = {
     _count?: { teacherAssignments: number };
   }>;
   _count?: { registrations: number };
+  referents?: Array<{
+    user: { id: string; email: string };
+  }>;
 };
 
 type ClientOption = {
@@ -85,6 +89,7 @@ const SORT_COLUMNS: Array<{
 ];
 
 function AdminEdizioniContent() {
+  const { can } = usePermissions();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -126,6 +131,9 @@ function AdminEdizioniContent() {
   const [deleteTarget, setDeleteTarget] = useState<EditionRow | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<EditionRow | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const hasViewAll = can("edizioni", "view-all");
+  const hasViewOwn = can("edizioni", "view-own");
+  const [myEditions, setMyEditions] = useState(!hasViewAll && hasViewOwn);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -169,6 +177,7 @@ function AdminEdizioniContent() {
     if (dateTo) params.set("dateTo", dateTo);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
+    if (myEditions) params.set("myEditions", "true");
 
     const res = await fetchWithRetry(`/api/edizioni?${params.toString()}`);
     if (!res.ok) {
@@ -200,6 +209,7 @@ function AdminEdizioniContent() {
     dateTo,
     sortBy,
     sortOrder,
+    myEditions,
   ]);
 
   useEffect(() => {
@@ -289,14 +299,16 @@ function AdminEdizioniContent() {
             Tutte le edizioni attive e archiviate per ogni corso.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuova Edizione
-        </button>
+        {can("edizioni", "create") ? (
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nuova Edizione
+          </button>
+        ) : null}
       </div>
 
       <MobileFilterPanel
@@ -390,6 +402,35 @@ function AdminEdizioniContent() {
         </div>
       </MobileFilterPanel>
 
+      {(hasViewAll && hasViewOwn) || hasViewOwn ? (
+        <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
+          {hasViewAll ? (
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-sm transition ${
+                !myEditions
+                  ? "bg-white shadow font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setMyEditions(false)}
+            >
+              Tutte le edizioni
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm transition ${
+              myEditions
+                ? "bg-white shadow font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setMyEditions(true)}
+          >
+            Le mie edizioni
+          </button>
+        </div>
+      ) : null}
+
       {error ? <ErrorMessage message={error} onRetry={() => void fetchEditions()} /> : null}
 
       <ResponsiveTable<EditionRow>
@@ -453,6 +494,27 @@ function AdminEdizioniContent() {
             ),
           },
           {
+            key: "referents",
+            header: "Referenti",
+            hideOnCard: true,
+            render: (e) => {
+              const refs = e.referents ?? [];
+              if (refs.length === 0) return <span className="text-muted-foreground">—</span>;
+              const display = refs.slice(0, 2).map((r) => r.user.email.split("@")[0]);
+              const extra = refs.length > 2 ? ` +${refs.length - 2}` : "";
+              return (
+                <span className="flex flex-wrap gap-1">
+                  {display.map((name, i) => (
+                    <span key={i} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                      {name}
+                    </span>
+                  ))}
+                  {extra ? <span className="text-xs text-muted-foreground">{extra}</span> : null}
+                </span>
+              );
+            },
+          },
+          {
             key: "participants",
             header: "Partecipanti",
             sortable: true,
@@ -492,23 +554,23 @@ function AdminEdizioniContent() {
                 shortcutKey: "o",
               }}
               secondaryActions={[
-                {
+                ...(can("edizioni", "duplicate") ? [{
                   key: "duplicate",
                   label: "Duplica",
                   icon: Copy,
-                  variant: "default",
+                  variant: "default" as const,
                   onClick: () => setDuplicateTarget(edition),
                   shortcutKey: "d",
-                },
-                {
+                }] : []),
+                ...(can("edizioni", "delete") ? [{
                   key: "delete",
                   label: "Elimina",
                   icon: Trash2,
-                  variant: "danger",
+                  variant: "danger" as const,
                   onClick: () => setDeleteTarget(edition),
                   shortcutKey: "Delete",
                   shortcutLabel: "Del",
-                },
+                }] : []),
               ]}
             />
           ) : (

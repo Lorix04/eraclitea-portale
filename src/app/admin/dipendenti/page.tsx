@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Eye, Search, Trash2, Upload, UserPlus } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import EmployeeTable from "@/components/EmployeeTable";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -49,6 +50,7 @@ function buildQuery(params: Record<string, string>) {
 }
 
 function AdminDipendentiContent() {
+  const { can } = usePermissions();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -267,28 +269,32 @@ function AdminDipendentiContent() {
         resultCount={<>{totalCount} dipendenti trovati</>}
         actions={
           <>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
-              onClick={() => {
-                if (!clientId) {
-                  toast.error("Seleziona un cliente specifico prima di importare");
-                  return;
-                }
-                setImportModalOpen(true);
-              }}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Importa CSV/Excel
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
-              onClick={() => setAddModalOpen(true)}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Aggiungi dipendente
-            </button>
+            {can("dipendenti", "import") ? (
+              <button
+                type="button"
+                className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+                onClick={() => {
+                  if (!clientId) {
+                    toast.error("Seleziona un cliente specifico prima di importare");
+                    return;
+                  }
+                  setImportModalOpen(true);
+                }}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Importa CSV/Excel
+              </button>
+            ) : null}
+            {can("dipendenti", "create") ? (
+              <button
+                type="button"
+                className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+                onClick={() => setAddModalOpen(true)}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Aggiungi dipendente
+              </button>
+            ) : null}
           </>
         }
       >
@@ -368,11 +374,11 @@ function AdminDipendentiContent() {
                 shortcutKey: "o",
               }}
               secondaryActions={[
-                {
+                ...(can("dipendenti", "delete") ? [{
                   key: "delete",
                   label: "Elimina",
                   icon: Trash2,
-                  variant: "danger",
+                  variant: "danger" as const,
                   requireConfirm: true,
                   confirmMessage: hasData
                     ? `${employee.nome} ${employee.cognome} ha ${regCount} iscrizioni e ${certCount} attestati. Eliminare?`
@@ -389,7 +395,7 @@ function AdminDipendentiContent() {
                   },
                   shortcutKey: "Delete",
                   shortcutLabel: "Del",
-                },
+                }] : []),
               ]}
             />
           );

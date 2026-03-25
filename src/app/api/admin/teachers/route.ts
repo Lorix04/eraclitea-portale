@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody, validateQuery } from "@/lib/api-utils";
+import { checkApiPermission } from "@/lib/permissions";
 
 const querySchema = z.object({
   search: z.string().optional(),
@@ -59,6 +60,9 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = validateQuery(request, querySchema);
@@ -192,6 +196,9 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "create")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = await validateBody(request, teacherSchema);

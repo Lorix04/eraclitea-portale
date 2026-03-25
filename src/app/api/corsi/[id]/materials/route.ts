@@ -7,6 +7,7 @@ import {
   MATERIAL_MAX_SIZE_BYTES,
 } from "@/lib/material-storage-shared";
 import { saveCourseMaterial, deleteMaterial } from "@/lib/material-storage";
+import { checkApiPermission, canAccessArea } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,10 @@ export async function GET(
   const session = await ensureAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canAccessArea(session.user.permissions, "materiali", session.user.isSuperAdmin)) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -62,6 +67,10 @@ export async function POST(
   const session = await ensureAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "materiali", "create")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const course = await prisma.course.findUnique({

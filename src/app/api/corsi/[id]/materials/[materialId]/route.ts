@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteMaterial } from "@/lib/material-storage";
+import { checkApiPermission } from "@/lib/permissions";
 
 async function ensureAdmin() {
   const session = await getServerSession(authOptions);
@@ -17,6 +18,10 @@ export async function PUT(
   const session = await ensureAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "materiali", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);
@@ -50,6 +55,10 @@ export async function DELETE(
   const session = await ensureAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "materiali", "delete")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const material = await prisma.courseMaterial.findFirst({

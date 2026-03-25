@@ -36,6 +36,7 @@ import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
+import EditionReferentsSection from "@/components/admin/EditionReferentsSection";
 import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
@@ -595,6 +596,7 @@ export default function AdminEditionDetailPage({
       <BrandedTabs tabs={TABS} activeTab={tab} onTabChange={setTab} />
 
       {tab === "info" ? (
+        <>
         <div className="space-y-6 rounded-lg border bg-card p-6">
           {isArchived ? (
             <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-100 p-3 text-sm text-gray-600">
@@ -769,6 +771,14 @@ export default function AdminEditionDetailPage({
             </div>
           ) : null}
         </div>
+        <div className="rounded-lg border bg-card p-6">
+          <EditionReferentsSection
+            courseId={params.id}
+            editionId={params.edId}
+            canEdit={!isArchived}
+          />
+        </div>
+        </>
       ) : null}
 
       {tab === "lezioni" ? (

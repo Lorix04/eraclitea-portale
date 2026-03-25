@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkApiPermission } from "@/lib/permissions";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -18,6 +19,9 @@ export async function POST(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const target = await prisma.emailAccount.findUnique({

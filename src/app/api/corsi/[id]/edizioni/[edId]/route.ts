@@ -11,6 +11,7 @@ import {
   sendEditionDatesChangedEmail,
   sendNewEditionEmail,
 } from "@/lib/email-notifications";
+import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,10 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!canAccessArea(session.user.permissions, "edizioni", session.user.isSuperAdmin)) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
+
     const edition = await prisma.courseEdition.findUnique({
       where: { id: context.params.edId },
       include: {
@@ -35,6 +40,20 @@ export async function GET(
 
     if (!edition || edition.courseId !== context.params.id) {
       return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+    }
+
+    // For view-own: verify access
+    const visFilter = editionVisibilityFilter(session);
+    if (visFilter) {
+      const hasAccess = await prisma.editionReferent.findFirst({
+        where: { courseEditionId: edition.id, userId: session.user.id }
+      });
+      const hasNoReferents = await prisma.editionReferent.count({
+        where: { courseEditionId: edition.id }
+      });
+      if (!hasAccess && hasNoReferents > 0) {
+        return NextResponse.json({ error: "Non hai accesso a questa edizione" }, { status: 403 });
+      }
     }
 
     const latestConfirmed = await prisma.courseRegistration.aggregate({
@@ -68,6 +87,10 @@ export async function PUT(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!checkApiPermission(session, "edizioni", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = await validateBody(request, courseEditionUpdateSchema);
@@ -299,6 +322,10 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!checkApiPermission(session, "edizioni", "delete")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
   const existing = await prisma.courseEdition.findUnique({

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classifyEmailType } from "@/lib/email-retry-policy";
 import { emailQueue } from "@/lib/email-queue";
+import { checkApiPermission } from "@/lib/permissions";
 
 const bodySchema = z.object({
   emailIds: z.array(z.string().min(1)).optional(),
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "retry")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const payload = bodySchema.safeParse(await request.json().catch(() => ({})));

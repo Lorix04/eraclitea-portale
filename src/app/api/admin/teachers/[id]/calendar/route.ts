@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
+import { checkApiPermission } from "@/lib/permissions";
 
 const querySchema = z.object({
   month: z.coerce.number().min(1).max(12),
@@ -40,6 +41,9 @@ export async function GET(
     const session = await ensureAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = validateQuery(request, querySchema);

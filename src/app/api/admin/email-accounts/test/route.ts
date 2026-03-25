@@ -4,6 +4,7 @@ import { z } from "zod";
 import nodemailer from "nodemailer";
 import { authOptions } from "@/lib/auth";
 import { buildEmailHtml, emailInfoBox, emailParagraph } from "@/lib/email-templates";
+import { checkApiPermission } from "@/lib/permissions";
 
 const testSchema = z.object({
   smtpHost: z.string().trim().min(1, "Host SMTP obbligatorio"),
@@ -26,6 +27,9 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);

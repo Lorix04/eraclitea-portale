@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,12 @@ export async function PUT(
     const effectiveClient = await getEffectiveClientContext();
     const isAdminView =
       session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+
+    if (isAdminView) {
+      if (!checkApiPermission(session, "materiali", "edit")) {
+        return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+      }
+    }
 
     const clientId = isAdminView
       ? null

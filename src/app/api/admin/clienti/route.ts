@@ -8,6 +8,7 @@ import { clientCreateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { Prisma } from "@prisma/client";
 import { sendWelcomeEmail } from "@/lib/email-notifications";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,9 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "clienti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
   const { searchParams } = new URL(request.url);
@@ -102,6 +106,9 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "clienti", "create")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
   const validation = await validateBody(request, clientCreateSchema);

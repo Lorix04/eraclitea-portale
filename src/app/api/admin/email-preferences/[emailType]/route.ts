@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EMAIL_PREFERENCE_DEFAULTS } from "@/lib/email-preferences";
+import { checkApiPermission } from "@/lib/permissions";
 
 const updateSchema = z.object({
   isEnabled: z.boolean(),
@@ -24,6 +25,9 @@ export async function PUT(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const parsed = updateSchema.safeParse(await request.json().catch(() => null));

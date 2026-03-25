@@ -7,6 +7,7 @@ import { courseEditionSchema } from "@/lib/schemas";
 import { z } from "zod";
 import { formatDate } from "@/lib/date-utils";
 import { sendNewEditionEmail } from "@/lib/email-notifications";
+import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!canAccessArea(session.user.permissions, "edizioni", session.user.isSuperAdmin)) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
+
     const validation = validateQuery(request, querySchema);
     if ("error" in validation) {
       return validation.error;
@@ -45,10 +50,12 @@ export async function GET(
       return NextResponse.json({ error: "Corso non trovato" }, { status: 404 });
     }
 
+    const visFilter = editionVisibilityFilter(session);
     const where = {
       courseId: context.params.id,
       ...(clientId ? { clientId } : {}),
       ...(status ? { status } : {}),
+      ...(visFilter ? { AND: [visFilter] } : {}),
     };
 
     const [editions, total] = await prisma.$transaction([
@@ -92,6 +99,10 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!checkApiPermission(session, "edizioni", "create")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = await validateBody(request, courseEditionSchema);

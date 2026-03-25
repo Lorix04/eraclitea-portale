@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendAutoEmail } from "@/lib/email-service";
 import { buildEmailHtml, emailParagraph, emailInfoBox } from "@/lib/email-templates";
+import { checkApiPermission } from "@/lib/permissions";
 
 const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 const INVITE_EXPIRY_DAYS = 7;
@@ -17,6 +18,9 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "invite")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const teacher = await prisma.teacher.findUnique({

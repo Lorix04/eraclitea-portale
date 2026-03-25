@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Eye, LifeBuoy, Search } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   TICKET_CATEGORY_LABELS,
@@ -154,6 +155,7 @@ function getPriorityBadgeClass(priority: TicketPriority) {
 }
 
 export default function AdminTicketPage() {
+  const { can } = usePermissions();
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
   const [priority, setPriority] = useState("all");

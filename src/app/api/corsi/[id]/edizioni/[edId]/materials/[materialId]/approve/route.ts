@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,10 @@ export async function POST(
 
     if (session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+    }
+
+    if (!checkApiPermission(session, "materiali", "approve")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const edition = await prisma.courseEdition.findUnique({

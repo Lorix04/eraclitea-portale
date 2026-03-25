@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteClientLogo, saveClientLogo } from "@/lib/client-logo-storage";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,9 @@ export async function POST(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "clienti", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -122,6 +126,9 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "clienti", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

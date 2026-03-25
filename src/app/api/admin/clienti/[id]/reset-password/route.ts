@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendAutoEmail } from "@/lib/email-service";
 import { adminResetPasswordTemplate } from "@/lib/email-templates";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { checkApiPermission } from "@/lib/permissions";
 
 function generatePassword(length = 12): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -26,6 +27,9 @@ export async function POST(
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "clienti", "reset-password")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const client = await prisma.client.findUnique({

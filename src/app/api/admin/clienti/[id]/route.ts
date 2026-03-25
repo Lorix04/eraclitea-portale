@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { clientUpdateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { checkApiPermission } from "@/lib/permissions";
 
 export async function GET(
   _request: Request,
@@ -14,6 +15,9 @@ export async function GET(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "clienti", "view")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const client = await prisma.client.findUnique({
@@ -68,6 +72,9 @@ export async function PUT(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "clienti", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const validation = await validateBody(request, clientUpdateSchema);
@@ -147,6 +154,9 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "clienti", "delete")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const client = await prisma.client.findUnique({

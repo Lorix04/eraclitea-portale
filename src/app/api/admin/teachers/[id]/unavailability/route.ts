@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody, validateQuery } from "@/lib/api-utils";
+import { checkApiPermission } from "@/lib/permissions";
 
 const querySchema = z.object({
   from: z.string().optional(),
@@ -70,6 +71,9 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!checkApiPermission(session, "docenti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
 
     const validation = validateQuery(request, querySchema);
     if ("error" in validation) {
@@ -113,6 +117,9 @@ export async function POST(
     const session = await ensureAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const validation = await validateBody(request, createSchema);
@@ -191,6 +198,9 @@ export async function DELETE(
     const session = await ensureAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

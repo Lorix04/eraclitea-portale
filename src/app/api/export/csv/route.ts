@@ -7,6 +7,7 @@ import { getClientIP, logAudit } from "@/lib/audit";
 import { formatItalianDate } from "@/lib/date-utils";
 import { Prisma, RegistrationStatus } from "@prisma/client";
 import * as XLSX from "xlsx";
+import { checkApiPermission } from "@/lib/permissions";
 
 const EMPLOYEE_EXPORT_COLUMNS = [
   "cognome",
@@ -36,6 +37,10 @@ export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkApiPermission(session, "export", "export")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);

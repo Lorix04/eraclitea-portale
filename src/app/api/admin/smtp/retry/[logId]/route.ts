@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { classifyEmailType } from "@/lib/email-retry-policy";
 import { getEmailLogById, regenerateSensitiveEmailFromLog, retryNonSensitiveEmailLog } from "@/lib/email-retry-service";
+import { checkApiPermission } from "@/lib/permissions";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -19,6 +20,9 @@ export async function POST(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
+  }
+  if (!checkApiPermission(session, "smtp", "retry")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const log = await getEmailLogById(context.params.logId);

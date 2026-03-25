@@ -9,6 +9,7 @@ import {
   readTeacherCv,
   saveTeacherCv,
 } from "@/lib/teacher-cv-storage";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,9 @@ export async function POST(
     const session = await ensureAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const teacher = await prisma.teacher.findUnique({
@@ -129,6 +133,9 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!checkApiPermission(session, "docenti", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
 
     const teacher = await prisma.teacher.findUnique({
       where: { id: context.params.id },
@@ -170,6 +177,9 @@ export async function DELETE(
     const session = await ensureAdmin();
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!checkApiPermission(session, "docenti", "edit")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
     const teacher = await prisma.teacher.findUnique({

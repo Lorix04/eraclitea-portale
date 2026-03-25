@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type Edition = {
   id: string;
@@ -30,6 +31,7 @@ const EMPLOYEE_PREVIEW_COLUMNS = [
 ] as const;
 
 export default function AdminExportPage() {
+  const { can } = usePermissions();
   const [editions, setEditions] = useState<Edition[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [exportType, setExportType] = useState("courses");
@@ -285,15 +287,17 @@ export default function AdminExportPage() {
               <span>record</span>
             </label>
           </div>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-            onClick={handleExport}
-            disabled={loadingExport}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {loadingExport ? "Esportazione..." : "Esporta"}
-          </button>
+          {can("export", "export") ? (
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+              onClick={handleExport}
+              disabled={loadingExport}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {loadingExport ? "Esportazione..." : "Esporta"}
+            </button>
+          ) : null}
         </div>
         <div className="mt-3 overflow-auto">
           <table className="min-w-full text-xs">
