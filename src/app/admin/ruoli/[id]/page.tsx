@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   PERMISSION_AREAS,
   ACTION_LABELS,
@@ -54,6 +55,7 @@ export default function AdminRoleDetailPage() {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const { data: session } = useSession();
+  const { confirm: confirmDialog } = useConfirmDialog();
   const currentUserId = session?.user?.id;
   const roleId = params.id as string;
 
@@ -345,7 +347,8 @@ export default function AdminRoleDetailPage() {
                           <button
                             type="button"
                             onClick={async () => {
-                              if (!confirm("Annullare l'invito? L'utente verrà eliminato.")) return;
+                              const ok = await confirmDialog({ title: "Annulla invito", message: "Annullare l'invito? L'utente verra eliminato.", confirmText: "Annulla invito", variant: "danger" });
+                              if (!ok) return;
                               try {
                                 const res = await fetch(`/api/admin/roles/reinvite-user/${user.id}`, { method: "DELETE" });
                                 const json = await res.json();
@@ -375,8 +378,9 @@ export default function AdminRoleDetailPage() {
                             type="button"
                             disabled={!!disabled}
                             title={tooltip}
-                            onClick={() => {
-                              if (!confirm(`Rimuovere ${user.email} dal ruolo "${role?.name}"? L'utente perderà tutti i permessi fino alla riassegnazione di un ruolo.`)) return;
+                            onClick={async () => {
+                              const ok = await confirmDialog({ title: "Rimuovi dal ruolo", message: `Rimuovere ${user.email} dal ruolo "${role?.name}"? L'utente perdera tutti i permessi fino alla riassegnazione di un ruolo.`, confirmText: "Rimuovi", variant: "danger" });
+                              if (!ok) return;
                               handleUnassign(user.id);
                             }}
                             className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"

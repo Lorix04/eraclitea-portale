@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Eye, KeyRound, LogIn, Pencil, Search, Trash2, UserCheck, UserX } from "lucide-react";
+import { toast } from "sonner";
 import ActionMenu from "@/components/ui/ActionMenu";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -159,7 +160,7 @@ export default function AdminClientiPage() {
         newPassword: json.newPassword,
       });
     } catch (error) {
-      window.alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Errore durante il reset password"
@@ -176,7 +177,7 @@ export default function AdminClientiPage() {
       setCopySuccess(true);
       window.setTimeout(() => setCopySuccess(false), 1500);
     } catch {
-      window.alert("Impossibile copiare la password");
+      toast.error("Impossibile copiare la password");
     }
   };
 
@@ -191,7 +192,7 @@ export default function AdminClientiPage() {
 
   const handleImpersonate = async (client: ClientRow) => {
     if (!client.user?.id) {
-      window.alert("Utente cliente non disponibile per l'impersonazione.");
+      toast.error("Utente cliente non disponibile per l'impersonazione.");
       return;
     }
 
@@ -205,7 +206,7 @@ export default function AdminClientiPage() {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        window.alert(payload?.error ?? "Errore durante l'impersonazione");
+        toast.error(payload?.error ?? "Errore durante l'impersonazione");
         return;
       }
 

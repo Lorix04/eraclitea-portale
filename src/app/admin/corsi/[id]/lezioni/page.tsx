@@ -10,12 +10,14 @@ import { LessonForm } from "@/components/LessonForm";
 import { useLessons } from "@/hooks/useLessons";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export default function AdminCourseLessonsPage({
   params,
 }: {
   params: { id: string };
 }) {
+  const { confirm: confirmDialog } = useConfirmDialog();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | undefined>();
   const [mounted, setMounted] = useState(false);
@@ -62,7 +64,8 @@ export default function AdminCourseLessonsPage({
   };
 
   const handleDelete = async (lessonId: string) => {
-    if (!confirm("Eliminare questa lezione?")) return;
+    const ok = await confirmDialog({ title: "Elimina lezione", message: "Eliminare questa lezione?", confirmText: "Elimina", variant: "danger" });
+    if (!ok) return;
     try {
       await deleteLesson.mutateAsync(lessonId);
       toast.success("Lezione eliminata");

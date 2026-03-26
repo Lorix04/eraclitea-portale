@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, AlertTriangle, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import MaterialCategoryFilter from "@/components/MaterialCategoryFilter";
 import MaterialCard, { type MaterialItem } from "@/components/MaterialCard";
 import MaterialUploadModal from "@/components/MaterialUploadModal";
@@ -23,6 +24,7 @@ export default function EditionMaterialsTab({
   readOnly = false,
   courseName,
 }: EditionMaterialsTabProps) {
+  const { prompt: promptDialog } = useConfirmDialog();
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -145,7 +147,7 @@ export default function EditionMaterialsTab({
   };
 
   const handleReject = async (materialId: string) => {
-    const reason = window.prompt("Motivo del rifiuto (opzionale):");
+    const reason = await promptDialog({ title: "Rifiuta materiale", message: "Motivo del rifiuto (opzionale):", placeholder: "Inserisci un motivo...", confirmText: "Rifiuta" });
     if (reason === null) return; // User cancelled
     try {
       const res = await fetch(

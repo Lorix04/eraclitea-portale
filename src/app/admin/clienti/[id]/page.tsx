@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
@@ -63,6 +64,7 @@ const STATUS_LABELS: Record<string, { cls: string; label: string }> = {
 export default function AdminClienteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { confirm: confirmDialog } = useConfirmDialog();
   const [impersonating, setImpersonating] = useState(false);
 
   const clientQuery = useQuery({
@@ -148,7 +150,8 @@ export default function AdminClienteDetailPage() {
 
   const handleResetPassword = async () => {
     if (!client) return;
-    if (!window.confirm(`Reimpostare la password di "${client.ragioneSociale}"?`)) return;
+    const ok = await confirmDialog({ title: "Reset password", message: `Reimpostare la password di "${client.ragioneSociale}"?`, confirmText: "Reimposta", variant: "danger" });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/admin/clienti/${client.id}/reset-password`, {

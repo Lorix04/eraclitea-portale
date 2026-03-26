@@ -21,6 +21,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { formatItalianDate } from "@/lib/date-utils";
@@ -136,6 +137,7 @@ export default function AdminEditionDetailPage({
   params: { id: string; edId: string };
 }) {
   const router = useRouter();
+  const { confirm: confirmDialog } = useConfirmDialog();
   const [tab, setTab] = useState("info");
   const [edition, setEdition] = useState<EditionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -472,7 +474,8 @@ export default function AdminEditionDetailPage({
       toast.error("L'edizione e archiviata. Nessuna modifica consentita.");
       return;
     }
-    if (!confirm("Eliminare questa lezione?")) return;
+    const ok = await confirmDialog({ title: "Elimina lezione", message: "Eliminare questa lezione?", confirmText: "Elimina", variant: "danger" });
+    if (!ok) return;
     setLessonDeleting(lessonId);
     const res = await fetch(
       `/api/corsi/${params.id}/edizioni/${params.edId}/lezioni/${lessonId}`,

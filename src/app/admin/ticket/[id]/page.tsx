@@ -12,6 +12,7 @@ import {
   Send,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   TICKET_ATTACHMENT_ALLOWED_TYPES,
   TICKET_ATTACHMENT_MAX_FILES,
@@ -151,6 +152,7 @@ async function fetchTicket(id: string) {
 }
 
 export default function AdminTicketDetailPage({ params }: { params: { id: string } }) {
+  const { confirm: confirmDialog } = useConfirmDialog();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<TicketStatus>("OPEN");
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
@@ -238,9 +240,12 @@ export default function AdminTicketDetailPage({ params }: { params: { id: string
 
   const handleCloseTicket = async () => {
     if (!data) return;
-    const confirmed = window.confirm(
-      "Sei sicuro di voler chiudere questo ticket?"
-    );
+    const confirmed = await confirmDialog({
+      title: "Chiudi ticket",
+      message: "Sei sicuro di voler chiudere questo ticket?",
+      confirmText: "Chiudi",
+      variant: "danger",
+    });
     if (!confirmed) return;
     setStatus("CLOSED");
     await handleSave("CLOSED");
