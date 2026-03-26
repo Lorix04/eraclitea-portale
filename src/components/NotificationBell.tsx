@@ -23,6 +23,7 @@ export default function NotificationBell() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["notifications", isTeacher ? "teacher" : "default"],
+    enabled: !!session,
     queryFn: async () => {
       if (isTeacher) {
         const [notifRes, countRes] = await Promise.all([

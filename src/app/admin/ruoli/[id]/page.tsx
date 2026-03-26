@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import {
   PERMISSION_AREAS,
   ACTION_LABELS,
@@ -52,6 +53,8 @@ export default function AdminRoleDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { can } = usePermissions();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
   const roleId = params.id as string;
 
   const [editOpen, setEditOpen] = useState(false);
@@ -358,15 +361,30 @@ export default function AdminRoleDetailPage() {
                             <Trash2 className="h-3 w-3" /> Annulla
                           </button>
                         </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleUnassign(user.id)}
-                          className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                        >
-                          <UserMinus className="h-3 w-3" /> Rimuovi
-                        </button>
-                      )}
+                      ) : (() => {
+                        const isSelf = user.id === currentUserId;
+                        const isLastSystemUser = role?.isSystem && role.users.filter(u => u.adminInviteStatus !== "pending").length <= 1;
+                        const disabled = isSelf || isLastSystemUser;
+                        const tooltip = isSelf
+                          ? "Non puoi rimuoverti dal tuo stesso ruolo"
+                          : isLastSystemUser
+                            ? "Deve esserci sempre almeno un Super Admin"
+                            : undefined;
+                        return (
+                          <button
+                            type="button"
+                            disabled={!!disabled}
+                            title={tooltip}
+                            onClick={() => {
+                              if (!confirm(`Rimuovere ${user.email} dal ruolo "${role?.name}"? L'utente perderà tutti i permessi fino alla riassegnazione di un ruolo.`)) return;
+                              handleUnassign(user.id);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          >
+                            <UserMinus className="h-3 w-3" /> Rimuovi
+                          </button>
+                        );
+                      })()}
                     </div>
                   ) : null}
                 </div>

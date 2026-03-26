@@ -117,11 +117,11 @@ export const authOptions: NextAuthOptions = {
             token.permissions = (adminRole?.permissions as Record<string, string[]>) ?? null;
             token.isSuperAdmin = adminRole?.isSystem === true;
           } else {
-            // Legacy admin without role — treat as super admin
+            // Admin without role — no permissions until a role is assigned
             token.adminRoleId = null;
             token.adminRoleName = null;
             token.permissions = null;
-            token.isSuperAdmin = true;
+            token.isSuperAdmin = false;
           }
         }
       }

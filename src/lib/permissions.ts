@@ -72,8 +72,8 @@ export function hasPermission(
   isSuperAdmin?: boolean
 ): boolean {
   if (isSuperAdmin) return true;
-  // Legacy admins without role assignment → full access for retrocompatibility
-  if (!permissions || Object.keys(permissions).length === 0) return true;
+  // No permissions and not super admin → deny access
+  if (!permissions || Object.keys(permissions).length === 0) return false;
 
   const areaPermissions = permissions[area];
   if (!areaPermissions) return false;
@@ -106,7 +106,7 @@ export function hasViewAll(
   isSuperAdmin?: boolean
 ): boolean {
   if (isSuperAdmin) return true;
-  if (!permissions || Object.keys(permissions).length === 0) return true;
+  if (!permissions || Object.keys(permissions).length === 0) return false;
   const areaPerms = permissions[area];
   if (!areaPerms) return false;
   // Legacy: "view" alone treated as view-all for retrocompat
