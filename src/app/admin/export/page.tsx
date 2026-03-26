@@ -233,7 +233,7 @@ export default function AdminExportPage() {
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Da:</span>
           <input
@@ -299,8 +299,8 @@ export default function AdminExportPage() {
             </button>
           ) : null}
         </div>
-        <div className="mt-3 overflow-auto">
-          <table className="min-w-full text-xs">
+        <div className="mt-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[900px] text-xs">
             <thead>
               <tr>
                 {previewColumns.map((key) => (

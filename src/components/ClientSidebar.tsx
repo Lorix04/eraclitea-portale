@@ -80,7 +80,7 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
 
   return (
     <aside
-      className={cn("flex h-full w-64 flex-col gap-6 border-r p-6", className)}
+      className={cn("fixed inset-y-0 left-0 z-30 flex w-64 flex-col gap-6 overflow-y-auto border-r p-6", className)}
       style={{ backgroundColor: baseBg, color: baseText }}
     >
       <div className="flex flex-col items-center gap-3">

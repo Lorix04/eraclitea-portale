@@ -111,10 +111,10 @@ export default function DashboardLayout({
       <ImpersonateBanner />
       <div className="app-shell flex min-h-screen">
         <SkipLink />
-        <div className="hidden md:flex">
+        <div className="hidden md:block">
           <ClientSidebar />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden md:ml-64">
           <ClientHeader leftSlot={<MobileSidebar role="CLIENT" />}>
             <div className="hidden md:block">
               <ClientSearchCommand />

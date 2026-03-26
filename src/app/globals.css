@@ -80,6 +80,25 @@ body {
   .side-panel {
     background: hsl(var(--card));
     box-shadow: var(--shadow-soft);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+  }
+
+  .side-panel::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .side-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .side-panel::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+  }
+
+  .side-panel:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
   }
 
   .card-surface {

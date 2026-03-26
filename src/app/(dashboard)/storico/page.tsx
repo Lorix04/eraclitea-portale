@@ -330,7 +330,7 @@ export default function StoricoPage() {
                               Partecipanti ({detail.summary.totalParticipants})
                             </p>
 
-                            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+                            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
                               <table className="w-full min-w-[760px] text-sm">
                                 <thead>
                                   <tr className="border-b text-left text-xs text-muted-foreground">

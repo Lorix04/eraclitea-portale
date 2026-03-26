@@ -95,15 +95,13 @@ export default function TeacherCvEditor({
     fetchAll();
   }, [fetchAll]);
 
-  // Check if AI import is available (ANTHROPIC_API_KEY configured)
+  // Check if AI import is available (configured in admin)
   useEffect(() => {
-    fetch(`${apiBase}/import-pdf`, { method: "POST" })
-      .then((res) => {
-        // 503 = not configured, 400/403 = configured but bad request (means it's available)
-        setAiAvailable(res.status !== 503);
-      })
+    fetch("/api/ai-status")
+      .then((res) => res.json())
+      .then((data) => setAiAvailable(data.cvImportEnabled === true))
       .catch(() => setAiAvailable(false));
-  }, [apiBase]);
+  }, []);
 
   // Report validation to parent
   useEffect(() => {

@@ -23,6 +23,7 @@ import {
   MessageCircle,
   ScrollText,
   ShieldCheck,
+  Sparkles,
   UserCircle,
   Users,
   type LucideIcon,
@@ -99,6 +100,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
     items: [
       { href: "/admin/status", label: "Status", icon: Activity, area: "status" },
       { href: "/admin/smtp", label: "SMTP", icon: Mail, area: "smtp" },
+      { href: "/admin/integrazioni-ai", label: "Integrazioni AI", icon: Sparkles, area: "integrazioni-ai" },
       { href: "/admin/ruoli", label: "Ruoli e Permessi", icon: ShieldCheck, area: "ruoli" },
     ],
   },
@@ -173,7 +175,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`side-panel flex h-full w-64 flex-col gap-6 border-r p-6 ${
+      className={`side-panel fixed inset-y-0 left-0 z-30 flex w-64 flex-col gap-6 overflow-y-auto border-r p-6 ${
         className ?? ""
       }`}
     >

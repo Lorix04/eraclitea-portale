@@ -31,10 +31,10 @@ export default async function TeacherLayout({ children }: { children: React.Reac
       <DisableDarkMode />
       <TeacherImpersonateBanner />
       <div className="app-shell flex min-h-screen">
-        <div className="hidden md:flex">
+        <div className="hidden md:block">
           <TeacherSidebar />
         </div>
-        <div className="min-w-0 flex-1 overflow-x-hidden">
+        <div className="min-w-0 flex-1 overflow-x-hidden md:ml-64">
           <TeacherHeader teacherName={teacherName} leftSlot={<MobileSidebar role="TEACHER" />}>
             <NotificationBell />
             <UserDropdown />

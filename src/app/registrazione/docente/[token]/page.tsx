@@ -135,7 +135,7 @@ function Stepper({ step }: { step: number }) {
           <div key={label} className="flex items-center">
             {i > 0 && (
               <div
-                className={`w-12 sm:w-20 h-0.5 ${
+                className={`w-8 sm:w-12 lg:w-20 h-0.5 ${
                   isDone ? "bg-[#EAB308]" : "bg-gray-200"
                 }`}
               />
@@ -153,7 +153,7 @@ function Stepper({ step }: { step: number }) {
                 {isDone ? <Check className="h-4 w-4" /> : stepNum}
               </div>
               <span
-                className={`text-xs whitespace-nowrap ${
+                className={`text-[10px] sm:text-xs whitespace-nowrap ${
                   isActive ? "text-[#EAB308] font-semibold" : "text-gray-400"
                 }`}
               >

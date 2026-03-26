@@ -23,6 +23,7 @@ export const PERMISSION_AREAS = {
   audit:        { label: "Audit",               actions: ["view"] },
   smtp:         { label: "SMTP",                actions: ["view", "edit", "retry"] },
   status:       { label: "Status",              actions: ["view"] },
+  'integrazioni-ai': { label: "Integrazioni AI", actions: ["view", "edit"] },
   ruoli:        { label: "Ruoli e Permessi",    actions: ["view", "create", "edit", "delete", "assign"] },
   guida:        { label: "Guida",               actions: ["view"] },
 } as const;

@@ -191,7 +191,7 @@ function NewTicketModal({
   return (
     <div className="fixed inset-0 z-50">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 p-0 sm:flex sm:items-center sm:justify-center sm:p-4">
+      <div className="fixed inset-0 z-50 flex items-end p-0 sm:items-center sm:justify-center sm:p-4">
         <div
           className="modal-panel border bg-card shadow-xl sm:max-w-2xl"
           onClick={(event) => event.stopPropagation()}

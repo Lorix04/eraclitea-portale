@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getEffectiveTeacherContext } from "@/lib/impersonate";
+import { prisma } from "@/lib/prisma";
+import { decrypt } from "@/lib/encryption";
+import { parseOpenRouterError } from "@/lib/ai-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -116,11 +119,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
 
-    // Check API key
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    const teacherId = ctx.teacherId;
+    const userId = ctx.userId;
+
+    // Check AI config from DB
+    const aiConfig = await prisma.aiConfig.findUnique({
+      where: { id: "singleton" },
+    });
+
+    if (!aiConfig || !aiConfig.isEnabled || !aiConfig.apiKey) {
       return NextResponse.json(
-        { error: "Funzionalità di importazione AI non configurata" },
+        { error: "La funzionalita AI non e configurata. Contatta l'amministratore." },
+        { status: 503 }
+      );
+    }
+
+    let decryptedKey: string;
+    try {
+      decryptedKey = decrypt(aiConfig.apiKey);
+    } catch {
+      return NextResponse.json(
+        { error: "Errore nella configurazione AI. Contatta l'amministratore." },
         { status: 503 }
       );
     }
@@ -150,7 +169,6 @@ export async function POST(request: Request) {
 
     let text: string;
     try {
-      // Dynamic import for pdf-parse
       const pdfParseModule = await import("pdf-parse");
       const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
       const pdfData = await pdfParse(buffer);
@@ -174,48 +192,118 @@ export async function POST(request: Request) {
       );
     }
 
-    // Truncate if very long (Claude has a context limit)
+    // Truncate if very long
     const maxChars = 30000;
     const truncatedText = text.length > maxChars ? text.slice(0, maxChars) : text;
 
-    // Call Claude API
-    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: EXTRACTION_PROMPT + truncatedText,
-          },
-        ],
-      }),
-    });
+    // Call OpenRouter API
+    const startTime = Date.now();
+    let aiResponse: Response;
 
-    if (!claudeResponse.ok) {
-      console.error("[CV_IMPORT] Claude API error:", claudeResponse.status, await claudeResponse.text().catch(() => ""));
+    try {
+      aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${decryptedKey}`,
+          "HTTP-Referer": process.env.NEXTAUTH_URL || "https://sapienta.it",
+          "X-Title": "Portale Sapienta",
+        },
+        body: JSON.stringify({
+          model: aiConfig.model,
+          max_tokens: 4096,
+          messages: [
+            {
+              role: "user",
+              content: EXTRACTION_PROMPT + truncatedText,
+            },
+          ],
+        }),
+      });
+    } catch (err: any) {
+      const durationMs = Date.now() - startTime;
+      await prisma.aiCallLog.create({
+        data: {
+          action: "cv_import",
+          model: aiConfig.model,
+          status: "error",
+          errorMessage: `Network error: ${err.message}`,
+          durationMs,
+          userId,
+          teacherId,
+        },
+      });
       return NextResponse.json(
-        { error: "Impossibile analizzare il CV al momento. Riprova più tardi." },
+        { error: "Impossibile contattare il servizio AI. Riprova piu tardi." },
         { status: 502 }
       );
     }
 
-    const claudeData = await claudeResponse.json();
-    const extractedText = claudeData.content?.[0]?.text;
+    const durationMs = Date.now() - startTime;
+
+    const aiResponseText = await aiResponse.text();
+    let aiData: any;
+    try {
+      aiData = JSON.parse(aiResponseText);
+    } catch {
+      console.error("[CV_IMPORT] Non-JSON response:", aiResponse.status, aiResponseText.substring(0, 300));
+      await prisma.aiCallLog.create({
+        data: {
+          action: "cv_import",
+          model: aiConfig.model,
+          status: "error",
+          errorMessage: `Non-JSON response: HTTP ${aiResponse.status}`,
+          durationMs,
+          userId,
+          teacherId,
+        },
+      });
+      return NextResponse.json(
+        { error: "Risposta non valida dal servizio AI. Riprova." },
+        { status: 502 }
+      );
+    }
+
+    if (!aiResponse.ok || aiData.error) {
+      const userMessage = parseOpenRouterError(aiResponse.status, aiData);
+      console.error("[CV_IMPORT] AI API error:", aiResponse.status, aiData?.error);
+      await prisma.aiCallLog.create({
+        data: {
+          action: "cv_import",
+          model: aiConfig.model,
+          status: "error",
+          errorMessage: aiData?.error?.message || `HTTP ${aiResponse.status}`,
+          durationMs,
+          userId,
+          teacherId,
+        },
+      });
+      return NextResponse.json(
+        { error: userMessage },
+        { status: 502 }
+      );
+    }
+    const extractedText = aiData.choices?.[0]?.message?.content;
+
     if (!extractedText) {
+      await prisma.aiCallLog.create({
+        data: {
+          action: "cv_import",
+          model: aiConfig.model,
+          status: "error",
+          errorMessage: "Empty response from model",
+          durationMs,
+          userId,
+          teacherId,
+        },
+      });
       return NextResponse.json(
         { error: "Nessuna risposta dall'analisi AI. Riprova." },
         { status: 502 }
       );
     }
 
-    // Parse JSON from Claude response
+    // Parse JSON from AI response
     let cvData: any;
     try {
       const cleanJson = extractedText
@@ -224,12 +312,39 @@ export async function POST(request: Request) {
         .trim();
       cvData = JSON.parse(cleanJson);
     } catch {
-      console.error("[CV_IMPORT] JSON parse error. Claude response:", extractedText.slice(0, 500));
+      console.error("[CV_IMPORT] JSON parse error. AI response:", extractedText.slice(0, 500));
+      await prisma.aiCallLog.create({
+        data: {
+          action: "cv_import",
+          model: aiConfig.model,
+          status: "error",
+          errorMessage: "Invalid JSON in response",
+          inputTokens: aiData.usage?.prompt_tokens,
+          outputTokens: aiData.usage?.completion_tokens,
+          durationMs,
+          userId,
+          teacherId,
+        },
+      });
       return NextResponse.json(
         { error: "Errore nell'analisi del CV. Riprova o compila i dati manualmente." },
         { status: 500 }
       );
     }
+
+    // Log success
+    await prisma.aiCallLog.create({
+      data: {
+        action: "cv_import",
+        model: aiConfig.model,
+        status: "success",
+        inputTokens: aiData.usage?.prompt_tokens,
+        outputTokens: aiData.usage?.completion_tokens,
+        durationMs,
+        userId,
+        teacherId,
+      },
+    });
 
     // Ensure all sections are arrays
     const sections = [

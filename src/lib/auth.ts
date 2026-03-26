@@ -126,6 +126,30 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // Refresh admin role for legacy tokens that don't have permissions loaded
+      if (token.role === "ADMIN" && token.isSuperAdmin === undefined && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { adminRoleId: true },
+        });
+        const roleId = dbUser?.adminRoleId;
+        if (roleId) {
+          const adminRole = await prisma.adminRole.findUnique({
+            where: { id: roleId },
+            select: { id: true, name: true, permissions: true, isSystem: true },
+          });
+          token.adminRoleId = adminRole?.id ?? null;
+          token.adminRoleName = adminRole?.name ?? null;
+          token.permissions = (adminRole?.permissions as Record<string, string[]>) ?? null;
+          token.isSuperAdmin = adminRole?.isSystem === true;
+        } else {
+          token.adminRoleId = null;
+          token.adminRoleName = null;
+          token.permissions = null;
+          token.isSuperAdmin = false;
+        }
+      }
+
       if (trigger === "update" && session) {
         if (typeof (session as any).mustChangePassword === "boolean") {
           token.mustChangePassword = (session as any).mustChangePassword;

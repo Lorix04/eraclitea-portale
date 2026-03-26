@@ -300,8 +300,8 @@ function PwdCheck({ ok, label }: { ok: boolean; label: string }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-3 sm:p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-5 sm:p-8 shadow-sm border">
         {children}
       </div>
     </div>

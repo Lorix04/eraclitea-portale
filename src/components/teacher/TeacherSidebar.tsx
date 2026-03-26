@@ -82,7 +82,7 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
   };
 
   return (
-    <aside className={`side-panel flex h-full w-64 flex-col gap-6 border-r p-6 ${className ?? ""}`}>
+    <aside className={`side-panel fixed inset-y-0 left-0 z-30 flex w-64 flex-col gap-6 overflow-y-auto border-r p-6 ${className ?? ""}`}>
       <div className="text-center">
         <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
           Portale Docente

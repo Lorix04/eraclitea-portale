@@ -9,6 +9,13 @@ export async function GET() {
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  console.log("[STATS_DEBUG]", {
+    role: session?.user?.role,
+    adminRoleId: session?.user?.adminRoleId,
+    isSuperAdmin: session?.user?.isSuperAdmin,
+    permissionsType: typeof session?.user?.permissions,
+    hasPermissions: session?.user?.permissions ? Object.keys(session.user.permissions as object).length : 0,
+  });
   if (!checkApiPermission(session, "dashboard", "view")) {
     return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }

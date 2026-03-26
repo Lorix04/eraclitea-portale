@@ -907,3 +907,33 @@ model TeacherPublication {
 
   @@index([teacherId])
 }
+
+model AiConfig {
+  id        String  @id @default("singleton")
+  provider  String  @default("openrouter")
+  apiKey    String  // encrypted with ENCRYPTION_KEY
+  model     String  @default("meta-llama/llama-3.3-70b-instruct:free")
+  modelName String?
+  isEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AiCallLog {
+  id           String   @id @default(cuid())
+  action       String
+  model        String
+  status       String
+  errorMessage String?
+  inputTokens  Int?
+  outputTokens Int?
+  durationMs   Int?
+  userId       String?
+  teacherId    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+}

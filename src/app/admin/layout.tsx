@@ -18,10 +18,10 @@ export default function AdminLayout({
       <DisableDarkMode />
       <div className="app-shell flex min-h-screen">
         <SkipLink />
-        <div className="hidden md:flex">
+        <div className="hidden md:block">
           <Sidebar role="ADMIN" />
         </div>
-        <div className="min-w-0 flex-1 overflow-x-hidden">
+        <div className="min-w-0 flex-1 overflow-x-hidden md:ml-64">
           <header className="app-header relative z-40 flex items-center justify-between gap-3 px-4 py-3 md:flex-wrap md:gap-4 md:px-6 md:py-4">
             <div className="flex items-center gap-3">
               <MobileSidebar role="ADMIN" />
