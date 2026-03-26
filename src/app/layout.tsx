@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Outfit, Playfair_Display, Sora, Source_Sans_3 } from "next/font/google";
 import Providers from "@/app/providers";
 import Toaster from "@/components/Toaster";
-import WebVitals from "@/app/web-vitals";
 import CookieBanner from "@/components/CookieBanner";
 
 const displayFont = Sora({
@@ -77,7 +76,6 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <CookieBanner />
         <Toaster />
-        <WebVitals />
       </body>
     </html>
   );
