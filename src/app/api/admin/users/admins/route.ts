@@ -5,14 +5,22 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const referentsOnly = url.searchParams.get("referentsOnly") === "true";
+
+  const where: any = { role: "ADMIN", isActive: true };
+  if (referentsOnly) {
+    where.editionReferents = { some: {} };
+  }
+
   const admins = await prisma.user.findMany({
-    where: { role: "ADMIN", isActive: true },
+    where,
     select: {
       id: true,
       email: true,

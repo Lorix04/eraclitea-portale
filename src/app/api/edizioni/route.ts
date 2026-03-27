@@ -31,6 +31,7 @@ const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(500).default(200),
   myEditions: z.enum(["true", "false"]).optional(),
+  referentId: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
     page,
     limit,
     myEditions,
+    referentId,
   } = validation.data;
   const safePage = page ?? 1;
   const safeLimit = limit ?? 200;
@@ -124,6 +126,11 @@ export async function GET(request: Request) {
         { referents: { none: {} } },
       ],
     } as any);
+  }
+
+  // Filter by specific referent
+  if (referentId) {
+    filters.push({ referents: { some: { userId: referentId } } } as any);
   }
 
   const where: Prisma.CourseEditionWhereInput =

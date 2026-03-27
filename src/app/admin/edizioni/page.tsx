@@ -37,6 +37,11 @@ type EditionRow = {
   }>;
 };
 
+type ReferentOption = {
+  id: string;
+  email: string;
+};
+
 type ClientOption = {
   id: string;
   ragioneSociale: string;
@@ -123,9 +128,13 @@ function AdminEdizioniContent() {
   const [sortBy, setSortBy] = useState(initialSortBy);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialSortOrder);
 
+  const [referentId, setReferentId] = useState(
+    searchParams.get("referentId") ?? ""
+  );
   const [editions, setEditions] = useState<EditionRow[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [referents, setReferents] = useState<ReferentOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditionRow | null>(null);
@@ -143,6 +152,7 @@ function AdminEdizioniContent() {
     if (clientId) params.set("clientId", clientId);
     if (status && status !== "all") params.set("status", status);
     if (categoryId) params.set("categoryId", categoryId);
+    if (referentId) params.set("referentId", referentId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     if (sortBy) params.set("sortBy", sortBy);
@@ -156,6 +166,7 @@ function AdminEdizioniContent() {
     clientId,
     status,
     categoryId,
+    referentId,
     dateFrom,
     dateTo,
     sortBy,
@@ -173,6 +184,7 @@ function AdminEdizioniContent() {
     if (clientId) params.set("clientId", clientId);
     if (status && status !== "all") params.set("status", status);
     if (categoryId) params.set("categoryId", categoryId);
+    if (referentId) params.set("referentId", referentId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     params.set("sortBy", sortBy);
@@ -205,6 +217,7 @@ function AdminEdizioniContent() {
     clientId,
     status,
     categoryId,
+    referentId,
     dateFrom,
     dateTo,
     sortBy,
@@ -231,6 +244,13 @@ function AdminEdizioniContent() {
       .catch(() => setCategories([]));
   }, []);
 
+  useEffect(() => {
+    fetchWithRetry("/api/admin/users/admins?referentsOnly=true")
+      .then((res) => res.json())
+      .then((data) => setReferents(data?.admins ?? []))
+      .catch(() => setReferents([]));
+  }, []);
+
   const handleSort = (key: (typeof SORT_COLUMNS)[number]["key"]) => {
     if (sortBy === key) {
       setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -245,6 +265,7 @@ function AdminEdizioniContent() {
     setClientId("");
     setStatus("all");
     setCategoryId("");
+    setReferentId("");
     setDateFrom("");
     setDateTo("");
     setSortBy("startDate");
@@ -328,6 +349,7 @@ function AdminEdizioniContent() {
           (clientId ? 1 : 0) +
           (status !== "all" ? 1 : 0) +
           (categoryId ? 1 : 0) +
+          (referentId ? 1 : 0) +
           (dateFrom ? 1 : 0) +
           (dateTo ? 1 : 0)
         }
@@ -378,6 +400,23 @@ function AdminEdizioniContent() {
               </option>
             ))}
           </select>
+
+          {referents.length > 0 && (
+            <select
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
+              value={referentId || "all"}
+              onChange={(event) =>
+                setReferentId(event.target.value === "all" ? "" : event.target.value)
+              }
+            >
+              <option value="all">Tutti i referenti</option>
+              {referents.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.email.split("@")[0]}
+                </option>
+              ))}
+            </select>
+          )}
 
           <div className="flex w-full items-center gap-2 md:w-auto">
             <span className="text-sm text-muted-foreground">Da:</span>
