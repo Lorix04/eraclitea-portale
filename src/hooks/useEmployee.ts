@@ -23,6 +23,7 @@ type EmployeeDetail = {
   iban?: string | null;
   mansione?: string | null;
   note?: string | null;
+  customData?: Record<string, any> | null;
   client?: { id: string; ragioneSociale: string };
   registrations?: Array<{
     id: string;

@@ -44,6 +44,7 @@ export type EmployeeFormRow = {
   pec?: string;
   mansione?: string;
   note?: string;
+  customData?: Record<string, any>;
 };
 
 export interface Employee {

@@ -20,6 +20,16 @@ registerAllModules();
 
 type CodiciCatastaliMap = Record<string, { nome: string; provincia: string; cap: string }>;
 
+type CustomFieldDef = {
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options: string | null;
+  placeholder: string | null;
+  standardField?: string | null;
+};
+
 type ExcelSheetProps = {
   data: EmployeeFormRow[];
   onChange?: (rows: EmployeeFormRow[]) => void;
@@ -28,6 +38,7 @@ type ExcelSheetProps = {
   enableAutocomplete?: boolean;
   codiciCatastali?: CodiciCatastaliMap | null;
   onOpenExtra?: (rowIndex: number) => void;
+  customFields?: CustomFieldDef[];
 };
 
 type HotTableRef = { hotInstance: any };
@@ -92,11 +103,11 @@ const emptyRow: EmployeeFormRow = {
 };
 
 function normalizeRow(input: Record<string, unknown> | EmployeeFormRow): EmployeeFormRow {
-  const row = input as Partial<EmployeeFormRow>;
-  return {
+  const row = input as Record<string, unknown>;
+  const result: EmployeeFormRow = {
     employeeId:
-      typeof row.employeeId === "string" && row.employeeId.trim().length > 0
-        ? row.employeeId.trim()
+      typeof row.employeeId === "string" && (row.employeeId as string).trim().length > 0
+        ? (row.employeeId as string).trim()
         : undefined,
     nome: String(row.nome ?? ""),
     cognome: String(row.cognome ?? ""),
@@ -119,6 +130,13 @@ function normalizeRow(input: Record<string, unknown> | EmployeeFormRow): Employe
     mansione: String(row.mansione ?? ""),
     note: String(row.note ?? ""),
   };
+  // Preserve custom_* fields
+  for (const key of Object.keys(row)) {
+    if (key.startsWith("custom_")) {
+      (result as any)[key] = row[key] != null ? String(row[key]) : "";
+    }
+  }
+  return result;
 }
 
 function getExtraStatus(row: EmployeeFormRow | null | undefined) {
@@ -194,6 +212,7 @@ export default function ExcelSheet({
   enableAutocomplete = true,
   codiciCatastali,
   onOpenExtra,
+  customFields,
 }: ExcelSheetProps) {
   const hotRef = useRef<HotTableRef | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
@@ -214,6 +233,8 @@ export default function ExcelSheet({
       }).length,
     [data]
   );
+
+  const hasCustom = customFields && customFields.length > 0;
 
   const columns = useMemo(
     () => [
@@ -243,7 +264,9 @@ export default function ExcelSheet({
           return td;
         },
       },
-      {
+      // When custom fields are active: show only CF + Nome + Cognome as identifiers
+      // All other standard fields move to "Altro" modal
+      ...(hasCustom ? [] : [{
         data: "nome",
         title: "Nome *",
         type: "text",
@@ -258,7 +281,7 @@ export default function ExcelSheet({
         validator: (value: string, callback: (valid: boolean) => void) => {
           callback(Boolean(String(value ?? "").trim()));
         },
-      },
+      }]),
       {
         data: "codiceFiscale",
         title: "Codice Fiscale *",
@@ -268,6 +291,19 @@ export default function ExcelSheet({
           callback(Boolean(normalized) && isValidCodiceFiscale(normalized));
         },
       },
+      // When custom fields active: Nome and Cognome shown after CF for readability
+      ...(hasCustom ? [{
+        data: "nome",
+        title: "Nome",
+        type: "text",
+      },
+      {
+        data: "cognome",
+        title: "Cognome",
+        type: "text",
+      }] : []),
+      // Standard columns only when NO custom fields
+      ...(!hasCustom ? [
       {
         data: "sesso",
         title: "Sesso *",
@@ -326,6 +362,8 @@ export default function ExcelSheet({
           callback(Boolean(trimmed) && trimmed.length <= 5);
         },
       },
+      ] : []),
+      ...(!hasCustom ? [
       {
         data: "provincia",
         title: "Provincia *",
@@ -362,6 +400,34 @@ export default function ExcelSheet({
           callback(Boolean(String(value ?? "").trim()));
         },
       },
+      ] : []),
+      // Dynamic custom fields columns (standard-mapped use Employee key, pure custom use custom_ prefix)
+      ...(customFields || []).map((cf) => {
+        // Standard-mapped fields read/write the Employee column directly
+        const dataKey = cf.standardField ? cf.standardField : `custom_${cf.name}`;
+        const col: any = {
+          data: dataKey,
+          title: `${cf.label}${cf.required ? " *" : ""}`,
+          type: cf.type === "select" ? "dropdown" : "text",
+          width: 130,
+          className: cf.standardField ? "" : "custom-field-cell",
+        };
+        if (cf.type === "select" && cf.options) {
+          col.source = cf.options.split("|").map((o: string) => o.trim());
+        }
+        if (cf.type === "number") {
+          col.type = "numeric";
+        }
+        if (cf.type === "date") {
+          col.placeholder = "GG/MM/AAAA";
+        }
+        if (cf.required) {
+          col.validator = (value: string, callback: (valid: boolean) => void) => {
+            callback(Boolean(String(value ?? "").trim()));
+          };
+        }
+        return col;
+      }),
       {
         data: "_altro",
         title: "Altro",
@@ -398,7 +464,7 @@ export default function ExcelSheet({
         },
       },
     ],
-    [filterProvince, filterRegioni, readOnly, selectedRows]
+    [filterProvince, filterRegioni, readOnly, selectedRows, customFields, hasCustom]
   );
 
   const getNormalizedSourceData = () => {

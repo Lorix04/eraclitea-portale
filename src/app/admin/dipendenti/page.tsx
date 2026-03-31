@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Eye, Search, Trash2, Upload, UserPlus } from "lucide-react";
+import { ChevronDown, Download, Eye, Search, Trash2, Upload, UserPlus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import ActionMenu from "@/components/ui/ActionMenu";
 import { usePermissions } from "@/hooks/usePermissions";
 import EmployeeTable from "@/components/EmployeeTable";
@@ -74,8 +75,21 @@ function AdminDipendentiContent() {
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   const debouncedSearch = useDebounce(search, 300);
+
+  // Check if selected client has custom fields
+  const { data: cfStatus } = useQuery({
+    queryKey: ["custom-fields-status", clientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      if (!res.ok) return { enabled: false };
+      return res.json();
+    },
+    enabled: !!clientId,
+  });
+  const clientHasCustom = !!clientId && cfStatus?.enabled;
 
   useEffect(() => {
     setPage(1);
@@ -206,15 +220,14 @@ function AdminDipendentiContent() {
     return filteredEmployees.slice(start, start + PAGE_SIZE);
   }, [filteredEmployees, currentPage]);
 
-  const exportUrl = useMemo(
-    () =>
-      `/api/dipendenti/export?${buildQuery({
-        search: debouncedSearch,
-        clientId,
-        sortOrder,
-      })}`,
-    [debouncedSearch, clientId, sortOrder]
-  );
+  const buildExportUrl = (opts: { includeCustom?: boolean; fileFormat?: string }) =>
+    `/api/dipendenti/export?${buildQuery({
+      search: debouncedSearch,
+      clientId,
+      sortOrder,
+      includeCustom: opts.includeCustom ? "true" : undefined,
+      fileFormat: opts.fileFormat,
+    })}`;
 
   const resetFilters = () => {
     setSearch("");
@@ -241,12 +254,65 @@ function AdminDipendentiContent() {
             Gestisci l&apos;elenco dipendenti e le iscrizioni ai corsi.
           </p>
         </div>
-        <Link
-          href={exportUrl}
-          className="inline-flex min-h-[44px] items-center rounded-md border px-4 py-2 text-sm"
-        >
-          Esporta CSV
-        </Link>
+        {clientHasCustom ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((p) => !p)}
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-md border px-4 py-2 text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Esporta
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 z-50 mt-1 w-72 rounded-lg border bg-card shadow-lg">
+                  <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">Formato standard</p>
+                  <a href={buildExportUrl({ fileFormat: "xlsx" })} className="block px-4 py-2 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    Excel (.xlsx)
+                  </a>
+                  <a href={buildExportUrl({ fileFormat: "csv" })} className="block px-4 py-2 text-sm hover:bg-muted/50 border-b" onClick={() => setExportMenuOpen(false)}>
+                    CSV (.csv)
+                  </a>
+                  <p className="px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">Formato cliente</p>
+                  <a href={buildExportUrl({ includeCustom: true, fileFormat: "xlsx" })} className="block px-4 py-2 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    Excel (.xlsx)
+                  </a>
+                  <a href={buildExportUrl({ includeCustom: true, fileFormat: "csv" })} className="block px-4 py-2 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    CSV (.csv)
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((p) => !p)}
+              className="inline-flex min-h-[44px] items-center gap-1 rounded-md border px-4 py-2 text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Esporta
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 z-50 mt-1 w-56 rounded-lg border bg-card shadow-lg">
+                  <a href={buildExportUrl({ fileFormat: "xlsx" })} className="block px-4 py-3 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    <p className="font-medium">Excel (.xlsx)</p>
+                  </a>
+                  <a href={buildExportUrl({ fileFormat: "csv" })} className="block px-4 py-3 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    <p className="font-medium">CSV (.csv)</p>
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <MobileFilterPanel

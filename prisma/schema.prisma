@@ -104,6 +104,8 @@ model Client {
   notificationReads NotificationRead[]
   courseVisibility  CourseVisibility[]
   categories        ClientCategory[]
+  hasCustomFields   Boolean            @default(false)
+  customFields      ClientCustomField[]
 }
 
 model Course {
@@ -401,9 +403,9 @@ model Employee {
   id            String    @id @default(cuid())
   clientId      String
   client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  nome          String
-  cognome       String
-  codiceFiscale String
+  nome          String?
+  cognome       String?
+  codiceFiscale String?
   sesso         String?
   dataNascita   DateTime?
   luogoNascita  String?
@@ -421,6 +423,7 @@ model Employee {
   pec           String?
   mansione      String?
   note          String?
+  customData    Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   registrations CourseRegistration[]
@@ -936,4 +939,30 @@ model AiCallLog {
 
   @@index([createdAt])
   @@index([status])
+}
+
+model ClientCustomField {
+  id           String  @id @default(cuid())
+  clientId     String
+  client       Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  name          String
+  label         String
+  type          String  @default("text") // text, number, date, select, email
+  required      Boolean @default(false)
+  placeholder   String?
+  options       String? // for select: "Opt1|Opt2|Opt3"
+  defaultValue  String?
+  sortOrder     Int     @default(0)
+  isActive      Boolean @default(true)
+  columnHeader  String?
+  columnWidth   Int?
+  standardField String? // maps to Employee column: "codiceFiscale", "nome", "cognome", "email", etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, name])
+  @@index([clientId])
+  @@index([clientId, sortOrder])
 }

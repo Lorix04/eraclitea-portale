@@ -408,3 +408,8 @@ body {
 .reveal-3 { animation: revealUp 0.9s ease-out 1.9s both; }
 .reveal-4 { animation: revealUp 0.9s ease-out 2.08s both; }
 .reveal-5 { animation: revealUp 0.9s ease-out 2.26s both; }
+
+/* Custom field columns in SpreadsheetEditor */
+.handsontable td.custom-field-cell {
+  background-color: #fffbeb;
+}

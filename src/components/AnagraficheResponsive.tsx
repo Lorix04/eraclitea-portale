@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import ExcelSheet from "@/components/ExcelSheet";
 import EmployeeCardForm from "@/components/EmployeeCardForm";
 import EmployeeExtraFieldsModal from "@/components/EmployeeExtraFieldsModal";
@@ -58,7 +59,35 @@ export default function AnagraficheResponsive({
   readOnly,
 }: AnagraficheResponsiveProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const [rows, setRows] = useState<EmployeeFormRow[]>(initialData);
+
+  // Fetch custom fields for this client
+  const { data: customFieldsData } = useQuery({
+    queryKey: ["custom-fields", clientId],
+    queryFn: async () => {
+      if (!clientId) return { enabled: false, fields: [] };
+      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      if (!res.ok) return { enabled: false, fields: [] };
+      return res.json();
+    },
+    enabled: !!clientId,
+  });
+  const customFields = customFieldsData?.enabled ? customFieldsData.fields : [];
+
+  // Flatten customData into rows as custom_* keys for spreadsheet
+  const flattenCustomData = (rows: EmployeeFormRow[]): EmployeeFormRow[] => {
+    if (!customFields?.length) return rows;
+    return rows.map((row) => {
+      const flat = { ...row };
+      if (row.customData) {
+        for (const [k, v] of Object.entries(row.customData)) {
+          (flat as any)[`custom_${k}`] = v ?? "";
+        }
+      }
+      return flat;
+    });
+  };
+
+  const [rows, setRows] = useState<EmployeeFormRow[]>(flattenCustomData(initialData));
   const removedEmployeeIdsRef = useRef<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -70,9 +99,9 @@ export default function AnagraficheResponsive({
   );
 
   useEffect(() => {
-    setRows(initialData);
+    setRows(flattenCustomData(initialData));
     removedEmployeeIdsRef.current = [];
-  }, [initialData]);
+  }, [initialData, customFields]);
 
   const handleSave = () => {
     setStatus(null);
@@ -185,6 +214,7 @@ export default function AnagraficheResponsive({
             enableAutocomplete={!readOnly}
             codiciCatastali={codiciCatastali}
             onOpenExtra={(rowIndex) => setEditingRowIndex(rowIndex)}
+            customFields={customFields}
           />
           <div className="flex items-center gap-3">
             <BrandedButton

@@ -58,12 +58,12 @@ export default function ResponsiveTable<T>({
     <>
       {/* Desktop table */}
       <div className="hidden md:block">
-        <div className="overflow-hidden rounded-lg border bg-card">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border bg-card">
+          <table className="w-full text-sm" style={{ minWidth: `${Math.max(columns.length * 120, 600)}px` }}>
             <thead className="bg-muted/40 text-left">
               <tr>
                 {columns.map((col) => (
-                  <th key={col.key} className={cn("px-4 py-3", col.className)}>
+                  <th key={col.key} className={cn("whitespace-nowrap px-4 py-3", col.className)}>
                     {col.sortable && onSort ? (
                       <button
                         type="button"
@@ -85,7 +85,7 @@ export default function ResponsiveTable<T>({
                     )}
                   </th>
                 ))}
-                {actions ? <th className="px-4 py-3">Azioni</th> : null}
+                {actions ? <th className="sticky right-0 z-20 min-w-[130px] border-l border-gray-200 bg-gray-50 px-4 py-3">Azioni</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -98,7 +98,7 @@ export default function ResponsiveTable<T>({
                         </td>
                       ))}
                       {actions ? (
-                        <td className="px-4 py-3">
+                        <td className="sticky right-0 z-10 min-w-[130px] border-l border-gray-200 bg-white px-4 py-3">
                           <SkeletonPulse className="h-4 w-16" />
                         </td>
                       ) : null}
@@ -116,14 +116,14 @@ export default function ResponsiveTable<T>({
                     </tr>
                   )
                   : data.map((item) => (
-                    <tr key={keyExtractor(item)} className="border-t">
+                    <tr key={keyExtractor(item)} className="group border-t even:bg-gray-50 hover:bg-gray-50">
                       {columns.map((col) => (
                         <td key={col.key} className={cn("px-4 py-3", col.className)}>
                           {col.render(item)}
                         </td>
                       ))}
                       {actions ? (
-                        <td className="px-4 py-3">{actions(item)}</td>
+                        <td className="sticky right-0 z-10 min-w-[130px] border-l border-gray-200 bg-white group-even:bg-gray-50 group-hover:bg-gray-50 px-4 py-3">{actions(item)}</td>
                       ) : null}
                     </tr>
                   ))}

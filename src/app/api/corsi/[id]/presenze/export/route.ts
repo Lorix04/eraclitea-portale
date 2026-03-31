@@ -339,7 +339,7 @@ export async function GET(
   }
 
   const csv = buildCsv(matrix);
-  return new NextResponse(csv, {
+  return new NextResponse(`\uFEFF${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename=\"presenze_${context.params.id}.csv\"`,

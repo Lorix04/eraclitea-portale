@@ -231,6 +231,24 @@ export async function POST(request: Request) {
         }
       }
 
+      // Extract custom_* fields into customData JSON
+      const customData: Record<string, string> = {};
+      const rowAny = row as Record<string, unknown>;
+      for (const key of Object.keys(rowAny)) {
+        if (key.startsWith("custom_")) {
+          const val = String(rowAny[key] ?? "").trim();
+          if (val) customData[key.replace("custom_", "")] = val;
+        }
+      }
+      // Also merge from nested customData if present
+      if (rowAny.customData && typeof rowAny.customData === "object") {
+        for (const [k, v] of Object.entries(rowAny.customData as Record<string, any>)) {
+          const val = String(v ?? "").trim();
+          if (val) customData[k] = val;
+        }
+      }
+      const customDataValue = Object.keys(customData).length > 0 ? customData : undefined;
+
       try {
         const employee = await prisma.employee.upsert({
           where: {
@@ -259,6 +277,7 @@ export async function POST(request: Request) {
             pec: pec || null,
             mansione: String(row.mansione ?? "").trim() || null,
             note: String(row.note ?? "").trim() || null,
+            ...(customDataValue !== undefined ? { customData: customDataValue } : {}),
           },
           create: {
             clientId,
@@ -282,6 +301,7 @@ export async function POST(request: Request) {
             pec: pec || null,
             mansione: String(row.mansione ?? "").trim() || null,
             note: String(row.note ?? "").trim() || null,
+            ...(customDataValue !== undefined ? { customData: customDataValue } : {}),
           },
         });
         return employee;

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getArrayData } from "@/lib/api-response";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -45,6 +46,19 @@ export default function AdminExportPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [employeeFormat, setEmployeeFormat] = useState<"standard" | "custom">("standard");
+
+  // Check if selected client has custom fields (for employee export format choice)
+  const { data: cfStatus } = useQuery({
+    queryKey: ["cf-status-export", clientId],
+    queryFn: async () => {
+      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      if (!res.ok) return { enabled: false };
+      return res.json();
+    },
+    enabled: !!clientId && exportType === "employees",
+  });
+  const showFormatChoice = exportType === "employees" && !!clientId && cfStatus?.enabled;
 
   useEffect(() => {
     const loadBase = async () => {
@@ -75,8 +89,11 @@ export default function AdminExportPage() {
     if (dateTo) params.set("dateTo", dateTo);
     params.set("preview", "1");
     params.set("limit", String(previewLimit));
+    if (exportType === "employees" && employeeFormat === "custom" && clientId) {
+      params.set("includeCustom", "true");
+    }
     return `/api/export/csv?${params.toString()}`;
-  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo, previewLimit]);
+  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo, previewLimit, employeeFormat]);
 
   const downloadUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -86,8 +103,11 @@ export default function AdminExportPage() {
     if (courseEditionId) params.set("courseEditionId", courseEditionId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
+    if (exportType === "employees" && employeeFormat === "custom" && clientId) {
+      params.set("includeCustom", "true");
+    }
     return `/api/export/csv?${params.toString()}`;
-  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo]);
+  }, [exportType, format, clientId, courseEditionId, dateFrom, dateTo, employeeFormat]);
 
   useEffect(() => {
     if (
@@ -232,6 +252,40 @@ export default function AdminExportPage() {
           </label>
         ) : null}
       </div>
+
+      {showFormatChoice && (
+        <div className="rounded-md border bg-amber-50/50 p-3 space-y-2">
+          <p className="text-sm font-medium">Formato export dipendenti:</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="radio"
+                name="empFormat"
+                checked={employeeFormat === "standard"}
+                onChange={() => setEmployeeFormat("standard")}
+                className="accent-amber-500"
+              />
+              <span>
+                <span className="font-medium">Standard</span>
+                <span className="text-xs text-muted-foreground ml-1">(20 campi fissi del sistema)</span>
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="radio"
+                name="empFormat"
+                checked={employeeFormat === "custom"}
+                onChange={() => setEmployeeFormat("custom")}
+                className="accent-amber-500"
+              />
+              <span>
+                <span className="font-medium">Personalizzato</span>
+                <span className="text-xs text-muted-foreground ml-1">(campi configurati dal cliente)</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

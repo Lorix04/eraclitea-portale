@@ -8,6 +8,7 @@ import EmployeeCoursesList from "@/components/EmployeeCoursesList";
 import EmployeeCertificatesList from "@/components/EmployeeCertificatesList";
 import { useEmployee } from "@/hooks/useEmployee";
 import { BrandedLink } from "@/components/BrandedLink";
+import EmployeeCustomFields from "@/components/EmployeeCustomFields";
 import { DeleteConfirmModal } from "@/components/DeleteConfirmModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -143,6 +144,11 @@ export default function ClientEmployeeDetailPage() {
           />
         </div>
       </div>
+
+      <EmployeeCustomFields
+        clientId={employee.clientId}
+        customData={employee.customData}
+      />
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Corsi</h2>

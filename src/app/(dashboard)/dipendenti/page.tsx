@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Eye, Plus, Search, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Download, Eye, Plus, Search, Trash2, Upload } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import EmployeeTable from "@/components/EmployeeTable";
@@ -54,6 +54,7 @@ function ClientDipendentiContent() {
   const [page, setPage] = useState(initialPage);
   const [editions, setEditions] = useState<EditionOption[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const { data: session } = useSession();
   const sessionClientId = session?.user?.clientId ?? undefined;
@@ -172,11 +173,13 @@ function ClientDipendentiContent() {
     return filteredEmployees.slice(start, start + PAGE_SIZE);
   }, [filteredEmployees, currentPage]);
 
-  const exportUrl = useMemo(() => {
+  const buildExportUrl = (fileFormat: string) => {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set("search", debouncedSearch);
+    params.set("includeCustom", "true");
+    params.set("fileFormat", fileFormat);
     return `/api/dipendenti/export?${params.toString()}`;
-  }, [debouncedSearch]);
+  };
 
   const resetFilters = () => {
     setSearch("");
@@ -196,12 +199,30 @@ function ClientDipendentiContent() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={exportUrl}
-            className="btn-brand-outline inline-flex min-h-[44px] items-center rounded-md px-4 py-2 text-sm"
-          >
-            Esporta CSV
-          </a>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((p) => !p)}
+              className="btn-brand-outline inline-flex min-h-[44px] items-center gap-1 rounded-md px-4 py-2 text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Esporta
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 z-50 mt-1 w-48 rounded-lg border bg-card shadow-lg">
+                  <a href={buildExportUrl("xlsx")} className="block px-4 py-3 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    Excel (.xlsx)
+                  </a>
+                  <a href={buildExportUrl("csv")} className="block px-4 py-3 text-sm hover:bg-muted/50" onClick={() => setExportMenuOpen(false)}>
+                    CSV (.csv)
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
           <BrandedButton
             variant="outline"
             size="sm"

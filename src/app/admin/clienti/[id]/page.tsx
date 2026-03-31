@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
+import ClientCustomFieldsConfig from "@/components/admin/ClientCustomFieldsConfig";
+import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
@@ -65,6 +67,7 @@ export default function AdminClienteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { confirm: confirmDialog } = useConfirmDialog();
+  const { can } = usePermissions();
   const [impersonating, setImpersonating] = useState(false);
 
   const clientQuery = useQuery({
@@ -81,9 +84,9 @@ export default function AdminClienteDetailPage() {
     queryKey: ["admin-client-stats", id],
     queryFn: async () => {
       const [empRes, edRes, certRes] = await Promise.all([
-        fetchWithRetry(`/api/admin/dipendenti?clientId=${id}&limit=0`),
-        fetchWithRetry(`/api/admin/edizioni?clientId=${id}`),
-        fetchWithRetry(`/api/admin/attestati?clientId=${id}&limit=0`),
+        fetchWithRetry(`/api/dipendenti?clientId=${id}&limit=1`),
+        fetchWithRetry(`/api/edizioni?clientId=${id}`),
+        fetchWithRetry(`/api/attestati?clientId=${id}&limit=1`),
       ]);
 
       let employeesCount = 0;
@@ -356,6 +359,14 @@ export default function AdminClienteDetailPage() {
               </div>
             </div>
           ) : null}
+        </div>
+
+        {/* Custom Fields */}
+        <div className="rounded-lg border bg-card p-5">
+          <ClientCustomFieldsConfig
+            clientId={client.id}
+            canEdit={can("clienti", "edit")}
+          />
         </div>
       </div>
     </div>

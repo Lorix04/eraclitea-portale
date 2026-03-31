@@ -82,6 +82,8 @@ export async function GET(request: Request) {
   })();
 
   let rows: Record<string, string | number>[] = [];
+  let employeeExportExtraColumns: string[] = [];
+  let useOnlyCustomColumns = false;
 
   if (exportType === "courses") {
     const where: Prisma.CourseWhereInput = {
@@ -131,6 +133,20 @@ export async function GET(request: Request) {
       ...(dateRange ? { createdAt: dateRange } : {}),
     };
 
+    // Fetch custom fields if exporting for a single client with includeCustom
+    const includeCustom = searchParams.get("includeCustom") === "true";
+    let customFieldDefs: { name: string; label: string; columnHeader: string | null; type: string }[] = [];
+    if (clientId && includeCustom) {
+      const cl = await prisma.client.findUnique({ where: { id: clientId }, select: { hasCustomFields: true } });
+      if (cl?.hasCustomFields) {
+        customFieldDefs = await prisma.clientCustomField.findMany({
+          where: { clientId, isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: { name: true, label: true, columnHeader: true, type: true },
+        });
+      }
+    }
+
     const employees = await prisma.employee.findMany({
       where,
       select: {
@@ -153,35 +169,78 @@ export async function GET(request: Request) {
         partitaIva: true,
         iban: true,
         pec: true,
+        customData: true,
       },
       orderBy: { cognome: "asc" },
       take: preview ? limit : undefined,
     });
 
     const toValue = (value: string | null | undefined) => value ?? "";
-    rows = employees.map((employee) => ({
-      cognome: toValue(employee.cognome),
-      nome: toValue(employee.nome),
-      sesso: toValue(employee.sesso),
-      nascita: formatItalianDate(employee.dataNascita),
-      comune_nasc: toValue(employee.luogoNascita),
-      indirizzo: toValue(employee.indirizzo),
-      regione: toValue(employee.regione),
-      provincia: toValue(employee.provincia),
-      comune: toValue(employee.comuneResidenza),
-      cap: toValue(employee.cap),
-      cod_fiscale: toValue(employee.codiceFiscale),
-      professione: toValue(employee.mansione),
-      telefono: toValue(employee.telefono),
-      cellulare: toValue(employee.cellulare),
-      email: toValue(employee.email),
-      email_aziendale: toValue(employee.emailAziendale),
-      partita_IVA: toValue(employee.partitaIva),
-      IBAN: toValue(employee.iban),
-      ndipendenti: "",
-      fondo_interprof: "",
-      pec: toValue(employee.pec),
-    }));
+
+    if (includeCustom && customFieldDefs.length > 0) {
+      // Custom format: ONLY custom field columns
+      const fullDefs = await prisma.clientCustomField.findMany({
+        where: { clientId: clientId!, isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { name: true, label: true, columnHeader: true, standardField: true },
+      });
+
+      const STANDARD_GETTERS: Record<string, (e: any) => string> = {
+        nome: (e) => toValue(e.nome), cognome: (e) => toValue(e.cognome),
+        codiceFiscale: (e) => toValue(e.codiceFiscale), sesso: (e) => toValue(e.sesso),
+        dataNascita: (e) => formatItalianDate(e.dataNascita), luogoNascita: (e) => toValue(e.luogoNascita),
+        email: (e) => toValue(e.email), comuneResidenza: (e) => toValue(e.comuneResidenza),
+        cap: (e) => toValue(e.cap), provincia: (e) => toValue(e.provincia),
+        regione: (e) => toValue(e.regione), indirizzo: (e) => toValue(e.indirizzo),
+        telefono: (e) => toValue(e.telefono), cellulare: (e) => toValue(e.cellulare),
+        mansione: (e) => toValue(e.mansione), emailAziendale: (e) => toValue(e.emailAziendale),
+        pec: (e) => toValue(e.pec), partitaIva: (e) => toValue(e.partitaIva),
+        iban: (e) => toValue(e.iban), note: (e) => toValue(e.note),
+      };
+
+      employeeExportExtraColumns = fullDefs.map((cf) => cf.columnHeader || cf.label);
+      // Override: use ONLY custom columns (no standard)
+      useOnlyCustomColumns = true;
+
+      rows = employees.map((employee) => {
+        const row: Record<string, string> = {};
+        const cd = (employee.customData as Record<string, any>) || {};
+        for (const cf of fullDefs) {
+          const header = cf.columnHeader || cf.label;
+          if (cf.standardField && STANDARD_GETTERS[cf.standardField]) {
+            row[header] = STANDARD_GETTERS[cf.standardField](employee);
+          } else {
+            row[header] = toValue(cd[cf.name]);
+          }
+        }
+        return row;
+      });
+    } else {
+      // Standard format
+      rows = employees.map((employee) => ({
+        cognome: toValue(employee.cognome),
+        nome: toValue(employee.nome),
+        sesso: toValue(employee.sesso),
+        nascita: formatItalianDate(employee.dataNascita),
+        comune_nasc: toValue(employee.luogoNascita),
+        indirizzo: toValue(employee.indirizzo),
+        regione: toValue(employee.regione),
+        provincia: toValue(employee.provincia),
+        comune: toValue(employee.comuneResidenza),
+        cap: toValue(employee.cap),
+        cod_fiscale: toValue(employee.codiceFiscale),
+        professione: toValue(employee.mansione),
+        telefono: toValue(employee.telefono),
+        cellulare: toValue(employee.cellulare),
+        email: toValue(employee.email),
+        email_aziendale: toValue(employee.emailAziendale),
+        partita_IVA: toValue(employee.partitaIva),
+        IBAN: toValue(employee.iban),
+        ndipendenti: "",
+        fondo_interprof: "",
+        pec: toValue(employee.pec),
+      }));
+    }
   } else if (exportType === "teachers") {
     const where: Prisma.TeacherWhereInput = {
       ...(dateRange ? { createdAt: dateRange } : {}),
@@ -434,13 +493,18 @@ export async function GET(request: Request) {
   }
 
   const isEmployeesExport = exportType === "employees";
+  const empColumns = isEmployeesExport
+    ? useOnlyCustomColumns
+      ? employeeExportExtraColumns
+      : [...EMPLOYEE_EXPORT_COLUMNS, ...employeeExportExtraColumns]
+    : undefined;
   const csvRaw = stringify(rows, {
     header: includeHeader,
     delimiter: isEmployeesExport ? ";" : separator,
     record_delimiter: isEmployeesExport ? "\r\n" : undefined,
-    columns: isEmployeesExport ? EMPLOYEE_EXPORT_COLUMNS : undefined,
+    columns: empColumns,
   });
-  const csv = isEmployeesExport ? csvRaw : `\uFEFF${csvRaw}`;
+  const csv = `\uFEFF${csvRaw}`;
 
   await logAudit({
     userId: session.user.id,

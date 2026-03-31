@@ -401,22 +401,24 @@ function AdminEdizioniContent() {
             ))}
           </select>
 
-          {referents.length > 0 && (
-            <select
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
-              value={referentId || "all"}
-              onChange={(event) =>
-                setReferentId(event.target.value === "all" ? "" : event.target.value)
-              }
-            >
-              <option value="all">Tutti i referenti</option>
-              {referents.map((r) => (
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
+            value={referentId || "all"}
+            onChange={(event) =>
+              setReferentId(event.target.value === "all" ? "" : event.target.value)
+            }
+          >
+            <option value="all">Tutti i referenti</option>
+            {referents.length === 0 ? (
+              <option disabled>Nessun referente assegnato</option>
+            ) : (
+              referents.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.email.split("@")[0]}
                 </option>
-              ))}
-            </select>
-          )}
+              ))
+            )}
+          </select>
 
           <div className="flex w-full items-center gap-2 md:w-auto">
             <span className="text-sm text-muted-foreground">Da:</span>

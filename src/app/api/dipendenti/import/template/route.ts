@@ -33,7 +33,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const csvContent = `${TEMPLATE_HEADERS.join(";")}\r\n`;
+  const csvContent = `\uFEFF${TEMPLATE_HEADERS.join(";")}\r\n`;
 
   return new Response(csvContent, {
     headers: {

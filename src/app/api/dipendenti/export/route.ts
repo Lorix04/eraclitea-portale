@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { stringify } from "csv-stringify/sync";
+import * as XLSX from "xlsx";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,8 @@ const querySchema = z.object({
   sortBy: z.string().optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
   hasCourses: z.enum(["all", "with", "without"]).optional(),
+  includeCustom: z.enum(["true", "false"]).optional(),
+  fileFormat: z.enum(["csv", "xlsx"]).optional(),
 });
 
 export async function GET(request: Request) {
@@ -113,68 +116,141 @@ export async function GET(request: Request) {
       partitaIva: true,
       iban: true,
       pec: true,
+      customData: true,
+      clientId: true,
     },
     orderBy,
   });
 
+  // Fetch custom fields if requested
+  const includeCustom = validation.data.includeCustom === "true";
+  let customFieldDefs: { name: string; label: string; columnHeader: string | null }[] = [];
+  if (includeCustom && scopedClientId) {
+    customFieldDefs = await prisma.clientCustomField.findMany({
+      where: { clientId: scopedClientId, isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true, label: true, columnHeader: true },
+    });
+  }
+
   const toValue = (value: string | null | undefined) => value ?? "";
-  const rows = employees.map((employee) => ({
-    cognome: toValue(employee.cognome),
-    nome: toValue(employee.nome),
-    sesso: toValue(employee.sesso),
-    nascita: formatItalianDate(employee.dataNascita),
-    comune_nasc: toValue(employee.luogoNascita),
-    indirizzo: toValue(employee.indirizzo),
-    regione: toValue(employee.regione),
-    provincia: toValue(employee.provincia),
-    comune: toValue(employee.comuneResidenza),
-    cap: toValue(employee.cap),
-    cod_fiscale: toValue(employee.codiceFiscale),
-    professione: toValue(employee.mansione),
-    telefono: toValue(employee.telefono),
-    cellulare: toValue(employee.cellulare),
-    email: toValue(employee.email),
-    email_aziendale: toValue(employee.emailAziendale),
-    partita_IVA: toValue(employee.partitaIva),
-    IBAN: toValue(employee.iban),
-    ndipendenti: "",
-    fondo_interprof: "",
-    pec: toValue(employee.pec),
-  }));
+
+  // Standard Employee field → custom field data key mapping
+  const STANDARD_FIELD_TO_DATA: Record<string, (emp: any) => string> = {
+    nome: (e) => toValue(e.nome),
+    cognome: (e) => toValue(e.cognome),
+    codiceFiscale: (e) => toValue(e.codiceFiscale),
+    sesso: (e) => toValue(e.sesso),
+    dataNascita: (e) => formatItalianDate(e.dataNascita),
+    luogoNascita: (e) => toValue(e.luogoNascita),
+    email: (e) => toValue(e.email),
+    comuneResidenza: (e) => toValue(e.comuneResidenza),
+    cap: (e) => toValue(e.cap),
+    provincia: (e) => toValue(e.provincia),
+    regione: (e) => toValue(e.regione),
+    indirizzo: (e) => toValue(e.indirizzo),
+    telefono: (e) => toValue(e.telefono),
+    cellulare: (e) => toValue(e.cellulare),
+    mansione: (e) => toValue(e.mansione),
+    emailAziendale: (e) => toValue(e.emailAziendale),
+    pec: (e) => toValue(e.pec),
+    partitaIva: (e) => toValue(e.partitaIva),
+    iban: (e) => toValue(e.iban),
+    note: (e) => toValue(e.note),
+  };
+
+  let rows: Record<string, string>[];
+  let allColumns: string[];
+
+  if (includeCustom && customFieldDefs.length > 0) {
+    // Custom format: ONLY custom field columns
+    // Fetch full defs with standardField info
+    const fullDefs = await prisma.clientCustomField.findMany({
+      where: { clientId: scopedClientId!, isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: { name: true, label: true, columnHeader: true, standardField: true },
+    });
+
+    allColumns = fullDefs.map((cf) => cf.columnHeader || cf.label);
+
+    rows = employees.map((employee) => {
+      const row: Record<string, string> = {};
+      const cd = (employee.customData as Record<string, any>) || {};
+      for (const cf of fullDefs) {
+        const header = cf.columnHeader || cf.label;
+        if (cf.standardField && STANDARD_FIELD_TO_DATA[cf.standardField]) {
+          row[header] = STANDARD_FIELD_TO_DATA[cf.standardField](employee);
+        } else {
+          row[header] = toValue(cd[cf.name]);
+        }
+      }
+      return row;
+    });
+  } else {
+    // Standard format: 21 fixed columns
+    const standardColumns = [
+      "cognome", "nome", "sesso", "nascita", "comune_nasc",
+      "indirizzo", "regione", "provincia", "comune", "cap",
+      "cod_fiscale", "professione", "telefono", "cellulare",
+      "email", "email_aziendale", "partita_IVA", "IBAN",
+      "ndipendenti", "fondo_interprof", "pec",
+    ];
+    allColumns = standardColumns;
+
+    rows = employees.map((employee) => ({
+      cognome: toValue(employee.cognome),
+      nome: toValue(employee.nome),
+      sesso: toValue(employee.sesso),
+      nascita: formatItalianDate(employee.dataNascita),
+      comune_nasc: toValue(employee.luogoNascita),
+      indirizzo: toValue(employee.indirizzo),
+      regione: toValue(employee.regione),
+      provincia: toValue(employee.provincia),
+      comune: toValue(employee.comuneResidenza),
+      cap: toValue(employee.cap),
+      cod_fiscale: toValue(employee.codiceFiscale),
+      professione: toValue(employee.mansione),
+      telefono: toValue(employee.telefono),
+      cellulare: toValue(employee.cellulare),
+      email: toValue(employee.email),
+      email_aziendale: toValue(employee.emailAziendale),
+      partita_IVA: toValue(employee.partitaIva),
+      IBAN: toValue(employee.iban),
+      ndipendenti: "",
+      fondo_interprof: "",
+      pec: toValue(employee.pec),
+    }));
+  }
+
+  const fileFormat = validation.data.fileFormat || "csv";
+  const timestamp = Date.now();
+
+  if (fileFormat === "xlsx") {
+    const worksheet = XLSX.utils.json_to_sheet(rows, { header: allColumns });
+    worksheet["!cols"] = allColumns.map((h) => ({ wch: Math.max(String(h).length + 2, 15) }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Dipendenti");
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    return new Response(buffer, {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="dipendenti_${timestamp}.xlsx"`,
+      },
+    });
+  }
 
   const csv = stringify(rows, {
     header: true,
     delimiter: ";",
     record_delimiter: "\r\n",
-    columns: [
-      "cognome",
-      "nome",
-      "sesso",
-      "nascita",
-      "comune_nasc",
-      "indirizzo",
-      "regione",
-      "provincia",
-      "comune",
-      "cap",
-      "cod_fiscale",
-      "professione",
-      "telefono",
-      "cellulare",
-      "email",
-      "email_aziendale",
-      "partita_IVA",
-      "IBAN",
-      "ndipendenti",
-      "fondo_interprof",
-      "pec",
-    ],
+    columns: allColumns,
   });
 
-  return new Response(csv, {
+  return new Response(`\uFEFF${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="dipendenti_${Date.now()}.csv"`,
+      "Content-Disposition": `attachment; filename="dipendenti_${timestamp}.csv"`,
     },
   });
 }

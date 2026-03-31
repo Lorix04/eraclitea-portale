@@ -229,6 +229,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       pec: reg.employee.pec ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
+      customData: reg.employee.customData ?? undefined,
     }));
   }, [course]);
 

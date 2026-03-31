@@ -48,12 +48,37 @@ const REQUIRED_FIELDS = [
 type TemplateHeader = (typeof TEMPLATE_HEADERS)[number];
 type RowIssue = { row: number; reason: string };
 
+// Maps Employee DB column name → template header key
+const STANDARD_TO_TEMPLATE: Record<string, TemplateHeader> = {
+  nome: "nome",
+  cognome: "cognome",
+  codiceFiscale: "codice_fiscale",
+  sesso: "sesso",
+  dataNascita: "data_nascita",
+  luogoNascita: "comune_nascita",
+  email: "email",
+  comuneResidenza: "comune_residenza",
+  cap: "cap",
+  provincia: "provincia",
+  regione: "regione",
+  indirizzo: "indirizzo",
+  telefono: "telefono",
+  cellulare: "cellulare",
+  mansione: "mansione",
+  emailAziendale: "email_aziendale",
+  pec: "pec",
+  partitaIva: "partita_iva",
+  iban: "iban",
+  note: "note",
+};
+
 export const dynamic = "force-dynamic";
 
 function normalizeHeader(value: unknown): string {
   return String(value ?? "")
     .replace(/^\uFEFF/, "")
     .trim()
+    .replace(/\s*\*\s*$/, "")
     .toLowerCase();
 }
 
@@ -182,6 +207,7 @@ export async function POST(request: Request) {
       searchParams.get("clientId")?.trim() || getFormString(formData, "clientId");
     const editionId =
       searchParams.get("editionId")?.trim() || getFormString(formData, "editionId");
+    const importMode = getFormString(formData, "importMode") || "standard";
 
     if (!clientId) {
       return NextResponse.json(
@@ -228,49 +254,146 @@ export async function POST(request: Request) {
       );
     }
 
-    const rawHeaders = rows[0] ?? [];
-    const normalizedHeaders = rawHeaders.map((header) => normalizeHeader(header));
-    const nonEmptyHeaders = normalizedHeaders.filter((header) => header.length > 0);
-
-    const missingHeaders = TEMPLATE_HEADERS.filter(
-      (header) => !nonEmptyHeaders.includes(header)
-    );
-    const unknownHeaders = nonEmptyHeaders.filter(
-      (header) => !TEMPLATE_HEADERS.includes(header as TemplateHeader)
-    );
-
-    if (missingHeaders.length || unknownHeaders.length) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Header non valido. Usa il template ufficiale.",
-          details: {
-            missingHeaders,
-            unknownHeaders,
-            expectedHeaders: TEMPLATE_HEADERS,
-          },
-        },
-        { status: 400 }
-      );
+    // Check for explicit column mapping from preview step
+    const columnMappingRaw = getFormString(formData, "columnMapping");
+    let explicitMapping: Record<string, string> | null = null;
+    if (columnMappingRaw) {
+      try {
+        explicitMapping = JSON.parse(columnMappingRaw);
+      } catch {
+        // ignore invalid JSON
+      }
     }
 
-    const headerIndexMap = new Map<string, number>();
-    normalizedHeaders.forEach((header, index) => {
-      if (header.length && !headerIndexMap.has(header)) {
-        headerIndexMap.set(header, index);
-      }
+    // Fetch custom fields for this client
+    const customFieldDefs = await prisma.clientCustomField.findMany({
+      where: { clientId, isActive: true },
+      select: { name: true, label: true, columnHeader: true, standardField: true, required: true },
     });
+
+    const rawHeaders = rows[0] ?? [];
+    const normalizedHeaders = rawHeaders.map((header) => normalizeHeader(header));
+
+    // Build column index maps
+    const headerIndexMap = new Map<string, number>();
+    const customColumnIndexMap = new Map<string, number>();
+
+    if (explicitMapping) {
+      // --- Explicit mapping from preview step ---
+      const rawHeadersOriginal = rawHeaders.map((h) => String(h ?? "").trim());
+      rawHeadersOriginal.forEach((original, index) => {
+        if (!original) return;
+        const target = explicitMapping![original];
+        if (!target || target === "__skip__") return;
+
+        if (target.startsWith("custom_")) {
+          const cfName = target.replace("custom_", "");
+          if (!customColumnIndexMap.has(cfName)) {
+            customColumnIndexMap.set(cfName, index);
+          }
+        } else if (TEMPLATE_HEADERS.includes(target as TemplateHeader)) {
+          if (!headerIndexMap.has(target)) {
+            headerIndexMap.set(target, index);
+          }
+        }
+      });
+    } else {
+      // --- Auto-mapping (backward compatible) ---
+      const customHeaderMap = new Map<string, string>();
+      const standardHeaderAliases = new Map<string, string>();
+      for (const cf of customFieldDefs) {
+        const headerLower = (cf.columnHeader || cf.label).toLowerCase().trim();
+        const nameLower = cf.name.toLowerCase().trim();
+        if (cf.standardField) {
+          const stdTemplateKey = STANDARD_TO_TEMPLATE[cf.standardField];
+          if (stdTemplateKey) {
+            standardHeaderAliases.set(headerLower, stdTemplateKey);
+            standardHeaderAliases.set(nameLower, stdTemplateKey);
+          }
+        } else {
+          customHeaderMap.set(headerLower, cf.name);
+          customHeaderMap.set(nameLower, cf.name);
+          customHeaderMap.set(`custom_${nameLower}`, cf.name);
+        }
+      }
+
+      normalizedHeaders.forEach((header, index) => {
+        if (!header.length) return;
+        const resolved = standardHeaderAliases.get(header) || header;
+        if (TEMPLATE_HEADERS.includes(resolved as TemplateHeader)) {
+          if (!headerIndexMap.has(resolved)) headerIndexMap.set(resolved, index);
+        } else if (customHeaderMap.has(header)) {
+          const fn = customHeaderMap.get(header)!;
+          if (!customColumnIndexMap.has(fn)) customColumnIndexMap.set(fn, index);
+        }
+        if (header.startsWith("custom_") && !customHeaderMap.has(header)) {
+          const stripped = header.replace("custom_", "");
+          const match = customFieldDefs.find((cf) => cf.name.toLowerCase() === stripped && !cf.standardField);
+          if (match && !customColumnIndexMap.has(match.name)) customColumnIndexMap.set(match.name, index);
+        }
+      });
+    }
+
+    // Validate: need at least codice_fiscale mapped
+    if (!headerIndexMap.has("codice_fiscale")) {
+      // Check if any REQUIRED_FIELDS are missing (for non-custom mode)
+      const clientConfig = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { hasCustomFields: true },
+      });
+      const hasCustomFields = clientConfig?.hasCustomFields && customFieldDefs.length > 0;
+
+      if (hasCustomFields) {
+        return NextResponse.json(
+          { success: false, error: "Il file deve contenere una colonna mappata al Codice Fiscale." },
+          { status: 400 }
+        );
+      } else {
+        const missingRequired = REQUIRED_FIELDS.filter((h) => !headerIndexMap.has(h));
+        return NextResponse.json(
+          { success: false, error: "Header non valido. Usa il template ufficiale.", details: { missingHeaders: missingRequired, expectedHeaders: TEMPLATE_HEADERS } },
+          { status: 400 }
+        );
+      }
+    }
 
     const existingEmployees = await prisma.employee.findMany({
       where: { clientId },
       select: { id: true, codiceFiscale: true },
     });
-    const employeesByCodiceFiscale = new Map<string, string>(
-      existingEmployees.map((employee) => [
-        normalizeCodiceFiscale(employee.codiceFiscale),
-        employee.id,
-      ])
-    );
+    const employeesByCodiceFiscale = new Map<string, string>();
+    for (const emp of existingEmployees) {
+      if (emp.codiceFiscale) {
+        employeesByCodiceFiscale.set(normalizeCodiceFiscale(emp.codiceFiscale), emp.id);
+      }
+    }
+
+    // Determine effective required fields
+    const clientForReq = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { hasCustomFields: true },
+    });
+    const isCustomMode = importMode === "custom" && clientForReq?.hasCustomFields && customFieldDefs.length > 0;
+
+    let effectiveStandardRequired: Set<TemplateHeader>;
+    const requiredCustomFieldNames = new Set<string>();
+
+    if (isCustomMode) {
+      // Custom mode: ONLY fields marked required in client config — no defaults
+      const reqSet = new Set<TemplateHeader>();
+      for (const cf of customFieldDefs) {
+        if (!cf.required) continue;
+        if (cf.standardField) {
+          const tmpl = STANDARD_TO_TEMPLATE[cf.standardField];
+          if (tmpl) reqSet.add(tmpl);
+        } else {
+          requiredCustomFieldNames.add(cf.name);
+        }
+      }
+      effectiveStandardRequired = reqSet;
+    } else {
+      effectiveStandardRequired = new Set(REQUIRED_FIELDS);
+    }
 
     const skippedRows: RowIssue[] = [];
     const errorRows: RowIssue[] = [];
@@ -281,13 +404,21 @@ export async function POST(request: Request) {
       const excelRowNumber = rowIndex + 1;
       const row = buildRowObject(headerIndexMap, rows[rowIndex] ?? []);
       const isCompletelyEmpty = TEMPLATE_HEADERS.every((header) => !row[header]);
-      if (isCompletelyEmpty) {
+      // Also check custom columns for emptiness
+      const rowValues = rows[rowIndex] ?? [];
+      const hasAnyCustom = [...customColumnIndexMap.values()].some(
+        (idx) => normalizeCell(rowValues[idx]).length > 0
+      );
+      if (isCompletelyEmpty && !hasAnyCustom) {
         continue;
       }
 
       totalRows += 1;
 
-      const missingField = REQUIRED_FIELDS.find((field) => !row[field]);
+      // Check required standard fields
+      const missingField = [...effectiveStandardRequired].find(
+        (field) => headerIndexMap.has(field) && !row[field]
+      );
       if (missingField) {
         errorRows.push({
           row: excelRowNumber,
@@ -296,8 +427,26 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const sesso = row.sesso.toUpperCase();
-      if (sesso !== "M" && sesso !== "F") {
+      // Check required custom fields
+      let missingCustom: string | null = null;
+      for (const cfName of requiredCustomFieldNames) {
+        const colIdx = customColumnIndexMap.get(cfName);
+        if (colIdx !== undefined && !normalizeCell(rowValues[colIdx])) {
+          missingCustom = cfName;
+          break;
+        }
+      }
+      if (missingCustom) {
+        errorRows.push({
+          row: excelRowNumber,
+          reason: `Campo obbligatorio '${missingCustom}' mancante`,
+        });
+        continue;
+      }
+
+      // Validate sesso only if present (or required)
+      const sessoVal = row.sesso?.toUpperCase() || "";
+      if (sessoVal && sessoVal !== "M" && sessoVal !== "F") {
         errorRows.push({
           row: excelRowNumber,
           reason: "Campo 'sesso' non valido. Usa M o F",
@@ -305,16 +454,21 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const parsedBirthDate = parseBirthDateValue(row.data_nascita);
-      if (!parsedBirthDate) {
-        errorRows.push({
-          row: excelRowNumber,
-          reason: "Campo 'data_nascita' non valido. Usa il formato GG/MM/AAAA",
-        });
-        continue;
+      // Validate date only if present (or required)
+      let parsedBirthDate: Date | null = null;
+      if (row.data_nascita) {
+        parsedBirthDate = parseBirthDateValue(row.data_nascita);
+        if (!parsedBirthDate) {
+          errorRows.push({
+            row: excelRowNumber,
+            reason: "Campo 'data_nascita' non valido. Usa il formato GG/MM/AAAA",
+          });
+          continue;
+        }
       }
 
-      if (!validateEmail(row.email)) {
+      // Validate email only if present
+      if (row.email && !validateEmail(row.email)) {
         errorRows.push({
           row: excelRowNumber,
           reason: "Campo 'email' non valido",
@@ -322,8 +476,9 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const normalizedCF = normalizeCodiceFiscale(row.codice_fiscale);
-      const existingEmployeeId = employeesByCodiceFiscale.get(normalizedCF);
+      const normalizedCF = row.codice_fiscale ? normalizeCodiceFiscale(row.codice_fiscale) : "";
+      // Only check for duplicates if CF is present
+      const existingEmployeeId = normalizedCF ? employeesByCodiceFiscale.get(normalizedCF) : undefined;
       if (existingEmployeeId) {
         if (!editionId) {
           skippedRows.push({
@@ -382,23 +537,31 @@ export async function POST(request: Request) {
         continue;
       }
 
+      // Extract custom field values from this row
+      const customData: Record<string, string> = {};
+      for (const [fieldName, colIdx] of customColumnIndexMap.entries()) {
+        const val = normalizeCell(rowValues[colIdx]);
+        if (val) customData[fieldName] = val;
+      }
+      const customDataValue = Object.keys(customData).length > 0 ? customData : undefined;
+
       try {
         let createdEmployeeId: string | null = null;
         await prisma.$transaction(async (tx) => {
           const createdEmployee = await tx.employee.create({
             data: {
               clientId,
-              nome: row.nome,
-              cognome: row.cognome,
-              codiceFiscale: normalizedCF,
-              sesso,
+              nome: row.nome || null,
+              cognome: row.cognome || null,
+              codiceFiscale: normalizedCF || null,
+              sesso: sessoVal || null,
               dataNascita: parsedBirthDate,
-              luogoNascita: row.comune_nascita,
-              email: row.email,
-              comuneResidenza: row.comune_residenza,
-              cap: row.cap,
-              provincia: row.provincia,
-              regione: row.regione,
+              luogoNascita: row.comune_nascita || null,
+              email: row.email || null,
+              comuneResidenza: row.comune_residenza || null,
+              cap: row.cap || null,
+              provincia: row.provincia || null,
+              regione: row.regione || null,
               indirizzo: row.indirizzo || null,
               telefono: row.telefono || null,
               cellulare: row.cellulare || null,
@@ -408,6 +571,7 @@ export async function POST(request: Request) {
               partitaIva: row.partita_iva || null,
               iban: row.iban || null,
               note: row.note || null,
+              ...(customDataValue ? { customData: customDataValue } : {}),
             },
           });
           createdEmployeeId = createdEmployee.id;

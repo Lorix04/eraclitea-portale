@@ -219,6 +219,7 @@ export default function AdminEditionDetailPage({
       pec: reg.employee.pec ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
+      customData: reg.employee.customData ?? undefined,
     }));
   }, [registrations]);
 
