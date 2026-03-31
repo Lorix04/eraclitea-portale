@@ -118,8 +118,8 @@ async function getAttendanceMatrix(
   const calculated = calculateAttendanceStats({
     employees: employees.map((employee) => ({
       id: employee.id,
-      nome: employee.nome,
-      cognome: employee.cognome,
+      nome: employee.nome ?? "",
+      cognome: employee.cognome ?? "",
     })),
     lessons: lessons.map((lesson) => ({
       id: lesson.id,

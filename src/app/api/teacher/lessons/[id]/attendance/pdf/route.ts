@@ -85,9 +85,9 @@ export async function GET(
     const att = attendanceMap.get(reg.employee.id);
     return {
       index: idx + 1,
-      lastName: reg.employee.cognome,
-      firstName: reg.employee.nome,
-      fiscalCode: reg.employee.codiceFiscale,
+      lastName: reg.employee.cognome ?? "",
+      firstName: reg.employee.nome ?? "",
+      fiscalCode: reg.employee.codiceFiscale ?? "",
       status: att?.status ?? null,
       hoursAttended: att?.hoursAttended ?? null,
       notes: att?.notes ?? null,

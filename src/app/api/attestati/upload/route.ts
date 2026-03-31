@@ -163,10 +163,12 @@ export async function POST(request: Request) {
   }
 
   const cfMap = new Map(
-    employees.map((entry) => [
-      entry.codiceFiscale.toUpperCase(),
-      entry.id,
-    ])
+    employees
+      .filter((entry) => entry.codiceFiscale != null)
+      .map((entry) => [
+        entry.codiceFiscale!.toUpperCase(),
+        entry.id,
+      ])
   );
 
   const allowedEmployeeIds = new Set(employees.map((entry) => entry.id));
@@ -232,8 +234,8 @@ export async function POST(request: Request) {
       const calculated = calculateAttendanceStats({
         employees: selectedEmployees.map((employee) => ({
           id: employee.id,
-          nome: employee.nome,
-          cognome: employee.cognome,
+          nome: employee.nome ?? "",
+          cognome: employee.cognome ?? "",
         })),
         lessons: lessons.map((lesson) => ({
           id: lesson.id,

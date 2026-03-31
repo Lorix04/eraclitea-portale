@@ -245,7 +245,7 @@ export default function CustomFieldModal({
                 className="w-full rounded-md border px-3 py-2 text-sm"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Questo nome apparira come intestazione della colonna nel foglio e nell'export.
+                Questo nome apparira come intestazione della colonna nel foglio e nell&apos;export.
               </p>
             </div>
 

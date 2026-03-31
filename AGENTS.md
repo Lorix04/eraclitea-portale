@@ -405,6 +405,7 @@ docker compose logs -f app
 - Nessuna variabile env — la configurazione OpenRouter e salvata nel DB (tabella AiConfig, crittografata) e gestita dalla pagina admin `/admin/integrazioni-ai`
 
 ## Gotchas
+- `npm run build` SEMPRE — MAI usare `npx next build` direttamente. Lo script build include `prisma generate` che e obbligatorio prima della compilazione. Saltarlo causa errori di tipo Prisma
 - `npx prisma@5` SEMPRE — `npx prisma` scarica v7 con breaking changes
 - `docker compose` con SPAZIO — non `docker-compose` con trattino
 - `output: 'standalone'` obbligatorio nel next.config.mjs per Docker

@@ -451,9 +451,9 @@ export async function GET(request: Request) {
       "Ragione Sociale": reg.client.ragioneSociale,
       Corso: reg.courseEdition.course.title,
       Edizione: `#${reg.courseEdition.editionNumber}`,
-      Nome: reg.employee.nome,
-      Cognome: reg.employee.cognome,
-      "Codice Fiscale": reg.employee.codiceFiscale,
+      Nome: reg.employee.nome ?? "",
+      Cognome: reg.employee.cognome ?? "",
+      "Codice Fiscale": reg.employee.codiceFiscale ?? "",
       "Data Nascita": reg.employee.dataNascita
         ? reg.employee.dataNascita.toISOString().split("T")[0]
         : "",

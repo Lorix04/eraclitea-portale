@@ -126,7 +126,7 @@ export async function POST(request: Request) {
   // Fetch custom fields for this client
   const customFieldDefs = await prisma.clientCustomField.findMany({
     where: { clientId, isActive: true },
-    select: { name: true, label: true, columnHeader: true, standardField: true, type: true },
+    select: { name: true, label: true, columnHeader: true, standardField: true, type: true, required: true },
   });
 
   // Build custom header lookup

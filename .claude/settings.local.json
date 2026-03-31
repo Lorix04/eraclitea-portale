@@ -13,7 +13,9 @@
       "Bash(npx prisma@5 migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --script)",
       "Bash(mkdir -p /c/dev/project/src/app/api/teacher/messages/[threadId])",
       "Bash(mkdir -p /c/dev/project/src/app/api/admin/teacher-messages/[threadId])",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(./node_modules/.bin/next build:*)"
     ]
   }
 }

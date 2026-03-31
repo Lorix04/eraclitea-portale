@@ -67,6 +67,7 @@ type CourseDetail = {
       pec?: string | null;
       mansione?: string | null;
       note?: string | null;
+      customData?: Record<string, any> | null;
     };
   }>;
   certificates: Array<{ id: string; employeeName: string; uploadedAt: string }>;

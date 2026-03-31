@@ -220,14 +220,12 @@ function AdminDipendentiContent() {
     return filteredEmployees.slice(start, start + PAGE_SIZE);
   }, [filteredEmployees, currentPage]);
 
-  const buildExportUrl = (opts: { includeCustom?: boolean; fileFormat?: string }) =>
-    `/api/dipendenti/export?${buildQuery({
-      search: debouncedSearch,
-      clientId,
-      sortOrder,
-      includeCustom: opts.includeCustom ? "true" : undefined,
-      fileFormat: opts.fileFormat,
-    })}`;
+  const buildExportUrl = (opts: { includeCustom?: boolean; fileFormat?: string }) => {
+    const params: Record<string, string> = { search: debouncedSearch, clientId, sortOrder };
+    if (opts.includeCustom) params.includeCustom = "true";
+    if (opts.fileFormat) params.fileFormat = opts.fileFormat;
+    return `/api/dipendenti/export?${buildQuery(params)}`;
+  };
 
   const resetFilters = () => {
     setSearch("");

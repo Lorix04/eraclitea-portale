@@ -76,8 +76,8 @@ export async function POST(request: Request) {
       if (duplicate) {
         duplicateEmployee = {
           id: duplicate.id,
-          fullName: `${duplicate.nome} ${duplicate.cognome}`,
-          fiscalCode: duplicate.codiceFiscale,
+          fullName: `${duplicate.nome ?? ""} ${duplicate.cognome ?? ""}`,
+          fiscalCode: duplicate.codiceFiscale ?? "",
         };
       }
     }

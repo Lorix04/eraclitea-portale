@@ -106,6 +106,7 @@ type RegistrationRow = {
     luogoNascita?: string | null;
     mansione?: string | null;
     note?: string | null;
+    customData?: Record<string, any> | null;
   };
 };
 

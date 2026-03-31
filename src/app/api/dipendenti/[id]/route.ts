@@ -166,7 +166,7 @@ export async function PUT(
     const normalizedCF = payload.codiceFiscale
       ? normalizeCodiceFiscale(payload.codiceFiscale)
       : employee.codiceFiscale;
-    if (!isValidCodiceFiscale(normalizedCF)) {
+    if (!normalizedCF || !isValidCodiceFiscale(normalizedCF)) {
       return NextResponse.json(
         { error: "Codice fiscale non valido" },
         { status: 400 }
@@ -177,7 +177,7 @@ export async function PUT(
     const mismatches: string[] = [];
     const warnings: string[] = [];
     let duplicateEmployee:
-      | { id: string; nome: string; cognome: string; codiceFiscale: string }
+      | { id: string; nome: string | null; cognome: string | null; codiceFiscale: string | null }
       | null = null;
 
     if (fiscalCodeChanged) {
