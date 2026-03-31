@@ -13,8 +13,8 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi/docent
 - pdf-lib (generazione PDF: atto notorieta, registro presenze, CV Europass)
 - pdf-parse (estrazione testo da PDF per import CV)
 - archiver (download ZIP materiali)
-- xlsx (import/export Excel)
-- csv-stringify (export CSV)
+- xlsx (import/export Excel, generazione template)
+- csv-stringify (export CSV con BOM UTF-8)
 - pdfkit (export presenze PDF)
 - Nodemailer (SMTP), Upstash Redis rate-limit (opzionale)
 - Test: Jest (unit) + Playwright (e2e)
@@ -72,7 +72,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `User` (ADMIN/CLIENT/TEACHER) — `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
 - `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`
-- `ClientCustomField` — campi personalizzati per cliente: name, label, type (text/number/date/select/email), required, options, sortOrder
+- `ClientCustomField` — campi personalizzati per cliente: name, label, type (text/number/date/select/email), required, options, sortOrder, `standardField` (mappa a colonna Employee), `columnHeader`
 - `Teacher` — ~40 campi anagrafici, status (INACTIVE/PENDING/ONBOARDING/ACTIVE/SUSPENDED), `userId`, `inviteToken`, province/region, categorie (many-to-many), CV strutturato (8 relazioni)
 
 ### Formazione
@@ -80,13 +80,13 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `CourseEdition` — lezioni, registrazioni, presenze, certificati, notifiche, materiali, `presenzaMinimaType`/`presenzaMinimaValue`, `referents` (EditionReferent[])
 - `CourseMaterial` — materiali a livello di corso (libreria standard), importabili nelle edizioni
 - `Lesson` — data, orario, durata, luogo, titolo, `teacherAssignments`, presenze
-- `Employee` — relazione con registrazioni/presenze/certificati, codice fiscale, `customData` (JSON per campi personalizzati)
+- `Employee` — `nome?`, `cognome?`, `codiceFiscale?` (tutti nullable per custom fields), relazione con registrazioni/presenze/certificati, `customData` (JSON per campi personalizzati)
 - `CourseRegistration` lega `Employee` a `CourseEdition`
 
 ### Referenti Edizione
 - `EditionReferent` — lega User (admin) a CourseEdition, con `assignedAt`, `notes`
 - Permessi: `view-all` (vede tutte le edizioni) vs `view-own` (vede solo le sue + senza referenti)
-- Filtro "Le mie edizioni" nella lista edizioni + filtro dropdown per referente
+- Filtro "Le mie edizioni" + filtro dropdown per referente nella lista edizioni
 - Dashboard personalizzata per referente (solo sue edizioni)
 
 ### Docenti
@@ -142,7 +142,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Sistema Ruoli Admin (RBAC)
 - `AdminRole` con permissions JSON: `{ "corsi": ["view","create","edit","delete"], ... }`
 - 4 template predefiniti: Super Admin (isSystem, non modificabile), Segreteria, Solo Lettura, Gestione Formazione
-- 18 aree permessi: dashboard, corsi, edizioni, area-corsi, clienti, dipendenti, docenti, attestati, presenze, materiali, ticket, notifiche, export, audit, smtp, status, integrazioni-ai, ruoli, guida
+- 19 aree permessi: dashboard, corsi, edizioni, area-corsi, clienti, dipendenti, docenti, attestati, presenze, materiali, ticket, notifiche, export, audit, smtp, status, integrazioni-ai, ruoli, guida
 - Azioni per area: view, view-all, view-own, create, edit, delete, duplicate, impersonate, reset-password, invite, suspend, upload, approve, reply, close, send, export, retry, import, assign
 - `src/lib/permissions.ts`: hasPermission, canAccessArea, hasViewAll, hasOnlyViewOwn, editionVisibilityFilter, checkApiPermission, requirePermission
 - `src/hooks/usePermissions.ts`: hook client per check permessi
@@ -183,16 +183,30 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 5. Auto-login dopo registrazione completata
 6. Se documento firmato → status ACTIVE, altrimenti → ONBOARDING (redirect a `/onboarding/docente`)
 
-## Anagrafiche Personalizzate
+## Anagrafiche Personalizzate (Custom Fields)
 - Admin configura campi custom per cliente: `/admin/clienti/[id]` sezione "Campi Personalizzati"
+- Toggle attivazione con dialog di conferma
 - Tipi supportati: text, number, date, select (con opzioni), email
-- Dati salvati in `Employee.customData` (JSON)
-- SpreadsheetEditor (ExcelSheet.tsx) mostra colonne custom dinamiche con sfondo ambra
-- Import Excel: colonne custom mappate automaticamente tramite columnHeader/label
-- Export CSV: param `includeCustom=true` per includere colonne custom
+- Ogni campo puo mappare un campo standard Employee (`standardField`) o essere puramente custom
+- Dati custom salvati in `Employee.customData` (JSON), campi standard-mapped nei campi Employee diretti
+- **Import da template**: upload Excel del cliente → auto-riconoscimento colonne standard e custom → creazione campi
+- **SpreadsheetEditor** (ExcelSheet.tsx): con custom fields attivi mostra solo CF + Nome + Cognome + campi custom + Altro; senza custom fields mostra tutte le 11 colonne standard
+- **Import dipendenti** (2 step): step 0 scelta formato (standard/personalizzato) → step 1 upload → step 2 column mapping con auto-detect → import
+  - `importMode=standard`: validazione 11 campi obbligatori classici
+  - `importMode=custom`: validazione solo campi con `required=true` nella config custom (nessun campo fisso obbligatorio)
+  - Preview API: `POST /api/dipendenti/import/preview` con auto-mapping headers
+  - Column mapping UI: tabella con dropdown per ogni colonna, campi obbligatori evidenziati
+- **Export dipendenti**: scelta formato file (Excel .xlsx / CSV .csv) + scelta formato dati:
+  - "Formato standard": 21 colonne fisse del sistema
+  - "Formato cliente": SOLO le colonne dei campi personalizzati configurati
+  - Admin: dropdown con tutte le combinazioni; Client: export diretto con custom fields
+  - BOM UTF-8 su tutti i CSV per compatibilita Excel con accenti
+- **Template download**: `GET /api/custom-fields/template?clientId=` genera Excel con colonne personalizzate; `GET /api/dipendenti/import/template` genera CSV standard
+- **Dettaglio dipendente**: componente `EmployeeCustomFields` mostra i campi custom con sfondo ambra
 - Validazione: `src/lib/custom-fields-validation.ts`
-- API: `GET/POST /api/admin/clienti/[id]/custom-fields`, `PUT/DELETE .../[fieldId]`, toggle, reorder
-- Client API: `GET /api/custom-fields` per i propri campi
+- API: `GET/POST /api/admin/clienti/[id]/custom-fields`, `PUT/DELETE .../[fieldId]`, toggle, reorder, import-from-template
+- Client API: `GET /api/custom-fields?clientId=` (supporta admin con param, client con sessione)
+- `src/lib/standard-fields.ts`: STANDARD_EMPLOYEE_FIELDS con mapping per campo standard → label
 
 ## Sistema Email
 - Servizio: `src/lib/email-service.ts` (sendAutoEmail)
@@ -233,7 +247,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ## Mobile Optimization (Completata)
 - **Sidebar**: fissa a sinistra su desktop (`fixed inset-y-0 left-0 z-30 w-64`), hamburger overlay su mobile
 - **Header**: compatta con hamburger + titolo + notifiche + avatar
-- **Tabelle**: card view su mobile via `ResponsiveTable` component
+- **Tabelle**: card view su mobile via `ResponsiveTable`; colonna Azioni sticky a destra su desktop (`sticky right-0 z-10 bg-white border-l`)
 - **Form**: stack verticale, input full-width su mobile
 - **Modali**: full-screen su mobile, pulsanti footer impilati (primario sopra)
 - **Dialog conferma**: `ConfirmDialogProvider` custom (nessun `window.confirm/alert/prompt` nativo)
@@ -250,6 +264,19 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Shortcut tastiera quando dropdown aperto (E=modifica, D=duplica, Delete=elimina)
 - Swipe actions su mobile (sinistra=elimina, destra=primaria)
 - Colori per tipo: info (blu), success (verde), warning (arancione), danger (rosso)
+
+## Design System — Colori Light Mode
+- `--background`: `hsl(32 36% 97%)` — beige chiarissimo (#F9F7F4)
+- `--foreground`: `hsl(222 25% 12%)` — blu scuro quasi nero
+- `--card`: `hsl(0 0% 100%)` — bianco
+- `--primary`: `hsl(46 88% 58%)` — oro/ambra (#EAB308), pulsanti e brand
+- `--accent`: `hsl(28 88% 56%)` — arancione (#E88B1A), hover
+- `--muted`: `hsl(30 24% 94%)` — grigio caldo (#F0EDE8)
+- `--muted-foreground`: `hsl(215 16% 40%)` — grigio medio (#586171), testo secondario
+- `--destructive`: `hsl(0 74% 52%)` — rosso (#D93025), errori/eliminazione
+- `--border`: `hsl(24 16% 86%)` — grigio caldo chiaro (#DDD8D1)
+- Sfondo body: gradiente radiale con tocchi azzurro/arancione su base beige
+- Celle sticky tabelle: `bg-white` (normale), `bg-gray-50` (header/even/hover) — sempre opaco, mai trasparente
 
 ## File Chiave
 
@@ -275,6 +302,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/lib/api-response.ts` — normalizzazione risposte API (guard Array.isArray)
 - `src/lib/ai-errors.ts` — parseOpenRouterError: messaggi errore italiani per OpenRouter
 - `src/lib/custom-fields-validation.ts` — validazione dati campi personalizzati
+- `src/lib/standard-fields.ts` — STANDARD_EMPLOYEE_FIELDS, mapping campo standard → label
 - `src/lib/cv-schemas.ts` — schemi Zod per validazione sezioni CV
 - `src/lib/logout.ts` — handleLogout con pulizia cookie impersonazione
 
@@ -282,7 +310,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/components/ui/ActionMenu.tsx` — azione primaria + dropdown + inline confirm + shortcuts
 - `src/components/ui/ConfirmDialog.tsx` — dialog custom confirm/alert/prompt (sostituisce nativi browser)
 - `src/components/ui/InlineConfirm.tsx` — barra conferma inline con auto-dismiss
-- `src/components/ui/ResponsiveTable.tsx` — tabella desktop + card view mobile
+- `src/components/ui/ResponsiveTable.tsx` — tabella desktop (con colonna Azioni sticky) + card view mobile
 - `src/components/ui/MobileFilterPanel.tsx` — filtri collassabili su mobile
 - `src/components/ui/ClientLogo.tsx` — logo aziendale con aspect ratio detection
 - `src/components/ui/TableSkeleton.tsx` — skeleton loading per tabelle
@@ -290,6 +318,8 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/components/SignatureCanvas.tsx` — canvas firma HTML5 (mouse + touch)
 - `src/components/MaterialPreviewModal.tsx` — anteprima materiali (PDF iframe, immagini)
 - `src/components/MaterialUploadModal.tsx` — upload materiale con drag & drop
+- `src/components/ImportEmployeesModal.tsx` — import dipendenti 2 step con scelta formato + column mapping
+- `src/components/EmployeeCustomFields.tsx` — visualizzazione campi custom nel dettaglio dipendente
 - `src/components/layout/MobileSidebar.tsx` — sidebar hamburger (supporta ADMIN/CLIENT/TEACHER)
 - `src/components/ExcelSheet.tsx` — SpreadsheetEditor Handsontable con colonne custom dinamiche
 - `src/components/NotificationBell.tsx` — campanella notifiche (admin/client/teacher con endpoint differenziati)
@@ -310,11 +340,12 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/components/admin/CourseMaterialsTab.tsx` — tab materiali corso
 - `src/components/admin/ImportCourseMaterialsModal.tsx` — importa materiali corso in edizione
 - `src/components/admin/TeacherCvTab.tsx` — vista CV docente readonly per admin
-- `src/components/admin/ClientCustomFieldsConfig.tsx` — configurazione campi personalizzati cliente
-- `src/components/admin/CustomFieldModal.tsx` — modale creazione/modifica campo custom
+- `src/components/admin/ClientCustomFieldsConfig.tsx` — configurazione campi personalizzati cliente (con import da template)
+- `src/components/admin/CustomFieldModal.tsx` — modale creazione/modifica campo custom (standard o personalizzato)
 
 ### Hook
 - `src/hooks/usePermissions.ts` — can(area, action), canAccess(area), isSuperAdmin, roleName
+- `src/hooks/useEmployee.ts` — fetch dettaglio dipendente con customData
 - `src/hooks/useSwipeActions.ts` — swipe touch per azioni mobile
 - `src/hooks/useActionShortcuts.ts` — shortcut tastiera quando dropdown aperto
 - `src/hooks/useFetchWithRetry.ts` — fetch con auto-retry su 429 + skeleton loading
@@ -387,4 +418,9 @@ docker compose logs -f app
 - Permessi admin: se `isSuperAdmin=true` → accesso completo; se `permissions` vuoto e `isSuperAdmin=false` → accesso negato
 - JWT admin role auto-refresh: token legacy senza campi ruolo vengono aggiornati al primo request (query DB una tantum)
 - API `/api/auth/*` escluse dal rate limiting (chiamate interne NextAuth)
-- Colonne custom anagrafiche: prefisso `custom_` nel SpreadsheetEditor, dati in `Employee.customData` JSON
+- Colonne custom anagrafiche: prefisso `custom_` nel SpreadsheetEditor, campi standard-mapped usano la chiave Employee diretta
+- Employee.nome/cognome/codiceFiscale sono nullable (per custom fields mode che non li richiede)
+- Export CSV: BOM UTF-8 (`\uFEFF`) preposto a tutti i file CSV per compatibilita Excel con accenti italiani
+- Export dipendenti: supporta xlsx e csv, formato standard (21 colonne fisse) o formato cliente (solo colonne custom)
+- Import dipendenti con custom fields: `importMode=custom` nel FormData attiva validazione solo sui campi custom required
+- ResponsiveTable: colonna Azioni sticky right con `min-w-[130px]`, sfondo opaco (`bg-white`/`bg-gray-50`), bordo `border-l border-gray-200`; tabella con `minWidth` dinamico = `colonne * 120px`
