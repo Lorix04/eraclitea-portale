@@ -67,7 +67,7 @@ export default function AdminClienteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { confirm: confirmDialog } = useConfirmDialog();
-  const { can } = usePermissions();
+  const { can, canAccess } = usePermissions();
   const [impersonating, setImpersonating] = useState(false);
 
   const clientQuery = useQuery({
@@ -168,6 +168,14 @@ export default function AdminClienteDetailPage() {
     }
   };
 
+  if (!canAccess("clienti")) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-muted-foreground">Accesso non consentito</p>
+      </div>
+    );
+  }
+
   if (clientQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -217,27 +225,33 @@ export default function AdminClienteDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/admin/clienti/${client.id}/edit`}
-            className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-          >
-            <Pencil className="h-4 w-4" /> Modifica
-          </Link>
-          <button
-            type="button"
-            onClick={handleImpersonate}
-            disabled={!client.user?.id || impersonating}
-            className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
-          >
-            <LogIn className="h-4 w-4" /> Accedi come
-          </button>
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-          >
-            <KeyRound className="h-4 w-4" /> Reset password
-          </button>
+          {can("clienti", "edit") && (
+            <Link
+              href={`/admin/clienti/${client.id}/edit`}
+              className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              <Pencil className="h-4 w-4" /> Modifica
+            </Link>
+          )}
+          {can("clienti", "impersonate") && (
+            <button
+              type="button"
+              onClick={handleImpersonate}
+              disabled={!client.user?.id || impersonating}
+              className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+            >
+              <LogIn className="h-4 w-4" /> Accedi come
+            </button>
+          )}
+          {can("clienti", "reset-password") && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              className="inline-flex min-h-[36px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              <KeyRound className="h-4 w-4" /> Reset password
+            </button>
+          )}
         </div>
       </div>
 
@@ -365,7 +379,7 @@ export default function AdminClienteDetailPage() {
         <div className="rounded-lg border bg-card p-5">
           <ClientCustomFieldsConfig
             clientId={client.id}
-            canEdit={can("clienti", "edit")}
+            canEdit={can("clienti", "manage-custom-fields")}
           />
         </div>
       </div>

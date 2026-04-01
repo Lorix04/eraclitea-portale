@@ -102,6 +102,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
       { href: "/admin/smtp", label: "SMTP", icon: Mail, area: "smtp" },
       { href: "/admin/integrazioni-ai", label: "Integrazioni AI", icon: Sparkles, area: "integrazioni-ai" },
       { href: "/admin/ruoli", label: "Ruoli e Permessi", icon: ShieldCheck, area: "ruoli" },
+      { href: "/admin/amministratori", label: "Amministratori", icon: ShieldCheck, area: "amministratori" },
     ],
   },
 ];

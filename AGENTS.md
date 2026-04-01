@@ -45,7 +45,7 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi/docent
 ## Tre Portali
 
 ### Portale Admin (`/admin/*`)
-Gestione completa: clienti, corsi, edizioni, lezioni, docenti, dipendenti, attestati, presenze, ticket, export, audit, SMTP, status, ruoli e permessi, integrazioni AI.
+Gestione completa: clienti, corsi, edizioni, lezioni, docenti, dipendenti, attestati, presenze, ticket, export, audit, SMTP, status, ruoli e permessi, amministratori, integrazioni AI.
 - Sidebar fissa con sezioni raggruppate: Gestione Formazione, Anagrafiche, Comunicazione, Strumenti, Sistema
 - Impersonazione client e docente ("Accedi come")
 - Sistema ruoli e permessi con enforcement API e sidebar condizionale
@@ -69,7 +69,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ## Database — Modelli Principali
 
 ### Utenti e Ruoli
-- `User` (ADMIN/CLIENT/TEACHER) — `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
+- `User` (ADMIN/CLIENT/TEACHER) — `name` (opzionale), `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
 - `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`
 - `ClientCustomField` — campi personalizzati per cliente: name, label, type (text/number/date/select/email), required, options, sortOrder, `standardField` (mappa a colonna Employee), `columnHeader`
@@ -128,13 +128,25 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Pagina admin: `/admin/integrazioni-ai` con config, test connessione, selezione modello, log
 - Nessuna variabile env necessaria — configurazione da UI admin
 
+### Gestione Amministratori
+- Pagina admin: `/admin/amministratori` — lista solo utenti ADMIN con filtri per ruolo admin, stato, ricerca
+- Creazione: bottone "+ Nuovo Amministratore" → modale `CreateUserModal` con nome (opzionale), email, ruolo admin
+- Dettaglio: `/admin/amministratori/[id]` — info account con nome, profilo ruolo, audit log, azioni (modifica nome, sblocca, forza cambio password, elimina)
+- API: `GET/POST /api/admin/amministratori` (lista, creazione), `GET/DELETE/PATCH /api/admin/amministratori/[id]` (dettaglio, eliminazione, azioni), `GET /api/admin/amministratori/check-email` (verifica disponibilita email)
+- Creazione: genera password sicura (16 char, rispetta PASSWORD_REGEX), hash bcrypt salt 12, `mustChangePassword: true`, email WELCOME personalizzata con nome
+- Permessi: area `amministratori` con azioni `view`, `create`, `delete`; eliminazione riservata a Super Admin
+- Eliminazione: richiede conferma con email esatta, transazione atomica, audit log
+- Protezioni: non eliminare se stessi, non eliminare ultimo Super Admin
+- Campo `name` su modello User: opzionale, mostrato in lista e dettaglio, modificabile via PATCH `updateName`
+- Componente: `src/components/admin/CreateUserModal.tsx` — validazione email inline con debounce, checkbox invio email
+
 ### Altro
-- `AuditLog` — log azioni admin (login, impersonazione, CRUD)
+- `AuditLog` — log azioni admin (login, impersonazione, CRUD, USER_CREATE, USER_DELETE, USER_UNLOCK, USER_FORCE_PASSWORD_CHANGE)
 - `Category` — aree corsi, relazione many-to-many con Teacher e Course
 
 ## Autenticazione & Ruoli
 - Login via NextAuth Credentials (`src/lib/auth.ts`), password hash `bcryptjs` (salt 12)
-- JWT/session include: `id`, `role`, `clientId`, `teacherId`, `teacherStatus`, `mustChangePassword`, `adminRoleId`, `adminRoleName`, `permissions`, `isSuperAdmin`
+- JWT/session include: `id`, `name`, `role`, `clientId`, `teacherId`, `teacherStatus`, `mustChangePassword`, `adminRoleId`, `adminRoleName`, `permissions`, `isSuperAdmin`
 - **Account lockout**: 5 tentativi falliti → blocco 15 minuti
 - **Password policy**: min 8 caratteri + maiuscola + numero + carattere speciale (condivisa via `PASSWORD_REGEX` in `src/lib/security.ts`)
 - Ruoli utente: `ADMIN`, `CLIENT`, `TEACHER`
@@ -142,11 +154,12 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Sistema Ruoli Admin (RBAC)
 - `AdminRole` con permissions JSON: `{ "corsi": ["view","create","edit","delete"], ... }`
 - 4 template predefiniti: Super Admin (isSystem, non modificabile), Segreteria, Solo Lettura, Gestione Formazione
-- 19 aree permessi: dashboard, corsi, edizioni, area-corsi, clienti, dipendenti, docenti, attestati, presenze, materiali, ticket, notifiche, export, audit, smtp, status, integrazioni-ai, ruoli, guida
-- Azioni per area: view, view-all, view-own, create, edit, delete, duplicate, impersonate, reset-password, invite, suspend, upload, approve, reply, close, send, export, retry, import, assign
+- 20 aree permessi: dashboard, corsi, edizioni, area-corsi, clienti, dipendenti, docenti, attestati, presenze, materiali, ticket, notifiche, export, audit, smtp, status, integrazioni-ai, ruoli, amministratori, guida
+- Azioni per area: view, view-all, view-own, create, edit, delete, duplicate, impersonate, reset-password, invite, suspend, upload, approve, reply, close, send, export, retry, import, assign, manage-users, manage-custom-fields
 - `src/lib/permissions.ts`: hasPermission, canAccessArea, hasViewAll, hasOnlyViewOwn, editionVisibilityFilter, checkApiPermission, requirePermission
 - `src/hooks/usePermissions.ts`: hook client per check permessi
-- Enforcement: ogni API admin verifica permesso specifico; sidebar nasconde voci senza permesso; pagine mostrano "Accesso non consentito"
+- Enforcement: ogni API admin verifica permesso specifico; sidebar nasconde voci senza permesso; pagine mostrano "Accesso non consentito"; bottoni azione condizionali a permesso specifico
+- Area clienti: 8 azioni (view, create, edit, delete, impersonate, reset-password, manage-users, manage-custom-fields); custom-fields API usa `manage-custom-fields` (non `edit`)
 - JWT auto-refresh: legacy token senza campi ruolo vengono aggiornati automaticamente alla prima richiesta
 - Invito admin: `POST /api/admin/roles/[id]/invite-user` → email con link registrazione → pagina `/registrazione/admin/[token]`
 

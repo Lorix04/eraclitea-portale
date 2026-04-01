@@ -11,7 +11,7 @@ export const PERMISSION_AREAS = {
   corsi:        { label: "Corsi",               actions: ["view", "create", "edit", "delete"] },
   edizioni:     { label: "Edizioni",            actions: ["view-all", "view-own", "create", "edit", "delete", "duplicate"] },
   "area-corsi": { label: "Area Corsi",          actions: ["view", "create", "edit", "delete"] },
-  clienti:      { label: "Clienti",             actions: ["view", "create", "edit", "delete", "impersonate", "reset-password"] },
+  clienti:      { label: "Clienti",             actions: ["view", "create", "edit", "delete", "impersonate", "reset-password", "manage-users", "manage-custom-fields"] },
   dipendenti:   { label: "Dipendenti",          actions: ["view", "create", "edit", "delete", "import"] },
   docenti:      { label: "Docenti",             actions: ["view", "create", "edit", "delete", "invite", "impersonate", "suspend"] },
   attestati:    { label: "Attestati",           actions: ["view-all", "view-own", "create", "edit", "delete", "upload"] },
@@ -25,6 +25,7 @@ export const PERMISSION_AREAS = {
   status:       { label: "Status",              actions: ["view"] },
   'integrazioni-ai': { label: "Integrazioni AI", actions: ["view", "edit"] },
   ruoli:        { label: "Ruoli e Permessi",    actions: ["view", "create", "edit", "delete", "assign"] },
+  amministratori: { label: "Amministratori",     actions: ["view", "create", "delete"] },
   guida:        { label: "Guida",               actions: ["view"] },
 } as const;
 
@@ -60,6 +61,8 @@ export const ACTION_LABELS: Record<string, string> = {
   retry: "Riprova invio",
   import: "Importa",
   assign: "Assegna ruoli",
+  "manage-users": "Gestisci utenti",
+  "manage-custom-fields": "Gestisci campi personalizzati",
 };
 
 // ---------------------------------------------------------------------------

@@ -197,17 +197,19 @@ export default function AdminRoleDetailPage() {
             </thead>
             <tbody className="divide-y">
               {(Object.keys(PERMISSION_AREAS) as PermissionArea[]).map((area) => {
-                const areaPerms = perms[area] ?? [];
                 const areaConfig = PERMISSION_AREAS[area];
+                const displayActions = role.isSystem
+                  ? areaConfig.actions
+                  : (perms[area] ?? []);
                 return (
                   <tr key={area}>
                     <td className="whitespace-nowrap px-4 py-2 font-medium">
                       {areaConfig.label}
                     </td>
                     <td className="px-4 py-2">
-                      {areaPerms.length > 0 ? (
+                      {displayActions.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {areaPerms.map((action) => (
+                          {displayActions.map((action) => (
                             <span
                               key={action}
                               className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
@@ -231,14 +233,16 @@ export default function AdminRoleDetailPage() {
           {/* Mobile: card view */}
           <div className="divide-y md:hidden">
             {(Object.keys(PERMISSION_AREAS) as PermissionArea[]).map((area) => {
-              const areaPerms = perms[area] ?? [];
               const areaConfig = PERMISSION_AREAS[area];
+              const displayActions = role.isSystem
+                ? areaConfig.actions
+                : (perms[area] ?? []);
               return (
                 <div key={area} className="px-4 py-3">
                   <p className="text-sm font-medium">{areaConfig.label}</p>
-                  {areaPerms.length > 0 ? (
+                  {displayActions.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {areaPerms.map((action) => (
+                      {displayActions.map((action) => (
                         <span
                           key={action}
                           className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"

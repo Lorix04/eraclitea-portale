@@ -58,7 +58,7 @@ export async function POST(
   request: Request,
   context: { params: { id: string } }
 ) {
-  const check = await requirePermission("clienti", "edit");
+  const check = await requirePermission("clienti", "manage-custom-fields");
   if (check instanceof NextResponse) return check;
 
   const clientId = context.params.id;

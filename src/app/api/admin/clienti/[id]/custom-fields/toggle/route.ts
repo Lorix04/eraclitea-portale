@@ -6,7 +6,7 @@ export async function PUT(
   request: Request,
   context: { params: { id: string } }
 ) {
-  const check = await requirePermission("clienti", "edit");
+  const check = await requirePermission("clienti", "manage-custom-fields");
   if (check instanceof NextResponse) return check;
 
   const body = await request.json();

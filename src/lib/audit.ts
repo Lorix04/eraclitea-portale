@@ -31,7 +31,11 @@ type AuditAction =
   | "IMPERSONATE_TEACHER_START"
   | "IMPERSONATE_TEACHER_STOP"
   | "MATERIAL_UPLOAD"
-  | "MATERIAL_DELETE";
+  | "MATERIAL_DELETE"
+  | "USER_CREATE"
+  | "USER_DELETE"
+  | "USER_UNLOCK"
+  | "USER_FORCE_PASSWORD_CHANGE";
 
 type AuditParams = {
   userId: string;

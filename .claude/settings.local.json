@@ -15,7 +15,14 @@
       "Bash(mkdir -p /c/dev/project/src/app/api/admin/teacher-messages/[threadId])",
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
-      "Bash(./node_modules/.bin/next build:*)"
+      "Bash(./node_modules/.bin/next build:*)",
+      "Bash(find /c/dev/project/src/app/api -type f -name *.ts)",
+      "Bash(grep -n \"handleDelete\\\\|onClick.*delete\\\\|Trash2\" /c/dev/project/src/app/admin/ruoli/[id]/page.tsx)",
+      "Bash(mv src/app/admin/utenti src/app/admin/amministratori)",
+      "Bash(mv src/app/api/admin/utenti src/app/api/admin/amministratori)",
+      "Bash(cp -r src/app/admin/utenti src/app/admin/amministratori)",
+      "Bash(cp -r src/app/api/admin/utenti src/app/api/admin/amministratori)",
+      "Bash(npx prisma@5 migrate dev --name add_user_name)"
     ]
   }
 }

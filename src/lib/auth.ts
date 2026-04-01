@@ -78,6 +78,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
+          name: user.name,
           role: user.role,
           clientId: user.clientId,
           adminRoleId: user.adminRoleId,
@@ -93,6 +94,7 @@ export const authOptions: NextAuthOptions = {
         token.clientId = (user as any).clientId ?? null;
         token.mustChangePassword = Boolean((user as any).mustChangePassword);
         token.id = user.id;
+        token.name = (user as any).name ?? null;
 
         // Load teacher data for TEACHER role
         if (token.role === "TEACHER") {

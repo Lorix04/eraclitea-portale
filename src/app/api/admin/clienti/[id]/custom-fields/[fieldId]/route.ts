@@ -6,7 +6,7 @@ export async function PUT(
   request: Request,
   context: { params: { id: string; fieldId: string } }
 ) {
-  const check = await requirePermission("clienti", "edit");
+  const check = await requirePermission("clienti", "manage-custom-fields");
   if (check instanceof NextResponse) return check;
 
   const { fieldId } = context.params;
@@ -42,7 +42,7 @@ export async function DELETE(
   _request: Request,
   context: { params: { id: string; fieldId: string } }
 ) {
-  const check = await requirePermission("clienti", "edit");
+  const check = await requirePermission("clienti", "manage-custom-fields");
   if (check instanceof NextResponse) return check;
 
   const { id: clientId, fieldId } = context.params;

@@ -34,7 +34,7 @@ type ResetPasswordResult = {
 };
 
 export default function AdminClientiPage() {
-  const { can } = usePermissions();
+  const { can, canAccess } = usePermissions();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState("all");
@@ -223,6 +223,14 @@ export default function AdminClientiPage() {
     setSortOrder("asc");
     setCategoryFilter("");
   };
+
+  if (!canAccess("clienti")) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-muted-foreground">Accesso non consentito</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
