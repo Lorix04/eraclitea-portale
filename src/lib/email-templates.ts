@@ -11,7 +11,7 @@ interface EmailTemplateOptions {
 }
 
 const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
-const LOGO_URL = "https://sapienta.it/icons/sapienta-remove.png";
+const LOGO_URL = "https://sapienta.it/icons/apple-touch-icon.png";
 
 const BODY_TEXT_STYLE =
   "margin:0 0 16px; font-size:15px; line-height:1.65; color:#333333;";

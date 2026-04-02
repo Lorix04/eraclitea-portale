@@ -323,7 +323,7 @@ export default function LandingPage() {
       >
         <div className="preloader-logo">
           <Image
-            src="/icons/sapienta-remove.png"
+            src="/icons/apple-touch-icon.png"
             alt="Sapienta"
             width={120}
             height={120}
@@ -364,7 +364,7 @@ export default function LandingPage() {
               aria-label="Sapienta logo"
             >
               <Image
-                src="/icons/sapienta-remove.png"
+                src="/icons/apple-touch-icon.png"
                 alt="Sapienta"
                 width={130}
                 height={130}
@@ -596,7 +596,7 @@ export default function LandingPage() {
         <footer className="relative z-10 border-t border-gray-200 dark:border-white/5 py-8">
           <div className="mx-auto w-full max-w-7xl px-6 text-center">
             <div className="mb-3 flex items-center justify-center gap-2">
-              <Image src="/icons/i-down-remove.png" alt="" width={20} height={20} />
+              <Image src="/icons/apple-touch-icon.png" alt="" width={20} height={20} />
               <span className="text-sm tracking-wider text-gray-600 dark:text-white/60">SAPIENTA</span>
             </div>
             <p className="text-xs text-gray-400 dark:text-white/30">

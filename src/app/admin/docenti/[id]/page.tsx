@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import TeacherModal, { TeacherFormValue } from "@/components/admin/TeacherModal";
 import TeacherCvTab from "@/components/admin/TeacherCvTab";
+import CvDpr445Tab from "@/components/admin/CvDpr445Tab";
 import { formatItalianDate } from "@/lib/date-utils";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 
@@ -183,7 +184,7 @@ export default function AdminTeacherDetailPage() {
     endTime: "",
     reason: "",
   });
-  const [activeTab, setActiveTab] = useState<"calendar" | "lessons" | "documents" | "cv" | "details">("calendar");
+  const [activeTab, setActiveTab] = useState<"calendar" | "lessons" | "documents" | "cv" | "cv-dpr445" | "details">("calendar");
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
   const cvInputRef = useRef<HTMLInputElement | null>(null);
@@ -476,9 +477,70 @@ export default function AdminTeacherDetailPage() {
   }
 
   const teacherStatus = (teacher as any).status as string | undefined;
+  const hasIntegrityIssue =
+    (teacherStatus === "ACTIVE" || teacherStatus === "ONBOARDING") &&
+    !teacher.userId;
 
   return (
     <div className="space-y-6">
+      {/* Integrity issue banner */}
+      {hasIntegrityIssue && (
+        <div className="rounded-lg border border-red-400 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">
+            Problema di integrita account
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Questo docente risulta &quot;{teacherStatus === "ACTIVE" ? "Attivo" : "Onboarding"}&quot; ma non ha un account utente associato. Non puo accedere al portale ne essere impersonato.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await fetch(`/api/admin/docenti/${id}/fix-integrity`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "reset_and_invite" }),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (res.ok) {
+                  toast.success(json.message || "Status resettato");
+                  teacherQuery.refetch();
+                } else {
+                  toast.error(json.error || "Errore");
+                }
+              }}
+              className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
+            >
+              Resetta e invia invito
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await fetch(`/api/admin/docenti/${id}/fix-integrity`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "create_account" }),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (res.ok) {
+                  toast.success(json.message || "Account creato");
+                  teacherQuery.refetch();
+                } else {
+                  toast.error(json.error || "Errore");
+                }
+              }}
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Crea account manualmente
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            &quot;Resetta e invia invito&quot; riporta lo status a Inattivo per inviare un nuovo invito.
+            &quot;Crea account&quot; crea un account con password temporanea e invia le credenziali via email.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 md:gap-4">
         <div className="min-w-0">
           <Link href="/admin/docenti" className="text-xs text-primary md:text-sm">
@@ -701,11 +763,11 @@ export default function AdminTeacherDetailPage() {
         <div className="space-y-0">
           {/* Tab bar */}
           <div className="flex border-b mb-4">
-            {(["calendar", "lessons", "documents", "cv", "details"] as const).map((t) => (
+            {(["calendar", "lessons", "documents", "cv", "cv-dpr445", "details"] as const).map((t) => (
               <button key={t} type="button" onClick={() => setActiveTab(t)}
-                className={`px-4 py-2 text-sm border-b-2 transition-colors ${activeTab === t ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`px-4 py-2 text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === t ? "border-primary text-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               >
-                {t === "calendar" ? "Calendario" : t === "lessons" ? "Lezioni" : t === "documents" ? "Documenti" : t === "cv" ? "CV" : "Dettagli"}
+                {t === "calendar" ? "Calendario" : t === "lessons" ? "Lezioni" : t === "documents" ? "Documenti" : t === "cv" ? "CV" : t === "cv-dpr445" ? "CV DPR 445" : "Dettagli"}
               </button>
             ))}
           </div>
@@ -1127,6 +1189,13 @@ export default function AdminTeacherDetailPage() {
           )}
 
           {/* Tab: Dettagli */}
+          {/* Tab: CV DPR 445 */}
+          {activeTab === "cv-dpr445" && (
+            <section className="rounded-lg border bg-card p-5">
+              <CvDpr445Tab teacherId={id} />
+            </section>
+          )}
+
           {activeTab === "details" && (
             <div className="space-y-6">
               <DetailSection title="Dati personali">

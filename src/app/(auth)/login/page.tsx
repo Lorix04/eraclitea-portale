@@ -78,7 +78,7 @@ export default function LoginPage() {
         </div>
       ) : null}
 
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <form method="POST" action="" className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-white/60">
             Email <span className="text-red-400">*</span>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
                 : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
             }`}
-            placeholder="nome@azienda.it"
+            placeholder="email@esempio.com"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);

@@ -1,0 +1,6 @@
+Contact: mailto:direzione@eraclitea.it
+Contact: https://sapienta.it/supporto
+Expires: 2027-04-02T00:00:00.000Z
+Preferred-Languages: it, en
+Canonical: https://sapienta.it/.well-known/security.txt
+Policy: https://sapienta.it/privacy-policy

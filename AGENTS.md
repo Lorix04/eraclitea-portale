@@ -94,6 +94,17 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `TeacherUnavailability` — date/periodi indisponibilita con motivo
 - `TeacherSignedDocument` — dichiarazione atto di notorieta firmata (5 dichiarazioni checkbox, firma canvas base64, PDF generato)
 
+### Integrita Docenti
+- Rilevamento: Teacher ACTIVE/ONBOARDING con `userId` null (senza account User)
+- API lista docenti: campo `hasIntegrityIssue` + `integrityIssues` count nella response
+- Fix singolo: `POST /api/admin/docenti/[id]/fix-integrity` — azioni `reset_and_invite` (→ INACTIVE) e `create_account` (crea User + email credenziali)
+- Fix massivo: `POST /api/admin/docenti/fix-integrity-bulk` — resetta tutti a INACTIVE
+- UI lista: banner ambra con conteggio e bottoni "Mostra" / "Ripara tutti", badge ⚠ sulla riga, filtro "Con problemi"
+- UI dettaglio: banner rosso con 2 opzioni di fix (resetta invito / crea account)
+- Cron: `GET /api/cron/integrity-check` — auto-fix giornaliero, resetta ACTIVE→INACTIVE se senza User, segnala User TEACHER orfani
+- Impersonazione: errore chiaro con suggerimento di andare nel dettaglio per risolvere
+- Audit: azioni TEACHER_INTEGRITY_FIX (fix manuale), TEACHER_AUTO_FIX (cron)
+
 ### CV Docente (8 modelli)
 - `TeacherWorkExperience` — esperienze lavorative (obbligatoria in registrazione)
 - `TeacherEducation` — formazione e istruzione (obbligatoria in registrazione)
@@ -107,6 +118,24 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Import AI da PDF: `POST /api/teacher/cv/import-pdf` (usa OpenRouter da DB)
 - Download CV Europass: `GET /api/teacher/cv/download-pdf`
 - Sync portale: `POST /api/teacher/cv/sync-portal-experience` (auto-genera esperienze dalle lezioni)
+
+### CV DPR 445/2000
+- `TeacherCvDpr445` — documento CV ai sensi del DPR 445, uno per docente (`teacherId` unique)
+- Workflow: `NOT_REQUESTED` → `REQUESTED` → `SUBMITTED` → `APPROVED`/`REJECTED`
+- Status enum: `CvDpr445Status` (NOT_REQUESTED, REQUESTED, SUBMITTED, APPROVED, REJECTED)
+- Campi form digitale: criteri qualificazione formatore, aree tematiche (A-D), abilitazioni speciali (attrezzature, antincendio, ponteggi, HACCP, primo soccorso, PES/PAV/PEI, ecc.)
+- File PDF: upload docente in `storage/cv-dpr445/[teacherId]/`, template scaricabile da `public/templates/cv_dpr445_template.pdf`
+- API admin: `GET/POST/PUT /api/admin/docenti/[id]/cv-dpr445` (stato, richiesta, approva/rifiuta/reminder/annulla)
+- API admin bulk: `POST /api/admin/cv-dpr445/bulk-request` (invio massivo a docenti senza CV o senza CV approvato)
+- API docente: `GET/PUT /api/teacher/cv-dpr445` (stato, invio CV con file + form), `GET /api/teacher/cv-dpr445/template` (download template)
+- UI admin: tab "CV DPR 445" nel dettaglio docente (`CvDpr445Tab`), colonna "CV 445" nella lista docenti, bottone "Richiedi CV DPR 445" con modale invio massivo (`BulkCvDpr445Modal`)
+- UI docente: pagina `/docente/cv-dpr445` con form completo (8 sezioni: prerequisito, criterio formatore, aree tematiche, documentazione, qualifica, responsabile progetto, abilitazioni speciali con accordion, consenso privacy), upload PDF drag&drop, salva bozza, invio
+- Sidebar docente: voce "CV DPR 445" con badge rosso se status REQUESTED/REJECTED
+- Dashboard docente: banner ambra/rosso se CV richiesto, con scadenza e link "Compila ora"
+- Cron reminder: `GET /api/cron/cv-dpr445-reminder` — invia reminder ai docenti con scadenza entro 3 giorni (cooldown 7 giorni, protetto con CRON_API_KEY)
+- Guida docente: sezione "CV DPR 445/2000" con istruzioni passo-passo e mockup
+- Email: CV_DPR445_REQUEST, CV_DPR445_REMINDER, CV_DPR445_APPROVED, CV_DPR445_REJECTED (tutte retryable, non sensibili)
+- Notifiche: CV_DPR445_REQUEST, CV_DPR445_REMINDER, CV_DPR445_APPROVED, CV_DPR445_REJECTED
 
 ### Presenze
 - `Attendance` — status (PRESENT/ABSENT/ABSENT_JUSTIFIED), `hoursAttended` (Float? per ore parziali), lessonId+employeeId unique
@@ -129,19 +158,23 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Nessuna variabile env necessaria — configurazione da UI admin
 
 ### Gestione Amministratori
-- Pagina admin: `/admin/amministratori` — lista solo utenti ADMIN con filtri per ruolo admin, stato, ricerca
+- Pagina admin: `/admin/amministratori` — lista solo utenti ADMIN con filtri per ruolo admin, stato (attivo/sospeso/bloccato/cambio password), ricerca
+- Gerarchia Super Admin: non-Super Admin non vedono i Super Admin nella lista; non possono modificare/sospendere/eliminare/resettare password di Super Admin
 - Creazione: bottone "+ Nuovo Amministratore" → modale `CreateUserModal` con nome (opzionale), email, ruolo admin
-- Dettaglio: `/admin/amministratori/[id]` — info account con nome, profilo ruolo, audit log, azioni (modifica nome, sblocca, forza cambio password, elimina)
-- API: `GET/POST /api/admin/amministratori` (lista, creazione), `GET/DELETE/PATCH /api/admin/amministratori/[id]` (dettaglio, eliminazione, azioni), `GET /api/admin/amministratori/check-email` (verifica disponibilita email)
-- Creazione: genera password sicura (16 char, rispetta PASSWORD_REGEX), hash bcrypt salt 12, `mustChangePassword: true`, email WELCOME personalizzata con nome
-- Permessi: area `amministratori` con azioni `view`, `create`, `delete`; eliminazione riservata a Super Admin
-- Eliminazione: richiede conferma con email esatta, transazione atomica, audit log
-- Protezioni: non eliminare se stessi, non eliminare ultimo Super Admin
-- Campo `name` su modello User: opzionale, mostrato in lista e dettaglio, modificabile via PATCH `updateName`
-- Componente: `src/components/admin/CreateUserModal.tsx` — validazione email inline con debounce, checkbox invio email
+- Modifica rapida: modale `EditAdminModal` con nome, email, ruolo admin — campo ruolo disabilitato per se stessi e per Super Admin
+- Dettaglio: `/admin/amministratori/[id]` — info account con nome, profilo ruolo, audit log, azioni
+- API: `GET/POST /api/admin/amministratori`, `GET/DELETE/PATCH /api/admin/amministratori/[id]`, `POST .../[id]/suspend`, `POST .../[id]/reset-password`, `GET .../check-email`
+- Sospensione: `isActive=false` + `suspendedAt` + `suspendedById`; admin sospeso non puo fare login; riattivazione ripristina accesso
+- Reset password: genera password sicura, email WELCOME sensibile, `mustChangePassword: true`
+- Permessi: area `amministratori` con azioni `view`, `create`, `edit`, `delete`, `reset-password`, `suspend`
+- Azioni per riga con ActionMenu: Visualizza (primaria), Modifica, Reset password, Sblocca, Sospendi/Riattiva, Elimina — condizionali a permessi e contesto (se stessi, Super Admin)
+- Protezioni: non eliminare/sospendere/resettare se stessi, non eliminare ultimo Super Admin, non modificare il proprio ruolo
+- Campo `name` su modello User: opzionale, mostrato in lista e dettaglio
+- Componenti: `CreateUserModal`, `EditAdminModal`
+- Audit: ADMIN_SUSPEND, ADMIN_REACTIVATE, ADMIN_RESET_PASSWORD, ADMIN_EDIT
 
 ### Altro
-- `AuditLog` — log azioni admin (login, impersonazione, CRUD, USER_CREATE, USER_DELETE, USER_UNLOCK, USER_FORCE_PASSWORD_CHANGE)
+- `AuditLog` — log azioni admin (login, impersonazione, CRUD, USER_CREATE, USER_DELETE, USER_UNLOCK, USER_FORCE_PASSWORD_CHANGE, ADMIN_SUSPEND, ADMIN_REACTIVATE, ADMIN_RESET_PASSWORD, ADMIN_EDIT, TEACHER_INTEGRITY_FIX, TEACHER_AUTO_FIX)
 - `Category` — aree corsi, relazione many-to-many con Teacher e Course
 
 ## Autenticazione & Ruoli

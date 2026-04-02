@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkApiPermission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,12 @@ export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (
+    !checkApiPermission(session, "edizioni", "view") &&
+    !checkApiPermission(session, "ruoli", "view")
+  ) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
   const url = new URL(request.url);

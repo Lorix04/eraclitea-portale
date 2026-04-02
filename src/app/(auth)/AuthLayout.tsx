@@ -102,7 +102,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
             <Image
-              src="/icons/sapienta-remove.png"
+              src="/icons/apple-touch-icon.png"
               alt="Sapienta"
               width={80}
               height={80}

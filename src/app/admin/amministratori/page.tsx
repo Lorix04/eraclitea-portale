@@ -6,18 +6,26 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Eye,
+  KeyRound,
   Lock,
+  Pencil,
+  Play,
   Search,
+  StopCircle,
   Trash2,
+  Unlock,
   UserPlus,
   UsersRound,
   X,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import ResponsiveTable from "@/components/ui/ResponsiveTable";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import ActionMenu from "@/components/ui/ActionMenu";
 import CreateUserModal from "@/components/admin/CreateUserModal";
+import EditAdminModal from "@/components/admin/EditAdminModal";
 
 type UserRow = {
   id: string;
@@ -31,6 +39,8 @@ type UserRow = {
   isLocked: boolean;
   lockedUntil: string | null;
   failedLoginAttempts: number;
+  isSuspended: boolean;
+  suspendedAt: string | null;
   adminRole: { id: string; name: string; isSystem: boolean } | null;
 };
 
@@ -58,8 +68,12 @@ export default function UtentiPage() {
   const router = useRouter();
   const { can } = usePermissions();
   const { confirm } = useConfirmDialog();
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id;
+  const currentIsSuperAdmin = session?.user?.isSuperAdmin === true;
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<UserRow | null>(null);
   const [search, setSearch] = useState("");
   const [adminRoleFilter, setAdminRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -111,14 +125,15 @@ export default function UtentiPage() {
     refetchOnWindowFocus: false,
   });
 
-  const users = usersQuery.data?.data ?? [];
+  const users = useMemo(() => usersQuery.data?.data ?? [], [usersQuery.data]);
   const total = usersQuery.data?.total ?? 0;
 
   const statusCounts = useMemo(() => {
-    const counts = { all: 0, active: 0, locked: 0, mustChange: 0 };
+    const counts = { all: 0, active: 0, locked: 0, mustChange: 0, suspended: 0 };
     for (const u of users) {
       counts.all++;
-      if (u.isLocked) counts.locked++;
+      if (u.isSuspended) counts.suspended++;
+      else if (u.isLocked) counts.locked++;
       else if (u.mustChangePassword) counts.mustChange++;
       else if (u.isActive) counts.active++;
     }
@@ -144,6 +159,12 @@ export default function UtentiPage() {
   };
 
   const getStatusBadge = (u: UserRow) => {
+    if (u.isSuspended)
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
+          <StopCircle className="h-3 w-3" /> Sospeso
+        </span>
+      );
     if (u.isLocked)
       return (
         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">
@@ -273,10 +294,8 @@ export default function UtentiPage() {
         activeFiltersCount={activeFilterCount}
         onReset={resetFilters}
         resultCount={users.length}
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          {/* Search */}
-          <div className="relative flex-1">
+        searchBar={
+          <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
@@ -294,12 +313,14 @@ export default function UtentiPage() {
               </button>
             )}
           </div>
-
+        }
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           {/* Admin role filter */}
           <select
             value={adminRoleFilter}
             onChange={(e) => setAdminRoleFilter(e.target.value)}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm sm:w-auto"
           >
             <option value="all">Tutti i ruoli</option>
             <option value="none">Senza ruolo</option>
@@ -314,11 +335,14 @@ export default function UtentiPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border px-3 py-2 text-sm"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm sm:w-auto"
           >
             <option value="all">Tutti gli stati</option>
             <option value="active">
               Attivo ({statusCounts.active})
+            </option>
+            <option value="suspended">
+              Sospeso ({statusCounts.suspended})
             </option>
             <option value="locked">
               Bloccato ({statusCounts.locked})
@@ -328,14 +352,6 @@ export default function UtentiPage() {
             </option>
           </select>
 
-          {activeFilterCount > 0 && (
-            <button
-              onClick={resetFilters}
-              className="hidden rounded-md border px-3 py-2 text-sm hover:bg-muted sm:block"
-            >
-              Resetta
-            </button>
-          )}
         </div>
       </MobileFilterPanel>
 
@@ -363,53 +379,221 @@ export default function UtentiPage() {
         sortKey={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
-        actions={(u) => (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => router.push(`/admin/amministratori/${u.id}`)}
-              className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
-            >
-              <Eye className="h-3.5 w-3.5" /> Dettaglio
-            </button>
-            {can("amministratori", "delete") && (
-              <button
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: "Elimina amministratore",
-                    message: `Eliminare definitivamente l'amministratore ${u.email}?\nQuesta azione e irreversibile.`,
-                    confirmText: "Elimina",
-                    variant: "danger",
-                  });
-                  if (!ok) return;
-                  const res = await fetch(`/api/admin/amministratori/${u.id}`, {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ confirmText: u.email }),
-                  });
-                  const json = await res.json().catch(() => ({}));
-                  if (res.ok) {
-                    toast.success("Amministratore eliminato");
-                    usersQuery.refetch();
-                  } else {
-                    toast.error(json?.error ?? "Errore eliminazione");
-                  }
-                }}
-                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                title="Elimina"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        )}
+        actions={(u) => {
+          const isSelf = u.id === currentUserId;
+          const targetIsSuperAdmin = u.adminRole?.isSystem === true;
+          return (
+            <ActionMenu
+              primaryAction={{
+                key: "view",
+                label: "Dettaglio",
+                icon: Eye,
+                variant: "info",
+                href: `/admin/amministratori/${u.id}`,
+              }}
+              secondaryActions={[
+                // Modifica
+                ...(can("amministratori", "edit")
+                  ? [
+                      {
+                        key: "edit",
+                        label: "Modifica",
+                        icon: Pencil,
+                        variant: "default" as const,
+                        onClick: () => setEditingAdmin(u),
+                      },
+                    ]
+                  : []),
+                // Reset password (not self, not Super Admin unless you are Super Admin)
+                ...(can("amministratori", "reset-password") &&
+                !isSelf &&
+                (!targetIsSuperAdmin || currentIsSuperAdmin)
+                  ? [
+                      {
+                        key: "reset-password",
+                        label: "Reset password",
+                        icon: KeyRound,
+                        variant: "default" as const,
+                        requireConfirm: true,
+                        confirmMessage: `Resettare la password di ${u.name || u.email}? Verra generata una nuova password e inviata via email.`,
+                        onClick: async () => {
+                          const res = await fetch(
+                            `/api/admin/amministratori/${u.id}/reset-password`,
+                            { method: "POST" }
+                          );
+                          const json = await res.json().catch(() => ({}));
+                          if (res.ok) {
+                            toast.success(json.message || "Password resettata");
+                          } else {
+                            toast.error(json.error || "Errore");
+                          }
+                        },
+                      },
+                    ]
+                  : []),
+                // Sblocca (only if locked, not Super Admin unless you are Super Admin)
+                ...(can("amministratori", "edit") &&
+                u.isLocked &&
+                (!targetIsSuperAdmin || currentIsSuperAdmin)
+                  ? [
+                      {
+                        key: "unlock",
+                        label: "Sblocca account",
+                        icon: Unlock,
+                        variant: "default" as const,
+                        onClick: async () => {
+                          const res = await fetch(
+                            `/api/admin/amministratori/${u.id}`,
+                            {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ action: "unlock" }),
+                            }
+                          );
+                          const json = await res.json().catch(() => ({}));
+                          if (res.ok) {
+                            toast.success("Account sbloccato");
+                            usersQuery.refetch();
+                          } else {
+                            toast.error(json.error || "Errore");
+                          }
+                        },
+                      },
+                    ]
+                  : []),
+                // Sospendi / Riattiva (not self, not Super Admin unless you are Super Admin)
+                ...(can("amministratori", "suspend") &&
+                !isSelf &&
+                (!targetIsSuperAdmin || currentIsSuperAdmin)
+                  ? [
+                      u.isSuspended
+                        ? {
+                            key: "reactivate",
+                            label: "Riattiva",
+                            icon: Play,
+                            variant: "success" as const,
+                            requireConfirm: true,
+                            confirmMessage: `Riattivare l'account di ${u.name || u.email}?`,
+                            onClick: async () => {
+                              const res = await fetch(
+                                `/api/admin/amministratori/${u.id}/suspend`,
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    action: "reactivate",
+                                  }),
+                                }
+                              );
+                              const json = await res
+                                .json()
+                                .catch(() => ({}));
+                              if (res.ok) {
+                                toast.success("Account riattivato");
+                                usersQuery.refetch();
+                              } else {
+                                toast.error(json.error || "Errore");
+                              }
+                            },
+                          }
+                        : {
+                            key: "suspend",
+                            label: "Sospendi",
+                            icon: StopCircle,
+                            variant: "danger" as const,
+                            requireConfirm: true,
+                            confirmMessage: `Sospendere l'account di ${u.name || u.email}? Non potra piu accedere al portale.`,
+                            onClick: async () => {
+                              const res = await fetch(
+                                `/api/admin/amministratori/${u.id}/suspend`,
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    action: "suspend",
+                                  }),
+                                }
+                              );
+                              const json = await res
+                                .json()
+                                .catch(() => ({}));
+                              if (res.ok) {
+                                toast.success("Account sospeso");
+                                usersQuery.refetch();
+                              } else {
+                                toast.error(json.error || "Errore");
+                              }
+                            },
+                          },
+                    ]
+                  : []),
+                // Elimina (not self, not Super Admin unless you are Super Admin)
+                ...(can("amministratori", "delete") &&
+                !isSelf &&
+                (!targetIsSuperAdmin || currentIsSuperAdmin)
+                  ? [
+                      {
+                        key: "delete",
+                        label: "Elimina",
+                        icon: Trash2,
+                        variant: "danger" as const,
+                        requireConfirm: true,
+                        confirmMessage: `Eliminare definitivamente ${u.name || u.email}? Questa azione e irreversibile.`,
+                        onClick: async () => {
+                          const res = await fetch(
+                            `/api/admin/amministratori/${u.id}`,
+                            {
+                              method: "DELETE",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                confirmText: u.email,
+                              }),
+                            }
+                          );
+                          const json = await res
+                            .json()
+                            .catch(() => ({}));
+                          if (res.ok) {
+                            toast.success("Amministratore eliminato");
+                            usersQuery.refetch();
+                          } else {
+                            toast.error(
+                              json.error || "Errore eliminazione"
+                            );
+                          }
+                        },
+                      },
+                    ]
+                  : []),
+              ]}
+              size="sm"
+            />
+          );
+        }}
       />
 
-      {/* Create admin modal */}
+      {/* Modals */}
       <CreateUserModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreated={() => usersQuery.refetch()}
       />
+      {editingAdmin && (
+        <EditAdminModal
+          open={!!editingAdmin}
+          admin={editingAdmin}
+          isSelf={editingAdmin.id === currentUserId}
+          isSuperAdmin={currentIsSuperAdmin}
+          onClose={() => setEditingAdmin(null)}
+          onSaved={() => usersQuery.refetch()}
+        />
+      )}
     </div>
   );
 }

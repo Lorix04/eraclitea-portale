@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -71,10 +71,13 @@ export default function AnagraficheResponsive({
     },
     enabled: !!clientId,
   });
-  const customFields = customFieldsData?.enabled ? customFieldsData.fields : [];
+  const customFields = useMemo(
+    () => (customFieldsData?.enabled ? customFieldsData.fields : []),
+    [customFieldsData]
+  );
 
   // Flatten customData into rows as custom_* keys for spreadsheet
-  const flattenCustomData = (rows: EmployeeFormRow[]): EmployeeFormRow[] => {
+  const flattenCustomData = useCallback((rows: EmployeeFormRow[]): EmployeeFormRow[] => {
     if (!customFields?.length) return rows;
     return rows.map((row) => {
       const flat = { ...row };
@@ -85,7 +88,7 @@ export default function AnagraficheResponsive({
       }
       return flat;
     });
-  };
+  }, [customFields]);
 
   const [rows, setRows] = useState<EmployeeFormRow[]>(flattenCustomData(initialData));
   const removedEmployeeIdsRef = useRef<string[]>([]);
@@ -101,7 +104,7 @@ export default function AnagraficheResponsive({
   useEffect(() => {
     setRows(flattenCustomData(initialData));
     removedEmployeeIdsRef.current = [];
-  }, [initialData, customFields]);
+  }, [initialData, flattenCustomData]);
 
   const handleSave = () => {
     setStatus(null);

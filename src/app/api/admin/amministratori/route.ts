@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 const querySchema = z.object({
   search: z.string().optional(),
   adminRoleId: z.string().optional(),
-  status: z.enum(["active", "locked", "mustChange"]).optional(),
+  status: z.enum(["active", "locked", "mustChange", "suspended"]).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   limit: z.coerce.number().int().min(1).max(500).optional().default(50),
   sortBy: z
@@ -42,7 +42,22 @@ export async function GET(request: Request) {
   const sortBy = rawSortBy ?? "createdAt";
   const sortOrder = rawSortOrder ?? "desc";
 
+  const { session } = check;
+  const isSuperAdmin = session.user.isSuperAdmin === true;
+
   const where: Prisma.UserWhereInput = { role: "ADMIN" };
+
+  // Non-Super Admin cannot see Super Admins
+  if (!isSuperAdmin) {
+    where.AND = [
+      {
+        OR: [
+          { adminRole: null },
+          { adminRole: { isSystem: false } },
+        ],
+      },
+    ];
+  }
 
   if (adminRoleId === "none") {
     where.adminRoleId = null;
@@ -58,6 +73,8 @@ export async function GET(request: Request) {
     where.lockedUntil = { gt: new Date() };
   } else if (status === "mustChange") {
     where.mustChangePassword = true;
+  } else if (status === "suspended") {
+    where.isActive = false;
   }
 
   if (search) {
@@ -87,6 +104,8 @@ export async function GET(request: Request) {
         mustChangePassword: true,
         lockedUntil: true,
         failedLoginAttempts: true,
+        suspendedAt: true,
+        suspendedById: true,
         adminRole: { select: { id: true, name: true, isSystem: true } },
       },
       orderBy: { [sortBy as string]: sortOrder },
@@ -109,6 +128,8 @@ export async function GET(request: Request) {
       isLocked: u.lockedUntil ? u.lockedUntil > new Date() : false,
       lockedUntil: u.lockedUntil,
       failedLoginAttempts: u.failedLoginAttempts,
+      isSuspended: !u.isActive && u.suspendedAt != null,
+      suspendedAt: u.suspendedAt,
       adminRole: u.adminRole,
     })),
     total,

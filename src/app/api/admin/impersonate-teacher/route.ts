@@ -42,11 +42,18 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!teacher || !teacher.userId) {
-      return NextResponse.json({ error: "Docente non trovato o senza account" }, { status: 404 });
+    if (!teacher) {
+      return NextResponse.json({ error: "Docente non trovato" }, { status: 404 });
     }
 
-    if (teacher.status !== "ACTIVE" || !teacher.user?.isActive) {
+    if (!teacher.userId || !teacher.user) {
+      return NextResponse.json(
+        { error: "Questo docente non ha un account utente associato. Vai nel dettaglio del docente per risolvere il problema." },
+        { status: 400 }
+      );
+    }
+
+    if (teacher.status !== "ACTIVE" || !teacher.user.isActive) {
       return NextResponse.json({ error: "Docente non attivo" }, { status: 400 });
     }
 

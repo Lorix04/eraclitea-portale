@@ -1,7 +1,7 @@
 {
-  "name": "Portale Formazione",
-  "short_name": "Formazione",
-  "description": "Portale per la gestione della formazione aziendale",
+  "name": "Portale Sapienta",
+  "short_name": "Sapienta",
+  "description": "Portale B2B per enti di formazione — Accademia Eraclitea",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

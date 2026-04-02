@@ -35,7 +35,13 @@ type AuditAction =
   | "USER_CREATE"
   | "USER_DELETE"
   | "USER_UNLOCK"
-  | "USER_FORCE_PASSWORD_CHANGE";
+  | "USER_FORCE_PASSWORD_CHANGE"
+  | "TEACHER_INTEGRITY_FIX"
+  | "TEACHER_AUTO_FIX"
+  | "ADMIN_SUSPEND"
+  | "ADMIN_REACTIVATE"
+  | "ADMIN_RESET_PASSWORD"
+  | "ADMIN_EDIT";
 
 type AuditParams = {
   userId: string;

@@ -24,7 +24,7 @@ export default function PublicNavbar({
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 md:py-5">
         <Link href="/" className="flex items-center" aria-label="Torna alla home">
           <Image
-            src="/icons/i-down-remove.png"
+            src="/icons/apple-touch-icon.png"
             alt="Sapienta"
             width={32}
             height={32}

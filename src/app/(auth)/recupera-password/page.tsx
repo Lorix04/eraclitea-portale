@@ -105,7 +105,7 @@ export default function RecuperaPasswordPage() {
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/50"
                     : "border-gray-300 focus:border-[#EAB308]/50 focus:ring-[#EAB308]/50 dark:border-white/10"
                 }`}
-                placeholder="nome@azienda.it"
+                placeholder="email@esempio.com"
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);

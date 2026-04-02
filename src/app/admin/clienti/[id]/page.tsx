@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -205,9 +206,12 @@ export default function AdminClienteDetailPage() {
           </Link>
           <div className="flex items-center gap-3">
             {client.logoPath ? (
-              <img
+              <Image
                 src={`/api/storage/clients/${client.logoPath.replace(/\\/g, "/")}`}
                 alt=""
+                width={48}
+                height={48}
+                unoptimized
                 className="h-12 w-12 rounded-lg border object-contain"
               />
             ) : (

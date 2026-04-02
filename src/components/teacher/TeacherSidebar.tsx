@@ -9,6 +9,7 @@ import {
   BookOpen,
   BookOpenCheck,
   CalendarOff,
+  ClipboardCheck,
   FileText,
   UserCircle,
   Bell,
@@ -34,6 +35,7 @@ const TEACHER_SECTIONS: SidebarSection[] = [
     label: "Personale",
     items: [
       { href: "/docente/documenti", label: "Documenti", icon: FileText },
+      { href: "/docente/cv-dpr445", label: "CV DPR 445", icon: ClipboardCheck },
       { href: "/docente/profilo", label: "Profilo", icon: UserCircle },
       { href: "/docente/guida", label: "Guida", icon: BookOpenCheck },
     ],
@@ -72,6 +74,17 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
       if (!res.ok) return 0;
       const data = await res.json();
       return Array.isArray(data) ? data.length : 0;
+    },
+    refetchInterval: 60_000,
+  });
+
+  const { data: cvDpr445Status } = useQuery({
+    queryKey: ["teacher-cv-dpr445-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/teacher/cv-dpr445");
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.data?.status as string | null;
     },
     refetchInterval: 60_000,
   });
@@ -128,6 +141,9 @@ export default function TeacherSidebar({ onNavigate, className }: TeacherSidebar
                   )}
                   {item.href === "/docente/supporto" && ticketCount > 0 && (
                     <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{ticketCount}</span>
+                  )}
+                  {item.href === "/docente/cv-dpr445" && (cvDpr445Status === "REQUESTED" || cvDpr445Status === "REJECTED") && (
+                    <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">!</span>
                   )}
                 </Link>
               );

@@ -39,7 +39,7 @@ export default function CookiePolicyPage() {
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-gray-200 bg-white/90 backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/90">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/icons/i-down-remove.png" alt="Sapienta" width={32} height={32} />
+            <Image src="/icons/apple-touch-icon.png" alt="Sapienta" width={32} height={32} />
             <span
               className="text-lg font-semibold tracking-[0.2em] text-gray-900 dark:text-white"
               style={{ fontFamily: "var(--font-landing-display, var(--font-display))" }}

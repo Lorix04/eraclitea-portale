@@ -34,7 +34,12 @@ import {
   Shield,
   UserCircle,
   Users,
+  UserCog,
   UsersRound,
+  Settings,
+  Sparkles,
+  Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -79,8 +84,15 @@ type MockupKind =
   | "teacher-availability"
   | "teacher-documents"
   | "teacher-cv"
+  | "teacher-cv-dpr445"
   | "teacher-ticket"
-  | "teacher-profile";
+  | "teacher-profile"
+  | "admin-custom-fields"
+  | "admin-import-export"
+  | "admin-cv-dpr445"
+  | "admin-amministratori"
+  | "admin-integrity"
+  | "admin-ai";
 
 type GuideSection = {
   id: string;
@@ -247,7 +259,7 @@ function renderMockup(kind: MockupKind): ReactNode {
                 <td className="px-3 py-2">Giulia</td>
                 <td className="px-3 py-2">Rossi</td>
                 <td className="px-3 py-2 font-mono text-[11px]">RSSGLI90A41H501Y</td>
-                <td className="px-3 py-2">giulia@azienda.it</td>
+                <td className="px-3 py-2">giulia@esempio.it</td>
                 <td className="px-3 py-2">CT</td>
                 <td className="px-3 py-2">Sicilia</td>
               </tr>
@@ -255,7 +267,7 @@ function renderMockup(kind: MockupKind): ReactNode {
                 <td className="px-3 py-2">Marco</td>
                 <td className="px-3 py-2">Bianchi</td>
                 <td className="bg-red-50 px-3 py-2 text-red-600">CF non coerente</td>
-                <td className="px-3 py-2">marco@azienda.it</td>
+                <td className="px-3 py-2">marco@esempio.it</td>
                 <td className="px-3 py-2">MI</td>
                 <td className="px-3 py-2">Lombardia</td>
               </tr>
@@ -281,7 +293,7 @@ function renderMockup(kind: MockupKind): ReactNode {
                 <td className="px-3 py-2">Elena</td>
                 <td className="px-3 py-2">Conti</td>
                 <td className="px-3 py-2 font-mono text-[11px]">CNTLNE88C51F205R</td>
-                <td className="px-3 py-2">elena@azienda.it</td>
+                <td className="px-3 py-2">elena@esempio.it</td>
                 <td className="px-3 py-2 text-blue-700">Dettaglio</td>
               </tr>
             </tbody>
@@ -783,6 +795,20 @@ function renderMockup(kind: MockupKind): ReactNode {
           </div>
         </MockupCard>
       );
+    case "teacher-cv-dpr445":
+      return (
+        <MockupCard title="CV DPR 445/2000">
+          <div className="space-y-2">
+            <div className="rounded-md border-l-4 border-l-amber-400 bg-amber-50 px-3 py-2"><p className="font-medium text-sm text-amber-700">Richiesta compilazione</p><p className="text-[10px] text-gray-500">Scadenza: 30/04/2026</p></div>
+            <div className="space-y-1">
+              <div className="rounded-md border bg-white px-3 py-1.5 text-sm">Template PDF <span className="float-right text-blue-600 text-xs">Scarica</span></div>
+              <div className="rounded-md border bg-white px-3 py-1.5 text-sm">Upload PDF <span className="float-right text-xs text-gray-400">Trascina qui</span></div>
+              <div className="rounded-md border bg-white px-3 py-1.5 text-sm">Criterio formatore <span className="float-right text-xs text-emerald-600">Compilato</span></div>
+              <div className="rounded-md border bg-white px-3 py-1.5 text-sm">Aree tematiche <span className="float-right text-xs text-emerald-600">A, C</span></div>
+            </div>
+          </div>
+        </MockupCard>
+      );
     case "teacher-ticket":
       return (
         <MockupCard title="Supporto docente">
@@ -802,6 +828,64 @@ function renderMockup(kind: MockupKind): ReactNode {
             </div>
             <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Email (non modificabile)</div>
             <div className="rounded-lg border bg-white px-3 py-2 text-gray-500 text-xs">Codice Fiscale</div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-custom-fields":
+      return (
+        <MockupCard title="Campi personalizzati">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-1.5"><span className="text-sm">Settore</span><span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">Testo</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-1.5"><span className="text-sm">Reparto</span><span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">Selezione</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-1.5"><span className="text-sm">Data Assunzione</span><span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-600">Data</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-import-export":
+      return (
+        <MockupCard title="Import dipendenti">
+          <div className="space-y-2">
+            <div className="rounded-md border-l-4 border-l-amber-400 bg-amber-50 px-3 py-2 text-xs">Formato: Personalizzato (8 campi)</div>
+            <div className="rounded-md border bg-white px-3 py-1.5 text-sm">Colonna file <span className="float-right text-xs text-emerald-600">Mappato</span></div>
+            <div className="rounded-md border bg-white px-3 py-1.5 text-sm">CF <span className="float-right text-xs text-emerald-600">Codice Fiscale</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-cv-dpr445":
+      return (
+        <MockupCard title="CV DPR 445 — Revisione">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2"><span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">Ricevuto</span><span className="text-xs text-gray-500">15/04/2026</span></div>
+            <div className="rounded-md border bg-white px-3 py-2"><p className="text-sm">Criterio: 2 — Laurea coerente</p><p className="text-xs text-gray-400">Aree: A, C · Privacy: OK</p></div>
+            <div className="flex gap-2"><span className="rounded bg-emerald-100 px-3 py-1 text-xs text-emerald-700">Approva</span><span className="rounded bg-red-100 px-3 py-1 text-xs text-red-700">Rifiuta</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-amministratori":
+      return (
+        <MockupCard title="Gestione amministratori">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><div><p className="font-medium text-sm">admin@eraclitea.it</p><p className="text-[10px] text-gray-400">Super Admin</p></div><span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Attivo</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><div><p className="font-medium text-sm">segreteria@eraclitea.it</p><p className="text-[10px] text-gray-400">Segreteria</p></div><span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Attivo</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-integrity":
+      return (
+        <MockupCard title="Integrita docenti">
+          <div className="space-y-2">
+            <div className="rounded-md border-l-4 border-l-amber-400 bg-amber-50 px-3 py-2"><p className="font-medium text-xs text-amber-700">2 problemi rilevati</p></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Mario Rossi</span><span className="text-xs text-amber-600">Attivo ⚠</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-ai":
+      return (
+        <MockupCard title="Integrazioni AI">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Provider</span><span className="text-xs">OpenRouter</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Modello</span><span className="text-xs">Llama 3.3 70B</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Stato</span><span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-700">Attivo</span></div>
           </div>
         </MockupCard>
       );
@@ -878,9 +962,12 @@ function getBaseSections(role: GuideRole): GuideSection[] {
       paragraphs: [
         "Le celle non valide vengono evidenziate in rosso per correzione immediata.",
         "La validazione include anche controlli sul codice fiscale rispetto ai dati anagrafici inseriti.",
+        "Se il cliente ha i campi personalizzati attivi, il foglio mostra solo CF, Nome, Cognome e le colonne custom. I campi standard aggiuntivi sono accessibili dal pulsante 'Altro'.",
       ],
       bullets: [
-        "Compila Nome, Cognome, Codice Fiscale, Data nascita, Comune nascita, Email, Comune residenza, CAP, Provincia, Regione.",
+        "Compila i campi obbligatori: le colonne variano in base alla configurazione del cliente.",
+        "Con campi personalizzati: il foglio mostra le colonne configurate dall'admin.",
+        "Senza campi personalizzati: 11 colonne standard (Nome, Cognome, CF, Sesso, ecc.).",
         "Controlla eventuali errori evidenziati prima di inviare.",
         "Salva frequentemente per evitare perdita di modifiche.",
       ],
@@ -892,13 +979,16 @@ function getBaseSections(role: GuideRole): GuideSection[] {
       title: "Gestione Dipendenti",
       icon: Users,
       intro:
-        "La sezione dipendenti centralizza anagrafica, contatti e storico formativo. È possibile aggiungere nuovi record o modificare quelli esistenti.",
+        "La sezione dipendenti centralizza anagrafica, contatti e storico formativo. E possibile importare, esportare e gestire i record con supporto per campi personalizzati.",
       paragraphs: [
-        "Il codice fiscale è validato per formato, coerenza anagrafica e possibili duplicati sul cliente.",
+        "Il codice fiscale e validato per formato, coerenza anagrafica e possibili duplicati sul cliente.",
+        "L'import supporta file Excel e CSV con mappatura colonne intelligente. L'export offre formato standard (21 colonne) o formato cliente (solo campi personalizzati).",
       ],
       bullets: [
         "Usa la ricerca per nome, cognome, CF o email.",
-        "Apri il dettaglio dipendente per aggiornare i dati completi.",
+        "Importa dipendenti da file Excel/CSV con scelta formato standard o personalizzato.",
+        "Esporta in Excel (.xlsx) o CSV (.csv) con scelta formato.",
+        "Il dettaglio dipendente mostra i campi personalizzati in una sezione dedicata con sfondo ambra.",
         "Verifica sempre i messaggi di validazione prima del salvataggio.",
       ],
       mockupKind: "employees",
@@ -1317,6 +1407,123 @@ function getAdminExtraSections(): GuideSection[] {
       note: "Il Super Admin ha accesso completo e non può essere modificato o eliminato. Deve sempre esistere almeno un Super Admin.",
       mockupKind: "admin-roles",
     }),
+    createSection({
+      id: "admin-amministratori",
+      title: "Gestione Amministratori",
+      icon: UserCog,
+      intro: "Gestisci gli account amministratore del portale: crea, modifica, sospendi, resetta password. I Super Admin sono visibili solo ad altri Super Admin.",
+      paragraphs: [
+        "La pagina Amministratori mostra solo gli utenti con ruolo Admin. I non-Super Admin non vedono i Super Admin nella lista.",
+        "Ogni azione e protetta: non puoi modificare il tuo ruolo, sospendere te stesso o eliminare l'ultimo Super Admin.",
+      ],
+      bullets: [
+        "Crea un nuovo amministratore con email, nome e ruolo assegnato.",
+        "Modifica nome, email e ruolo admin tramite il modale di modifica rapida.",
+        "Reset password: genera una nuova password temporanea e la invia via email.",
+        "Sblocca account: resetta i tentativi di login falliti.",
+        "Sospendi un admin per impedirgli l'accesso (reversibile con Riattiva).",
+        "Elimina un admin definitivamente (richiede conferma con email).",
+        "Filtra per ruolo admin (Super Admin, Segreteria, ecc.) e stato (Attivo, Sospeso, Bloccato).",
+      ],
+      note: "Le azioni su un Super Admin sono consentite solo ad altri Super Admin. Nessuno puo modificare il proprio ruolo o sospendere se stesso.",
+      mockupKind: "admin-amministratori",
+    }),
+    createSection({
+      id: "admin-campi-personalizzati",
+      title: "Campi Personalizzati Anagrafiche",
+      icon: Settings,
+      intro: "Configura colonne aggiuntive nelle anagrafiche dei dipendenti, specifiche per ciascun cliente. I campi si integrano automaticamente nel foglio, nell'import e nell'export.",
+      paragraphs: [
+        "Dalla pagina dettaglio del cliente, attiva la sezione Campi Personalizzati. Una volta attivi, il foglio anagrafiche mostra solo CF, Nome, Cognome e le colonne custom.",
+        "Ogni campo puo mappare un campo standard del dipendente (es. Email, Mansione) o essere completamente personalizzato. I dati custom vengono salvati nel campo JSON del dipendente.",
+      ],
+      bullets: [
+        "Attiva/disattiva i campi personalizzati per ogni cliente separatamente.",
+        "5 tipi di campo: Testo, Numero, Data, Selezione (dropdown), Email.",
+        "Importa campi da un template Excel del cliente: il sistema riconosce automaticamente le colonne.",
+        "Riordina i campi con le frecce su/giu per definire l'ordine delle colonne.",
+        "I dati non vengono eliminati disattivando i campi — tornano visibili riattivandoli.",
+        "Il template scaricabile riflette esattamente i campi configurati con asterisco sui campi obbligatori.",
+      ],
+      note: "In modalita personalizzata, solo i campi marcati come obbligatori vengono validati durante l'import. Nome, Cognome e Codice Fiscale diventano opzionali.",
+      mockupKind: "admin-custom-fields",
+    }),
+    createSection({
+      id: "admin-import-export",
+      title: "Import/Export Dipendenti",
+      icon: FileSpreadsheet,
+      intro: "Importa ed esporta anagrafiche dipendenti in formato Excel (.xlsx) o CSV (.csv), con supporto per campi personalizzati e mappatura colonne intelligente.",
+      paragraphs: [
+        "L'import riconosce automaticamente le colonne del file grazie a un sistema di alias: 'CF', 'Codice Fiscale' e 'codice_fiscale' vengono tutti mappati correttamente.",
+        "L'export offre due formati: Standard (21 colonne fisse) e Formato Cliente (solo le colonne personalizzate configurate).",
+      ],
+      bullets: [
+        "Import: scegli tra formato standard (20 campi) o personalizzato (campi del cliente).",
+        "Mappatura colonne: il sistema propone la corrispondenza automatica con possibilita di correzione manuale.",
+        "Anteprima: visualizza i primi dati prima di confermare l'import.",
+        "Export Excel (.xlsx) o CSV (.csv) con BOM UTF-8 per compatibilita accenti.",
+        "Template scaricabile: genera un file con le colonne corrette per il formato scelto.",
+        "I duplicati (codice fiscale gia esistente) vengono automaticamente saltati.",
+      ],
+      mockupKind: "admin-import-export",
+    }),
+    createSection({
+      id: "admin-cv-dpr445",
+      title: "CV DPR 445/2000",
+      icon: ClipboardCheck,
+      intro: "Gestisci la raccolta del Curriculum Vitae ai sensi del DPR 445/2000 per i docenti. Richiedi la compilazione, revisiona i documenti e approva o rifiuta.",
+      paragraphs: [
+        "Il CV DPR 445 e un documento ufficiale richiesto ai formatori in materia di sicurezza. L'admin puo richiedere la compilazione singolarmente o in massa a tutti i docenti.",
+        "Il docente scarica il template PDF, lo compila, lo ricarica e compila il form digitale con criteri, aree tematiche e abilitazioni. L'admin revisiona e approva o rifiuta con motivazione.",
+      ],
+      bullets: [
+        "Richiesta singola: dalla tab 'CV DPR 445' nel dettaglio docente.",
+        "Richiesta massiva: bottone 'Richiedi CV DPR 445' nella lista docenti.",
+        "Colonna 'CV 445' nella lista docenti con badge stato (Richiesto, Inviato, Approvato, Rifiutato).",
+        "Azione rapida nel menu del docente: Richiedi CV / Invia reminder / Revisiona.",
+        "Approvazione o rifiuto con motivazione obbligatoria.",
+        "Email automatiche al docente per ogni cambio di stato.",
+        "Reminder automatico via cron per scadenze imminenti.",
+      ],
+      note: "Il docente puo salvare una bozza e completare in un secondo momento. Dopo il rifiuto, i dati precedenti sono precompilati per facilitare la correzione.",
+      mockupKind: "admin-cv-dpr445",
+    }),
+    createSection({
+      id: "admin-integrita-docenti",
+      title: "Integrita Docenti",
+      icon: AlertTriangle,
+      intro: "Rileva e risolvi inconsistenze nei dati dei docenti: docenti con status Attivo ma senza account utente associato.",
+      paragraphs: [
+        "Un docente 'attivo senza account' non puo accedere al portale ne essere impersonato. La causa tipica e una registrazione incompleta o un account eliminato.",
+      ],
+      bullets: [
+        "Banner di avviso automatico nella lista docenti quando ci sono inconsistenze.",
+        "Filtro 'Con problemi' per visualizzare solo i docenti con inconsistenza.",
+        "Badge ⚠ accanto allo stato del docente nella lista.",
+        "Due opzioni di fix: 'Resetta e invia invito' (riporta a Inattivo) o 'Crea account manualmente' (crea utente con password temporanea).",
+        "Fix massivo: resetta tutti i docenti inconsistenti a Inattivo con un click.",
+        "Cron job giornaliero che rileva e corregge automaticamente le inconsistenze.",
+      ],
+      mockupKind: "admin-integrity",
+    }),
+    createSection({
+      id: "admin-integrazioni-ai",
+      title: "Integrazioni AI",
+      icon: Sparkles,
+      intro: "Configura l'integrazione con OpenRouter per le funzionalita AI del portale: import CV da PDF, suggerimenti automatici.",
+      paragraphs: [
+        "La configurazione e interamente da interfaccia, senza variabili d'ambiente. La API key viene salvata crittografata nel database.",
+      ],
+      bullets: [
+        "Configura la API key OpenRouter dalla pagina Integrazioni AI.",
+        "Seleziona il modello AI da utilizzare (es. Llama, Mistral, ecc.).",
+        "Testa la connessione prima di salvare la configurazione.",
+        "Consulta il log delle chiamate AI con dettaglio token e durata.",
+        "Abilita/disabilita l'AI senza eliminare la configurazione.",
+      ],
+      note: "L'AI e usata per l'import CV da PDF nella registrazione docente e nel profilo.",
+      mockupKind: "admin-ai",
+    }),
   ];
 }
 
@@ -1460,6 +1667,26 @@ function getTeacherSections(): GuideSection[] {
       ],
       note: "Le 8 sezioni: Esperienze, Formazione, Lingue, Certificazioni, Competenze tecniche, Corsi frequentati, Esperienza docente, Pubblicazioni.",
       mockupKind: "teacher-cv",
+    }),
+    createSection({
+      id: "teacher-cv-dpr445",
+      title: "CV DPR 445/2000",
+      icon: ClipboardCheck,
+      intro: "Il CV DPR 445/2000 e il Curriculum Vitae ai sensi del DPR 445/2000 richiesto per i formatori in materia di salute e sicurezza sul lavoro.",
+      paragraphs: [
+        "Quando richiesto dall'amministrazione, troverai un avviso nella dashboard e un badge nella sidebar. La pagina di compilazione ti guida attraverso tutte le sezioni del documento.",
+        "Puoi salvare una bozza e completare in un secondo momento. Una volta inviato, il CV verra revisionato dall'amministrazione che potra approvarlo o richiedere correzioni.",
+      ],
+      bullets: [
+        "Vai nella sezione 'CV DPR 445' dal menu laterale.",
+        "Scarica il template PDF vuoto e compilalo (a mano o con un editor PDF).",
+        "Carica il PDF compilato nella pagina.",
+        "Compila il form con le informazioni principali: criterio formatore, aree tematiche, abilitazioni.",
+        "Clicca 'Invia CV' per inviare il documento all'amministrazione.",
+        "Se il CV viene rifiutato, potrai ricompilarlo con i dati precedenti gia precompilati.",
+      ],
+      note: "Il consenso privacy e obbligatorio per l'invio. Il PDF caricato e i dati del form vengono conservati nel portale.",
+      mockupKind: "teacher-cv-dpr445",
     }),
     createSection({
       id: "teacher-supporto",

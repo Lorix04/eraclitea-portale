@@ -20,6 +20,8 @@ model User {
   adminRoleId  String?
   adminRole    AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
   isActive     Boolean   @default(true)
+  suspendedAt  DateTime?
+  suspendedById String?
   mustChangePassword Boolean @default(false)
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
@@ -61,6 +63,14 @@ enum Role {
   ADMIN
   CLIENT
   TEACHER
+}
+
+enum CvDpr445Status {
+  NOT_REQUESTED
+  REQUESTED
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 enum TeacherStatus {
@@ -269,6 +279,7 @@ model Teacher {
   trainingCourses       TeacherTrainingCourse[]
   teachingExperiences   TeacherTeachingExperience[]
   publications          TeacherPublication[]
+  cvDpr445              TeacherCvDpr445?
 }
 
 model TeacherAssignment {
@@ -636,6 +647,10 @@ enum NotificationType {
   MATERIAL_UPLOADED
   MATERIAL_APPROVED
   MATERIAL_REJECTED
+  CV_DPR445_REQUEST
+  CV_DPR445_REMINDER
+  CV_DPR445_APPROVED
+  CV_DPR445_REJECTED
 }
 
 enum TicketStatus {
@@ -910,6 +925,73 @@ model TeacherPublication {
   updatedAt   DateTime  @updatedAt
 
   @@index([teacherId])
+}
+
+// ── CV DPR 445/2000 ──────────────────────────────────────────
+
+model TeacherCvDpr445 {
+  id                String         @id @default(cuid())
+  teacherId         String         @unique
+  teacher           Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Workflow
+  status            CvDpr445Status @default(NOT_REQUESTED)
+  requestedAt       DateTime?
+  requestedById     String?
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+  reviewedById      String?
+  rejectionReason   String?
+  deadline          DateTime?
+  reminderSentAt    DateTime?
+
+  // File PDF
+  filePath          String?
+  fileName          String?
+  fileSize          Int?
+
+  // Form — Criteri qualificazione formatore
+  prerequisitoTitoloStudio    String?
+  criterioSelezionato         Int?
+  criterioSpecifica           String?
+
+  // Form — Aree tematiche
+  areeTematiche               String[]  @default([])
+  documentazioneProbante      String[]  @default([])
+
+  // Form — Qualifiche aggiuntive
+  dataConseguimentoQualifica      DateTime?
+  dataAggiornamentoQualifica      DateTime?
+  modalitaAggiornamento           String?
+  responsabileProgettoFormativo   Boolean   @default(false)
+  docRespProgettoFormativo        String[]  @default([])
+
+  // Form — Abilitazioni speciali
+  abilitazioneAttrezzature        Boolean @default(false)
+  attrezzatureTeoriche            String[] @default([])
+  attrezzaturePratiche            String[] @default([])
+  abilitazioneAmbientiConfinati   Boolean @default(false)
+  ambientiConfinatiTipo           String?
+  abilitazionePonteggi            Boolean @default(false)
+  abilitazioneFuni                Boolean @default(false)
+  abilitazioneSegnaleticaStradale Boolean @default(false)
+  abilitazioneAntincendio         Boolean @default(false)
+  antincendioIpotesi              String?
+  abilitazioneDiisocianati        Boolean @default(false)
+  corsiDiisocianati               Json?
+  abilitazioneHACCP               Boolean @default(false)
+  abilitazionePrimoSoccorso       Boolean @default(false)
+  primoSoccorsoTipo               String[] @default([])
+  abilitazionePESPAVPEI           Boolean @default(false)
+
+  // Consenso
+  consensoPrivacy                 Boolean @default(false)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([status])
 }
 
 model AiConfig {

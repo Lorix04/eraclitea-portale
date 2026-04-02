@@ -381,7 +381,7 @@ export default function ComeFunzionaPage() {
                         <td className="px-3 py-2">Giulia</td>
                         <td className="px-3 py-2">Rossi</td>
                         <td className="px-3 py-2 font-mono text-[11px]">RSSGLI90A41H501Y</td>
-                        <td className="px-3 py-2">giulia@azienda.it</td>
+                        <td className="px-3 py-2">giulia@esempio.it</td>
                         <td className="px-3 py-2">CT</td>
                         <td className="px-3 py-2">Sicilia</td>
                       </tr>
@@ -389,7 +389,7 @@ export default function ComeFunzionaPage() {
                         <td className="px-3 py-2">Marco</td>
                         <td className="px-3 py-2">Bianchi</td>
                         <td className="px-3 py-2 bg-red-50 text-red-600">CF non valido</td>
-                        <td className="px-3 py-2">marco@azienda.it</td>
+                        <td className="px-3 py-2">marco@esempio.it</td>
                         <td className="px-3 py-2">MI</td>
                         <td className="px-3 py-2">Lombardia</td>
                       </tr>
@@ -423,7 +423,7 @@ export default function ComeFunzionaPage() {
                         <td className="px-3 py-2">Elena</td>
                         <td className="px-3 py-2">Conti</td>
                         <td className="px-3 py-2 font-mono text-[11px]">CNTLNE88C51F205R</td>
-                        <td className="px-3 py-2">elena@azienda.it</td>
+                        <td className="px-3 py-2">elena@esempio.it</td>
                         <td className="px-3 py-2 text-right text-blue-600">Dettaglio</td>
                       </tr>
                     </tbody>
@@ -714,7 +714,7 @@ export default function ComeFunzionaPage() {
       <footer className="border-t border-gray-200 py-8 dark:border-white/10">
         <div className="mx-auto w-full max-w-7xl px-4 text-center sm:px-6">
           <div className="mb-3 flex items-center justify-center gap-2">
-            <Image src="/icons/i-down-remove.png" alt="" width={20} height={20} />
+            <Image src="/icons/apple-touch-icon.png" alt="" width={20} height={20} />
             <span className="text-sm tracking-wider text-gray-600 dark:text-white/60">SAPIENTA</span>
           </div>
           <p className="text-xs text-gray-500 dark:text-white/40">

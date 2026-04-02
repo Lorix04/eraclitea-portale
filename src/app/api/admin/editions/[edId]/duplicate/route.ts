@@ -43,6 +43,9 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!checkApiPermission(session, "edizioni", "view")) {
+      return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+    }
 
     const original = await prisma.courseEdition.findUnique({
       where: { id: context.params.edId },

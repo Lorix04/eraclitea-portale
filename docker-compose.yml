@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-portale}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-portale_formazione}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-portale}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@db:5432/${POSTGRES_DB:-portale_formazione}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - SMTP_HOST=${SMTP_HOST:-}

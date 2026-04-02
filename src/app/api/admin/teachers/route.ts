@@ -143,6 +143,7 @@ export async function GET(request: Request) {
           orderBy: { name: "asc" },
         },
         _count: { select: { assignments: true } },
+        cvDpr445: { select: { status: true } },
         assignments:
           includeAssignments === "true"
             ? {
@@ -181,7 +182,19 @@ export async function GET(request: Request) {
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
-    return NextResponse.json({ data: teachers });
+    const enriched = teachers.map((t) => ({
+      ...t,
+      hasIntegrityIssue:
+        (t.status === "ACTIVE" || t.status === "ONBOARDING") && !t.userId,
+      integrityIssue:
+        (t.status === "ACTIVE" || t.status === "ONBOARDING") && !t.userId
+          ? "ACTIVE_WITHOUT_USER"
+          : null,
+    }));
+
+    const integrityIssues = enriched.filter((t) => t.hasIntegrityIssue).length;
+
+    return NextResponse.json({ data: enriched, integrityIssues });
   } catch (error) {
     console.error("[ADMIN_TEACHERS_GET] Error:", error);
     return NextResponse.json(

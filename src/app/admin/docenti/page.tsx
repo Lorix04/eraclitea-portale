@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ClipboardCheck,
+  ClipboardList,
   Eye,
   GraduationCap,
   LogIn,
@@ -24,6 +26,8 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import BulkCvDpr445Modal from "@/components/admin/BulkCvDpr445Modal";
+import RequestCvDpr445Modal from "@/components/admin/RequestCvDpr445Modal";
 
 type TeacherRow = TeacherFormValue & {
   _count?: { assignments?: number };
@@ -34,7 +38,7 @@ type CategoryOption = {
   name: string;
 };
 
-type StatusFilter = "all" | "ACTIVE" | "PENDING" | "ONBOARDING" | "INACTIVE" | "SUSPENDED";
+type StatusFilter = "all" | "ACTIVE" | "PENDING" | "ONBOARDING" | "INACTIVE" | "SUSPENDED" | "integrity";
 
 type TeacherFilters = {
   search: string;
@@ -62,10 +66,12 @@ function normalizeText(value: string) {
     .trim();
 }
 
-async function fetchTeachers(filters: TeacherFilters) {
+type TeachersResult = { teachers: TeacherRow[]; integrityIssues: number };
+
+async function fetchTeachers(filters: TeacherFilters): Promise<TeachersResult> {
   const params = new URLSearchParams();
   if (filters.search.trim()) params.set("search", filters.search.trim());
-  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.status !== "all" && filters.status !== "integrity") params.set("status", filters.status);
   if (filters.categoryId) params.set("categoryId", filters.categoryId);
   if (filters.province) params.set("province", filters.province);
   if (filters.region) params.set("region", filters.region);
@@ -75,7 +81,10 @@ async function fetchTeachers(filters: TeacherFilters) {
     throw new Error("Errore caricamento docenti");
   }
   const json = await response.json();
-  return parseTeacherRows(json);
+  return {
+    teachers: parseTeacherRows(json),
+    integrityIssues: (json as any)?.integrityIssues ?? 0,
+  };
 }
 
 async function fetchCategories() {
@@ -104,6 +113,8 @@ export default function AdminDocentiPage() {
   const [provinceFilterQuery, setProvinceFilterQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [bulkCvModalOpen, setBulkCvModalOpen] = useState(false);
+  const [cvRequestTeacher, setCvRequestTeacher] = useState<TeacherRow | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null);
   const [invitingTeacherId, setInvitingTeacherId] = useState<string | null>(null);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
@@ -140,7 +151,15 @@ export default function AdminDocentiPage() {
     retry: false,
   });
 
-  const teachers = useMemo(() => teachersQuery.data ?? [], [teachersQuery.data]);
+  const allTeachers = useMemo(() => teachersQuery.data?.teachers ?? [], [teachersQuery.data]);
+  const integrityIssues = teachersQuery.data?.integrityIssues ?? 0;
+  const teachers = useMemo(
+    () =>
+      statusFilter === "integrity"
+        ? allTeachers.filter((t: any) => t.hasIntegrityIssue)
+        : allTeachers,
+    [allTeachers, statusFilter]
+  );
   const categories = useMemo(
     () => categoriesQuery.data ?? [],
     [categoriesQuery.data]
@@ -337,19 +356,31 @@ export default function AdminDocentiPage() {
             </p>
           )}
         </div>
-        {can("docenti", "create") ? (
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-            onClick={() => {
-              setEditingTeacher(null);
-              setModalOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nuovo Docente
-          </button>
-        ) : null}
+        <div className="flex gap-2">
+          {can("docenti", "edit") ? (
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm hover:bg-muted"
+              onClick={() => setBulkCvModalOpen(true)}
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Richiedi CV DPR 445
+            </button>
+          ) : null}
+          {can("docenti", "create") ? (
+            <button
+              type="button"
+              className="inline-flex min-h-[44px] items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+              onClick={() => {
+                setEditingTeacher(null);
+                setModalOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nuovo Docente
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <MobileFilterPanel
@@ -382,6 +413,9 @@ export default function AdminDocentiPage() {
             <option value="ONBOARDING">In corso</option>
             <option value="INACTIVE">Non attivo</option>
             <option value="SUSPENDED">Sospeso</option>
+            {integrityIssues > 0 && (
+              <option value="integrity">Con problemi ({integrityIssues})</option>
+            )}
           </select>
 
           <label className="flex w-full md:min-w-[180px] md:w-auto flex-col gap-1 text-xs text-muted-foreground">
@@ -436,6 +470,48 @@ export default function AdminDocentiPage() {
           </label>
         </div>
       </MobileFilterPanel>
+
+      {/* Integrity banner */}
+      {integrityIssues > 0 && statusFilter !== "integrity" && (
+        <div className="rounded-lg border border-amber-400 bg-amber-50 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-700">
+                Problemi di integrita rilevati
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {integrityIssues} docent{integrityIssues === 1 ? "e risulta attivo" : "i risultano attivi"} ma senza account utente associato.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStatusFilter("integrity")}
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+              >
+                Mostra
+              </button>
+              <button
+                onClick={async () => {
+                  const res = await fetch("/api/admin/docenti/fix-integrity-bulk", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok) {
+                    toast.success(`${json.fixed} docent${json.fixed === 1 ? "e resettato" : "i resettati"} a Inattivo`);
+                    teachersQuery.refetch();
+                  } else {
+                    toast.error(json.error || "Errore");
+                  }
+                }}
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
+              >
+                Ripara tutti
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {teachersQuery.isError ? (
         <ErrorMessage
@@ -523,11 +599,33 @@ export default function AdminDocentiPage() {
             render: (t) => t._count?.assignments ?? 0,
           },
           {
+            key: "cvDpr445",
+            header: "CV 445",
+            isBadge: true,
+            render: (t) => {
+              const cvStatus = (t as any).cvDpr445?.status as string | undefined;
+              const cvCfg: Record<string, { cls: string; label: string }> = {
+                NOT_REQUESTED: { cls: "bg-gray-100 text-gray-500", label: "\u2014" },
+                REQUESTED: { cls: "bg-amber-100 text-amber-700", label: "Richiesto" },
+                SUBMITTED: { cls: "bg-blue-100 text-blue-700", label: "Inviato" },
+                APPROVED: { cls: "bg-emerald-100 text-emerald-700", label: "Approvato" },
+                REJECTED: { cls: "bg-red-100 text-red-700", label: "Rifiutato" },
+              };
+              const { cls, label } = cvCfg[cvStatus ?? ""] ?? cvCfg.NOT_REQUESTED;
+              return (
+                <span className={`rounded-full px-2 py-0.5 text-xs ${cls}`}>
+                  {label}
+                </span>
+              );
+            },
+          },
+          {
             key: "status",
             header: "Stato",
             isBadge: true,
             render: (t) => {
               const s = (t as any).status as string | undefined;
+              const hasIssue = (t as any).hasIntegrityIssue;
               const cfg: Record<string, { cls: string; label: string }> = {
                 ACTIVE: { cls: "bg-emerald-100 text-emerald-700", label: "Attivo" },
                 PENDING: { cls: "bg-amber-100 text-amber-700", label: "In attesa" },
@@ -536,6 +634,13 @@ export default function AdminDocentiPage() {
                 SUSPENDED: { cls: "bg-red-100 text-red-700", label: "Sospeso" },
               };
               const { cls, label } = cfg[s ?? ""] ?? (t.active ? cfg.ACTIVE : cfg.INACTIVE);
+              if (hasIssue) {
+                return (
+                  <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700" title="Attivo ma senza account utente">
+                    {label} ⚠
+                  </span>
+                );
+              }
               return (
                 <span className={`rounded-full px-2 py-1 text-xs ${cls}`}>
                   {label}
@@ -551,36 +656,19 @@ export default function AdminDocentiPage() {
         emptyMessage="Nessun docente trovato."
         actions={(teacher) => (
           <ActionMenu
-            primaryAction={
-              (teacher as any).status === "ACTIVE" && can("docenti", "impersonate")
-                ? {
-                    key: "impersonate",
-                    label: "Accedi come",
-                    icon: LogIn,
-                    variant: "info",
-                    onClick: () => handleImpersonate(teacher),
-                    disabled: impersonatingId === teacher.id,
-                  }
-                : {
-                    key: "view",
-                    label: "Visualizza",
-                    icon: Eye,
-                    variant: "info",
-                    href: `/admin/docenti/${teacher.id}`,
-                    shortcutKey: "o",
-                  }
-            }
+            primaryAction={{
+              key: "view",
+              label: "Visualizza",
+              icon: Eye,
+              variant: "info",
+              href: `/admin/docenti/${teacher.id}`,
+              shortcutKey: "o",
+            }}
             secondaryActions={(() => {
               const s = (teacher as any).status as string;
+              const hasUser = !!(teacher as any).userId;
+              const hasIssue = (teacher as any).hasIntegrityIssue;
               const actions = [
-                {
-                  key: "view",
-                  label: "Visualizza",
-                  icon: Eye,
-                  variant: "default" as const,
-                  href: `/admin/docenti/${teacher.id}`,
-                  hidden: s !== "ACTIVE",
-                },
                 ...(can("docenti", "edit") ? [{
                   key: "edit",
                   label: "Modifica",
@@ -591,6 +679,65 @@ export default function AdminDocentiPage() {
                     setModalOpen(true);
                   },
                   shortcutKey: "e",
+                }] : []),
+                // CV DPR 445 (only for ACTIVE teachers)
+                ...(() => {
+                  if (s !== "ACTIVE" || !can("docenti", "edit")) return [];
+                  const cvStatus = (teacher as any).cvDpr445?.status as string | undefined;
+                  if (cvStatus === "APPROVED") return [];
+                  if (cvStatus === "SUBMITTED") return [{
+                    key: "cv-dpr445-review",
+                    label: "Revisiona CV 445",
+                    icon: ClipboardCheck,
+                    variant: "info" as const,
+                    href: `/admin/docenti/${teacher.id}`,
+                    onClick: () => {},
+                  }];
+                  if (cvStatus === "REQUESTED") return [{
+                    key: "cv-dpr445-reminder",
+                    label: "Invia reminder CV 445",
+                    icon: ClipboardCheck,
+                    variant: "default" as const,
+                    onClick: async () => {
+                      const res = await fetch(`/api/admin/docenti/${teacher.id}/cv-dpr445`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "reminder" }),
+                      });
+                      const json = await res.json().catch(() => ({}));
+                      if (res.ok) {
+                        toast.success("Reminder inviato");
+                        teachersQuery.refetch();
+                      } else {
+                        toast.error(json.error || "Errore");
+                      }
+                    },
+                  }];
+                  // NOT_REQUESTED or REJECTED
+                  return [{
+                    key: "cv-dpr445-request",
+                    label: cvStatus === "REJECTED" ? "Richiedi nuovo CV 445" : "Richiedi CV 445",
+                    icon: ClipboardCheck,
+                    variant: "info" as const,
+                    onClick: () => setCvRequestTeacher(teacher),
+                  }];
+                })(),
+                // ACTIVE with User: Accedi come
+                ...(s === "ACTIVE" && hasUser && can("docenti", "impersonate") ? [{
+                  key: "impersonate",
+                  label: "Accedi come",
+                  icon: LogIn,
+                  variant: "info" as const,
+                  onClick: () => handleImpersonate(teacher),
+                  disabled: impersonatingId === teacher.id,
+                }] : []),
+                // Integrity issue: Ripara account
+                ...(hasIssue && can("docenti", "edit") ? [{
+                  key: "fix-integrity",
+                  label: "Ripara account",
+                  icon: UserCheck,
+                  variant: "warning" as const,
+                  href: `/admin/docenti/${teacher.id}`,
                 }] : []),
                 // INACTIVE: Invia invito
                 ...(can("docenti", "invite") ? [{
@@ -680,6 +827,31 @@ export default function AdminDocentiPage() {
           await teachersQuery.refetch();
         }}
       />
+
+      <BulkCvDpr445Modal
+        open={bulkCvModalOpen}
+        onClose={() => setBulkCvModalOpen(false)}
+        onSent={() => teachersQuery.refetch()}
+        counts={{
+          withoutCv: teachers.filter(
+            (t) => !(t as any).cvDpr445
+          ).length,
+          withoutApproved: teachers.filter(
+            (t) => (t as any).cvDpr445?.status !== "APPROVED"
+          ).length,
+        }}
+      />
+
+      {cvRequestTeacher && (
+        <RequestCvDpr445Modal
+          open={!!cvRequestTeacher}
+          teacherId={cvRequestTeacher.id!}
+          teacherName={`${cvRequestTeacher.firstName} ${cvRequestTeacher.lastName}`}
+          teacherEmail={cvRequestTeacher.email ?? null}
+          onClose={() => setCvRequestTeacher(null)}
+          onSuccess={() => teachersQuery.refetch()}
+        />
+      )}
     </div>
   );
 }

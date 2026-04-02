@@ -181,6 +181,14 @@ export async function DELETE(
     );
   }
 
+  // Cannot delete a Super Admin unless you are Super Admin
+  if (user.adminRole?.isSystem && !session.user.isSuperAdmin) {
+    return NextResponse.json(
+      { error: "Solo un Super Admin puo eliminare un altro Super Admin" },
+      { status: 403 }
+    );
+  }
+
   // Cannot delete the last Super Admin
   if (user.adminRole?.isSystem) {
     const superAdminCount = await prisma.user.count({
@@ -252,36 +260,38 @@ export async function PATCH(
   if (check instanceof NextResponse) return check;
   const { session } = check;
 
-  let body: { action?: string; name?: string } = {};
+  let body: { action?: string; name?: string; email?: string; adminRoleId?: string | null } = {};
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Body non valido" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
 
   const targetId = context.params.id;
   const user = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { id: true, email: true },
+    select: { id: true, email: true, adminRole: { select: { isSystem: true } } },
   });
 
   if (!user) {
+    return NextResponse.json({ error: "Utente non trovato" }, { status: 404 });
+  }
+
+  const isSelf = targetId === session.user.id;
+  const targetIsSuperAdmin = user.adminRole?.isSystem === true;
+
+  // Non-Super Admin cannot modify Super Admins
+  if (targetIsSuperAdmin && !session.user.isSuperAdmin) {
     return NextResponse.json(
-      { error: "Utente non trovato" },
-      { status: 404 }
+      { error: "Solo un Super Admin puo modificare un altro Super Admin" },
+      { status: 403 }
     );
   }
 
   if (body.action === "unlock") {
     await prisma.user.update({
       where: { id: targetId },
-      data: {
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
     });
     await logAudit({
       userId: session.user.id,
@@ -301,7 +311,54 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   }
 
+  if (body.action === "edit") {
+    const check2 = await requirePermission("amministratori", "edit");
+    if (check2 instanceof NextResponse) return check2;
+
+    const data: any = {};
+    if (body.name !== undefined) data.name = body.name?.trim() || null;
+    if (body.email !== undefined) {
+      const emailLower = body.email.trim().toLowerCase();
+      if (emailLower !== user.email.toLowerCase()) {
+        const existing = await prisma.user.findFirst({
+          where: { email: { equals: emailLower, mode: "insensitive" }, NOT: { id: targetId } },
+        });
+        if (existing) {
+          return NextResponse.json({ error: "Email gia in uso" }, { status: 409 });
+        }
+        data.email = emailLower;
+      }
+    }
+    if (body.adminRoleId !== undefined) {
+      if (isSelf) {
+        return NextResponse.json({ error: "Non puoi modificare il tuo ruolo" }, { status: 400 });
+      }
+      if (body.adminRoleId) {
+        const newRole = await prisma.adminRole.findUnique({ where: { id: body.adminRoleId }, select: { isSystem: true } });
+        if (newRole?.isSystem && !session.user.isSuperAdmin) {
+          return NextResponse.json({ error: "Solo un Super Admin puo assegnare il ruolo Super Admin" }, { status: 403 });
+        }
+      }
+      data.adminRoleId = body.adminRoleId || null;
+    }
+
+    if (Object.keys(data).length > 0) {
+      await prisma.user.update({ where: { id: targetId }, data });
+      await logAudit({
+        userId: session.user.id,
+        action: "ADMIN_EDIT",
+        entityType: "User",
+        entityId: targetId,
+        ipAddress: getClientIP(request),
+      });
+    }
+    return NextResponse.json({ success: true });
+  }
+
   if (body.action === "forcePasswordChange") {
+    if (isSelf) {
+      return NextResponse.json({ error: "Usa la pagina Profilo per cambiare la tua password" }, { status: 400 });
+    }
     await prisma.user.update({
       where: { id: targetId },
       data: { mustChangePassword: true },
@@ -316,8 +373,5 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   }
 
-  return NextResponse.json(
-    { error: "Azione non riconosciuta" },
-    { status: 400 }
-  );
+  return NextResponse.json({ error: "Azione non riconosciuta" }, { status: 400 });
 }

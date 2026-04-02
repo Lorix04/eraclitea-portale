@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Download, RefreshCw, X } from "lucide-react";
 
@@ -130,12 +131,14 @@ export default function MaterialPreviewModal({
                 onError={() => setPreviewError(true)}
               />
             ) : isImage ? (
-              <div className="flex h-full items-center justify-center bg-black/5 p-2">
-                <img
+              <div className="relative flex h-full items-center justify-center bg-black/5 p-2">
+                <Image
                   key={retryKey}
                   src={previewUrl}
                   alt={material.fileName}
-                  className="max-h-full max-w-full object-contain"
+                  fill
+                  unoptimized
+                  className="object-contain"
                   onError={() => setPreviewError(true)}
                 />
               </div>

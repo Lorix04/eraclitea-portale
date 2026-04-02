@@ -1250,7 +1250,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-8 sm:py-12">
       <div className="mb-8">
         <Image
-          src="/icons/sapienta-remove.png"
+          src="/icons/apple-touch-icon.png"
           alt="Sapienta"
           width={180}
           height={48}

@@ -3,6 +3,45 @@ import { withSentryConfig } from "@sentry/nextjs";
 import fs from "node:fs";
 import path from "node:path";
 
+const isProd = process.env.NODE_ENV === "production";
+
+// In production, try without unsafe-eval (Next.js 14 may not need it).
+// In development, unsafe-eval is required for hot reload.
+const scriptSrc = isProd
+  ? "'self' 'unsafe-inline'"
+  : "'self' 'unsafe-inline' 'unsafe-eval'";
+
+const cspValue = [
+  "default-src 'self'",
+  `script-src ${scriptSrc}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+// Report-only CSP: stricter policy for monitoring (logs violations without blocking)
+const cspReportOnly = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   {
@@ -13,25 +52,13 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  { key: "X-XSS-Protection", value: "1; mode=block" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https: blob:",
-      "font-src 'self' data:",
-      "connect-src 'self' https:",
-      "frame-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
-  },
+  { key: "Content-Security-Policy", value: cspValue },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
 ];
 
 const nextConfig = {
   output: 'standalone',
+  poweredByHeader: false,
   reactStrictMode: true,
   images: {
     formats: ["image/avif", "image/webp"],

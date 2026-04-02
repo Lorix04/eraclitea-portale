@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, BookOpen, Calendar, Clock, GraduationCap, MapPin, Users } from "lucide-react";
+import { AlertCircle, BookOpen, Calendar, ChevronRight, Clock, GraduationCap, MapPin, Users } from "lucide-react";
 import TeacherCalendar from "@/components/teacher/TeacherCalendar";
 import { formatItalianDate } from "@/lib/date-utils";
 
@@ -66,6 +66,19 @@ export default function TeacherDashboardPage() {
     fetch("/api/teacher/cv/sync-portal-experience", { method: "POST" }).catch(() => {});
   }, []);
 
+  // CV DPR 445 status for banner
+  const cvDpr445Query = useQuery({
+    queryKey: ["teacher-cv-dpr445-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/teacher/cv-dpr445");
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.data as { status: string; deadline: string | null } | null;
+    },
+    staleTime: 60_000,
+  });
+  const cvDpr445 = cvDpr445Query.data;
+
   const stats = dashboardQuery.data;
   const nextLessons = stats?.nextLessons ?? [];
   const pendingAttendances = stats?.pendingAttendances ?? [];
@@ -81,6 +94,41 @@ export default function TeacherDashboardPage() {
           Panoramica delle tue attivita come docente.
         </p>
       </div>
+
+      {/* CV DPR 445 banner */}
+      {cvDpr445?.status === "REQUESTED" && (() => {
+        const dl = cvDpr445.deadline ? new Date(cvDpr445.deadline) : null;
+        const daysLeft = dl ? Math.ceil((dl.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+        const isOverdue = daysLeft !== null && daysLeft < 0;
+        const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+        return (
+          <div className={`rounded-lg border p-4 ${isOverdue ? "border-red-300 bg-red-50" : isUrgent ? "border-amber-300 bg-amber-50" : "border-amber-200 bg-amber-50/50"}`}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className={`text-sm font-semibold ${isOverdue ? "text-red-700" : "text-amber-700"}`}>
+                  {isOverdue ? "Scadenza superata!" : "Richiesta compilazione CV DPR 445/2000"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Ti e stato richiesto di compilare il Curriculum Vitae ai sensi del DPR 445/2000.
+                </p>
+                {dl && (
+                  <p className={`mt-1 text-xs font-medium ${isOverdue ? "text-red-600" : isUrgent ? "text-amber-600" : "text-muted-foreground"}`}>
+                    {isOverdue
+                      ? `Scadenza: ${dl.toLocaleDateString("it-IT")} (superata)`
+                      : `Scadenza: ${dl.toLocaleDateString("it-IT")} (tra ${daysLeft} giorn${daysLeft === 1 ? "o" : "i"})`}
+                  </p>
+                )}
+              </div>
+              <Link
+                href="/docente/cv-dpr445"
+                className={`inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium text-white ${isOverdue ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}`}
+              >
+                Compila ora <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">

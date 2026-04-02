@@ -46,7 +46,7 @@ export default function TeacherLessonsPage() {
     staleTime: 20_000,
   });
 
-  const lessons = lessonsQuery.data ?? [];
+  const lessons = useMemo(() => lessonsQuery.data ?? [], [lessonsQuery.data]);
 
   // Extract unique courses for filter dropdown
   const courseOptions = useMemo(() => {

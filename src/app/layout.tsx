@@ -39,8 +39,8 @@ export const metadata: Metadata = {
     follow: false,
   },
   icons: {
-    icon: "/icons/sapienta-remove.ico",
-    apple: "/icons/sapienta-remove.png",
+    icon: "/icons/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
 };
