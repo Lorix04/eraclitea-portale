@@ -157,6 +157,17 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Pagina admin: `/admin/integrazioni-ai` con config, test connessione, selezione modello, log
 - Nessuna variabile env necessaria — configurazione da UI admin
 
+### Server Monitor
+- Dashboard: `/admin/server-monitor` — 14 metriche in tempo reale, solo Super Admin
+- Dati host: `scripts/server-status.sh` genera `storage/server-status.json` ogni minuto (cron host)
+- Dati applicazione: query Prisma dirette (email, account, sessioni, CV DPR 445, integrita, conteggi, login admin)
+- API: `GET /api/admin/server-monitor` — combina dati JSON host + query DB
+- Metriche server: CPU/RAM/disco, Docker status, SSL scadenza, Fail2ban, SSH tentativi, backup, cron jobs, spazio upload
+- Metriche app: email (inviate/coda/fallite), account bloccati/sospesi, sessioni attive, conteggi record, ultimi login admin
+- Auto-refresh 60s con countdown, banner stale data, skeleton loading
+- Sezione sicurezza collapsabile: top IP attaccanti, ultimi SSH falliti, ultimi login admin
+- Sidebar: "Server Monitor" nel gruppo Sistema, icona `Monitor`, permesso `status:view`
+
 ### Gestione Amministratori
 - Pagina admin: `/admin/amministratori` — lista solo utenti ADMIN con filtri per ruolo admin, stato (attivo/sospeso/bloccato/cambio password), ricerca
 - Gerarchia Super Admin: non-Super Admin non vedono i Super Admin nella lista; non possono modificare/sospendere/eliminare/resettare password di Super Admin
