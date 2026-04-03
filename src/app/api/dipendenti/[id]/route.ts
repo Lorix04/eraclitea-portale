@@ -59,6 +59,7 @@ const updateSchema = z.object({
   mansione: optionalString(100),
   note: optionalString(500),
   force: z.boolean().optional(),
+  customData: z.record(z.string(), z.any()).optional(),
 });
 
 export async function GET(
@@ -283,6 +284,7 @@ export async function PUT(
         luogoNascita: payload.luogoNascita,
         note: toNullableField(payload.note as string | null | undefined),
         dataNascita: parsedDate,
+        ...(payload.customData !== undefined ? { customData: payload.customData } : {}),
       },
     });
 
