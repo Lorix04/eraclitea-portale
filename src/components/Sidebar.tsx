@@ -17,6 +17,7 @@ import {
   GraduationCap,
   History,
   LayoutDashboard,
+  Monitor,
   LifeBuoy,
   LogOut,
   Mail,
@@ -99,6 +100,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
     label: "Sistema",
     items: [
       { href: "/admin/status", label: "Status", icon: Activity, area: "status" },
+      { href: "/admin/server-monitor", label: "Server Monitor", icon: Monitor, area: "status" },
       { href: "/admin/smtp", label: "SMTP", icon: Mail, area: "smtp" },
       { href: "/admin/integrazioni-ai", label: "Integrazioni AI", icon: Sparkles, area: "integrazioni-ai" },
       { href: "/admin/ruoli", label: "Ruoli e Permessi", icon: ShieldCheck, area: "ruoli" },
