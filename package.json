@@ -11,7 +11,7 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "test:ci": "jest --ci --coverage --maxWorkers=2",
+        "test:ci": "jest --ci --maxWorkers=2",
         "test:e2e": "playwright test",
         "test:e2e:ui": "playwright test --ui",
         "test:e2e:debug": "playwright test --debug",
@@ -87,6 +87,7 @@
         "minimatch": ">=9.0.7",
         "glob": ">=10.4.6",
         "@tootallnate/once": ">=3.0.1",
-        "rollup": ">=4.30.0"
+        "rollup": ">=4.30.0",
+        "test-exclude": ">=7.0.1"
     }
 }
