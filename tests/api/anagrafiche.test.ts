@@ -67,7 +67,12 @@ describe("API /api/anagrafiche", () => {
               nome: "Mario",
               cognome: "Rossi",
               codiceFiscale: "RSSMRA80A01H501U",
+              sesso: "M",
               dataNascita: "invalid-date",
+              luogoNascita: "Roma",
+              email: "mario@test.com",
+              comuneResidenza: "Roma",
+              cap: "00100",
             },
           ],
         }),
@@ -78,7 +83,8 @@ describe("API /api/anagrafiche", () => {
       expect(response.status).toBe(201);
       const data = await response.json();
       expect(data.errors).toBeDefined();
-      expect(data.errors[0].field).toBe("dataNascita");
+      const dateError = data.errors.find((e: any) => e.field === "dataNascita");
+      expect(dateError).toBeDefined();
     });
   });
 });

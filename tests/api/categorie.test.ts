@@ -28,7 +28,7 @@ describe("API /api/admin/categorie", () => {
 
     it("should return categories list for admin", async () => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: "1", role: "ADMIN" },
+        user: { id: "1", role: "ADMIN", isSuperAdmin: true },
       } as any);
 
       const mockCategories = [
@@ -61,7 +61,7 @@ describe("API /api/admin/categorie", () => {
   describe("POST /api/admin/categorie", () => {
     it("should create a new category", async () => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: "1", role: "ADMIN" },
+        user: { id: "1", role: "ADMIN", isSuperAdmin: true },
       } as any);
 
       (prisma.category.findUnique as jest.Mock).mockResolvedValue(null);
@@ -91,7 +91,7 @@ describe("API /api/admin/categorie", () => {
 
     it("should reject duplicate category name", async () => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: "1", role: "ADMIN" },
+        user: { id: "1", role: "ADMIN", isSuperAdmin: true },
       } as any);
 
       (prisma.category.findUnique as jest.Mock).mockResolvedValue({
@@ -113,7 +113,7 @@ describe("API /api/admin/categorie", () => {
 
     it("should reject invalid data", async () => {
       mockGetServerSession.mockResolvedValue({
-        user: { id: "1", role: "ADMIN" },
+        user: { id: "1", role: "ADMIN", isSuperAdmin: true },
       } as any);
 
       const request = new Request("http://localhost/api/admin/categorie", {

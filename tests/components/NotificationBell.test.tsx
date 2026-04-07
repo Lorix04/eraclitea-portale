@@ -1,9 +1,16 @@
 import NotificationBell from "@/components/NotificationBell";
 import { renderWithProviders, mockClientSession, screen, waitFor } from "../utils/test-utils";
+import { useSession } from "next-auth/react";
+
+const mockUseSession = useSession as jest.Mock;
 
 describe("NotificationBell", () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockUseSession.mockReturnValue({
+      data: mockClientSession,
+      status: "authenticated",
+    });
     global.fetch = jest.fn((input: RequestInfo) => {
       const url = input.toString();
       if (url.includes("/api/notifiche/count")) {
