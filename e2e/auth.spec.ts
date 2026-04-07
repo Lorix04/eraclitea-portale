@@ -50,7 +50,7 @@ test.describe("Authentication", () => {
     await page.getByRole("button", { name: /accedi/i }).click();
     await expect(page).not.toHaveURL(/\/login/);
 
-    await page.getByRole("button", { name: /logout/i }).click();
+    await page.getByText(/esci/i).click();
     await expect(page).toHaveURL(/.*login/);
   });
 });

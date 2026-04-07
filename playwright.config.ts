@@ -1,37 +1,45 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: [
-    ["html"],
-    ["json", { outputFile: "test-results/results.json" }],
-  ],
+  fullyParallel: false,
+  forbidOnly: isCI,
+  retries: isCI ? 2 : 0,
+  workers: 1,
+  reporter: isCI ? "github" : "html",
+  timeout: 30000,
+
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
+
   projects: [
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-    {
-      name: "mobile",
-      use: { ...devices["iPhone 13"] },
-    },
+    ...(!isCI
+      ? [
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"] },
+          },
+          {
+            name: "mobile",
+            use: { ...devices["iPhone 13"] },
+          },
+        ]
+      : []),
   ],
+
   webServer: {
-    command: "npm run dev",
+    command: isCI ? "npm run start" : "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !isCI,
+    timeout: 120000,
   },
 });
