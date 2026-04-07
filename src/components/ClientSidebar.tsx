@@ -13,9 +13,11 @@ import {
   LifeBuoy,
   LogOut,
   Users,
+  UsersRound,
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 import { useBranding } from "@/components/BrandingProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 import ClientLogo from "@/components/ui/ClientLogo";
@@ -54,6 +56,8 @@ function isColorDark(hexColor?: string | null): boolean {
 
 export default function ClientSidebar({ onNavigate, className }: ClientSidebarProps) {
   const pathname = usePathname();
+  const { data: sessionData } = useSession();
+  const isOwner = sessionData?.user?.isClientOwner === true;
   const {
     clientName,
     logoUrl,
@@ -112,12 +116,17 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
       </div>
 
       <nav className="flex flex-col">
-        {CLIENT_SECTIONS.map((section, sectionIndex) => (
+        {CLIENT_SECTIONS.map((section, sectionIndex) => {
+          // Add "Amministratori" to the first section for client owners
+          const items = sectionIndex === 0 && isOwner
+            ? [...section, { href: "/amministratori" as const, label: "Amministratori", icon: UsersRound }]
+            : [...section];
+          return (
           <div key={`section-${sectionIndex}`} className="flex flex-col gap-2">
             {sectionIndex > 0 ? (
               <div className="mx-4 my-2 border-t border-white/20" />
             ) : null}
-            {section.map((link) => {
+            {items.map((link) => {
               const Icon = link.icon;
               const isActive =
                 pathname === link.href ||
@@ -151,7 +160,7 @@ export default function ClientSidebar({ onNavigate, className }: ClientSidebarPr
               );
             })}
           </div>
-        ))}
+        ); })}
       </nav>
 
       <div className="mt-auto border-t pt-4" style={{ borderColor: dividerColor }}>

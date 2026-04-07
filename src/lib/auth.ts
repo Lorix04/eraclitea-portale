@@ -14,37 +14,62 @@ export const authOptions: NextAuthOptions = {
       },
     async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error("INVALID_CREDENTIALS");
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email.toLowerCase().trim() },
         });
 
-        if (!user || !user.isActive) {
-          return null;
+        // Email not found → generic (no user enumeration)
+        if (!user) {
+          throw new Error("INVALID_CREDENTIALS");
         }
 
-        // Account lockout check
+        // Account suspended → specific message
+        if (!user.isActive && user.suspendedAt) {
+          throw new Error("ACCOUNT_SUSPENDED");
+        }
+
+        // Account inactive (not suspended) → generic
+        if (!user.isActive) {
+          throw new Error("INVALID_CREDENTIALS");
+        }
+
+        // Account locked → specific message
         if (user.lockedUntil && user.lockedUntil > new Date()) {
-          return null;
+          throw new Error("ACCOUNT_LOCKED");
+        }
+
+        // Expired lock → reset
+        if (user.lockedUntil && user.lockedUntil <= new Date()) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          });
         }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) {
-          // Increment failed attempts and lock if threshold reached
           const newAttempts = user.failedLoginAttempts + 1;
+          const MAX_ATTEMPTS = 5;
+          const LOCK_MINUTES = 15;
+
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              failedLoginAttempts: newAttempts >= 5 ? 0 : newAttempts,
+              failedLoginAttempts: newAttempts >= MAX_ATTEMPTS ? 0 : newAttempts,
               lockedUntil:
-                newAttempts >= 5
-                  ? new Date(Date.now() + 15 * 60 * 1000)
+                newAttempts >= MAX_ATTEMPTS
+                  ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000)
                   : undefined,
             },
           });
-          return null;
+
+          if (newAttempts >= MAX_ATTEMPTS) {
+            throw new Error("ACCOUNT_LOCKED");
+          }
+          throw new Error("INVALID_CREDENTIALS");
         }
 
         // Teacher-specific validation
@@ -53,16 +78,8 @@ export const authOptions: NextAuthOptions = {
             where: { userId: user.id },
           });
 
-          if (!teacher) {
-            return null;
-          }
-
-          if (teacher.status === "INACTIVE" || teacher.status === "SUSPENDED") {
-            return null;
-          }
-
-          if (teacher.status === "PENDING") {
-            return null;
+          if (!teacher || teacher.status === "INACTIVE" || teacher.status === "SUSPENDED" || teacher.status === "PENDING") {
+            throw new Error("INVALID_CREDENTIALS");
           }
         }
 
@@ -95,6 +112,20 @@ export const authOptions: NextAuthOptions = {
         token.mustChangePassword = Boolean((user as any).mustChangePassword);
         token.id = user.id;
         token.name = (user as any).name ?? null;
+
+        // Load client owner data for CLIENT role
+        if (token.role === "CLIENT" && token.clientId) {
+          const clientUser = await prisma.clientUser.findUnique({
+            where: {
+              clientId_userId: {
+                clientId: token.clientId as string,
+                userId: user.id,
+              },
+            },
+            select: { isOwner: true },
+          });
+          token.isClientOwner = clientUser?.isOwner ?? false;
+        }
 
         // Load teacher data for TEACHER role
         if (token.role === "TEACHER") {
@@ -176,6 +207,7 @@ export const authOptions: NextAuthOptions = {
         session.user.adminRoleName = (token.adminRoleName as string | null) ?? null;
         session.user.permissions = token.permissions ?? null;
         session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
+        session.user.isClientOwner = Boolean(token.isClientOwner);
       }
       return session;
     },

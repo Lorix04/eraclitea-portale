@@ -52,9 +52,11 @@ Gestione completa: clienti, corsi, edizioni, lezioni, docenti, dipendenti, attes
 - Pagina guida in-portal (`/admin/guida`) con 29 sezioni
 
 ### Portale Cliente (`/(dashboard)/*`)
-Area cliente: dashboard, corsi, dipendenti, attestati, storico, notifiche, supporto (ticket), profilo, guida.
+Area cliente: dashboard, corsi, dipendenti, attestati, storico, notifiche, supporto (ticket), profilo, utenti, guida.
 - Sidebar fissa brandizzata con logo aziendale
 - SpreadsheetEditor per compilazione anagrafiche (con colonne custom dinamiche)
+- Multi-utente: il proprietario (isOwner) puo invitare altri utenti, gestirli, trasferire la proprieta
+- Pagina utenti (`/utenti`): visibile solo al proprietario, inviti via email con token 7 giorni, limite configurabile
 - Pagina guida in-portal (`/guida`) con 12 sezioni
 
 ### Portale Docente (`/docente/*`)
@@ -71,7 +73,10 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Utenti e Ruoli
 - `User` (ADMIN/CLIENT/TEACHER) — `name` (opzionale), `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
-- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`
+- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`, `maxUsers`, `clientUsers`, `clientInvites`, `clientActivityLogs`
+- `ClientUser` — junction table Client-User: `isOwner` (proprietario), `status` (ACTIVE/INACTIVE/PENDING), `invitedBy`; un client puo avere piu utenti, un utente proprietario gestisce inviti
+- `ClientInvite` — inviti utente client: `token` (unique), `email`, `expiresAt` (7 giorni), `status` (PENDING/ACCEPTED/EXPIRED/REVOKED)
+- `ClientActivityLog` — log attivita client: `action`, `entityType`, `entityId`, `details` (JSON), `ipAddress`
 - `ClientCustomField` — campi personalizzati per cliente: name, label, type (text/number/date/select/email), required, options, sortOrder, `standardField` (mappa a colonna Employee), `columnHeader`
 - `Teacher` — ~40 campi anagrafici, status (INACTIVE/PENDING/ONBOARDING/ACTIVE/SUSPENDED), `userId`, `inviteToken`, province/region, categorie (many-to-many), CV strutturato (8 relazioni)
 
@@ -145,6 +150,18 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Materiali
 - `EditionMaterial` — file caricati per edizione, categorie, ordinamento, `uploadedByRole`, status workflow, `sourceCourseMediaId` (se importato dal corso)
 - `CourseMaterial` — libreria materiali a livello di corso, importabili nelle edizioni come copie indipendenti
+
+### Multi-utente Client
+- `ClientUser` junction table: un client puo avere piu utenti, tutti con accesso ai dati del client via `session.user.clientId` (retrocompatibile con le 29+ API esistenti)
+- Proprietario (isOwner): puo invitare/rimuovere utenti, trasferire proprieta
+- Inviti: `ClientInvite` con token unico, scadenza 7 giorni, email automatica
+- Limite utenti: `Client.maxUsers` (null = illimitato), configurabile dall'admin
+- Log attivita: `ClientActivityLog` traccia azioni utente (CRUD dipendenti, presenze, ticket, ecc.)
+- API client: `GET /api/clienti/utenti`, `POST .../invite`, `POST .../accept-invite`, `DELETE .../[userId]`, `POST .../transfer-ownership`
+- API admin: `GET/POST /api/admin/clienti/[id]/utenti`, `PUT .../max-users`
+- Helper: `src/lib/client-users.ts` — isClientOwner, canAddUser, countClientUsers, logClientActivity
+- Sessione: `session.user.isClientOwner` — caricato nel JWT callback da ClientUser
+- Sidebar client: voce "Utenti" (icona `UsersRound`) visibile solo al proprietario
 
 ### Comunicazione
 - `Ticket`/`TicketMessage` — supporto unificato per client E docenti (`clientId` O `teacherId`)

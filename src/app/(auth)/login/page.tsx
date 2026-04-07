@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { AlertCircle, Clock, Eye, EyeOff, LogIn, ShieldOff } from "lucide-react";
 import AuthLayout from "../AuthLayout";
 
 export default function LoginPage() {
@@ -37,7 +37,14 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Credenziali non valide.");
+      const errMsg = result.error;
+      if (errMsg.includes("ACCOUNT_LOCKED")) {
+        setError("LOCKED");
+      } else if (errMsg.includes("ACCOUNT_SUSPENDED")) {
+        setError("SUSPENDED");
+      } else {
+        setError("INVALID");
+      }
       return;
     }
 
@@ -72,9 +79,20 @@ export default function LoginPage() {
         <p className="text-sm text-gray-500 dark:text-white/40">Inserisci le tue credenziali</p>
       </div>
 
-      {error ? (
-        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-400">
-          {error}
+      {error === "LOCKED" ? (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+          <Clock className="h-4 w-4 shrink-0" />
+          Account temporaneamente bloccato. Riprova piu tardi.
+        </div>
+      ) : error === "SUSPENDED" ? (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+          <ShieldOff className="h-4 w-4 shrink-0" />
+          Account sospeso. Contatta l&apos;amministratore.
+        </div>
+      ) : error ? (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          Credenziali non valide.
         </div>
       ) : null}
 

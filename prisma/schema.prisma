@@ -37,6 +37,8 @@ model User {
   notifications      Notification[]
   teacher            Teacher?
   editionReferents   EditionReferent[]
+  clientUsers        ClientUser[]
+  clientActivityLogs ClientActivityLog[]
 
   // Admin invite fields
   adminInviteToken       String?   @unique
@@ -117,6 +119,76 @@ model Client {
   categories        ClientCategory[]
   hasCustomFields   Boolean            @default(false)
   customFields      ClientCustomField[]
+  maxUsers          Int?
+  clientUsers       ClientUser[]
+  clientInvites     ClientInvite[]
+  clientActivityLogs ClientActivityLog[]
+}
+
+enum ClientUserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model ClientUser {
+  id         String           @id @default(cuid())
+  clientId   String
+  userId     String
+  isOwner    Boolean          @default(false)
+  invitedBy  String?
+  invitedAt  DateTime         @default(now())
+  status     ClientUserStatus @default(ACTIVE)
+
+  client     Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, userId])
+  @@index([clientId])
+  @@index([userId])
+}
+
+model ClientInvite {
+  id         String       @id @default(cuid())
+  clientId   String
+  email      String
+  token      String       @unique @default(cuid())
+  invitedBy  String
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  status     InviteStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+
+  client     Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, email])
+  @@index([token])
+  @@index([email])
+}
+
+model ClientActivityLog {
+  id         String   @id @default(cuid())
+  clientId   String
+  userId     String
+  action     String
+  entityType String?
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@index([clientId, createdAt])
+  @@index([userId])
 }
 
 model Course {

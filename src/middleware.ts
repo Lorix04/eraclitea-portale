@@ -31,7 +31,9 @@ function isClientRoute(pathname: string) {
     pathname.startsWith("/attestati") ||
     pathname.startsWith("/supporto") ||
     pathname.startsWith("/storico") ||
-    pathname.startsWith("/profilo")
+    pathname.startsWith("/profilo") ||
+    pathname === "/amministratori" ||
+    pathname.startsWith("/amministratori/")
   );
 }
 
@@ -320,6 +322,7 @@ export const config = {
     "/supporto/:path*",
     "/storico/:path*",
     "/profilo/:path*",
+    "/amministratori",
     "/guida/:path*",
     "/admin/:path*",
     "/admin/ticket/:path*",

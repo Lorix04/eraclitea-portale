@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 import ClientCustomFieldsConfig from "@/components/admin/ClientCustomFieldsConfig";
+import ClientUsersSection from "@/components/admin/ClientUsersSection";
 import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -384,6 +385,14 @@ export default function AdminClienteDetailPage() {
           <ClientCustomFieldsConfig
             clientId={client.id}
             canEdit={can("clienti", "manage-custom-fields")}
+          />
+        </div>
+
+        {/* Users */}
+        <div className="rounded-lg border bg-card p-5">
+          <ClientUsersSection
+            clientId={client.id}
+            canEdit={can("clienti", "manage-users")}
           />
         </div>
       </div>
