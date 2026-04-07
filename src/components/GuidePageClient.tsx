@@ -896,6 +896,7 @@ function renderMockup(kind: MockupKind): ReactNode {
 
 function getBaseSections(role: GuideRole): GuideSection[] {
   const adminMode = role === "ADMIN";
+  const clientOnly = role === "CLIENT";
   const clientOrAdmin = role === "CLIENT" || role === "ADMIN";
 
   return [
@@ -913,6 +914,8 @@ function getBaseSections(role: GuideRole): GuideSection[] {
         "Inserisci email e password nella pagina di login.",
         "Se richiesto, aggiorna la password prima di proseguire.",
         "Usa Recupera password se non ricordi le credenziali.",
+        "Dopo 5 tentativi errati, l'account viene bloccato temporaneamente per 15 minuti.",
+        "Se l'account e sospeso, contatta l'amministratore del portale.",
       ],
       note: "Mantieni sempre aggiornata la password e non condividerla con terzi.",
       mockupKind: "login",
@@ -1124,6 +1127,61 @@ function getBaseSections(role: GuideRole): GuideSection[] {
       ],
       mockupKind: "profile",
     }),
+    ...(clientOnly
+      ? [
+          createSection({
+            id: "client-amministratori",
+            title: "Gestione Amministratori",
+            icon: UsersRound,
+            intro: "Il proprietario dell'account puo invitare altri amministratori che avranno accesso a tutti i dati dell'azienda sul portale.",
+            paragraphs: [
+              "Dalla pagina Amministratori (visibile solo al proprietario), puoi gestire chi ha accesso al portale per la tua azienda.",
+              "Il trasferimento di proprieta richiede doppia conferma: il nuovo proprietario potra gestire tutti gli amministratori e il vecchio proprietario perdera questo privilegio.",
+            ],
+            bullets: [
+              "Invita un amministratore: inserisci l'email e clicca Invia. L'invitato ricevera un'email con link di accettazione (valido 7 giorni).",
+              "Rimuovi un amministratore: clicca il cestino rosso accanto al nome (non puoi rimuovere te stesso).",
+              "Trasferisci proprieta: clicca l'icona corona accanto a un amministratore e digita TRASFERISCI per confermare.",
+              "Inviti pendenti: visualizza gli inviti in attesa con data di scadenza.",
+              "Limite amministratori: se configurato dall'ente, viene mostrato N/M nella barra.",
+            ],
+            note: "Solo il proprietario (badge dorato) puo invitare, rimuovere e trasferire la proprieta. Gli altri amministratori hanno accesso completo ai dati ma non alla gestione utenti.",
+            mockupKind: "profile",
+          }),
+          createSection({
+            id: "client-invito",
+            title: "Accettazione Invito",
+            icon: Mail,
+            intro: "Quando ricevi un invito via email per accedere a un'azienda su Sapienta, segui questi passi per accettare.",
+            paragraphs: [
+              "L'invito arriva via email con un link. Il link e valido per 7 giorni dalla data di invio.",
+            ],
+            bullets: [
+              "Clicca sul link nell'email di invito.",
+              "Se sei gia loggato con l'email corretta: accetta direttamente l'invito.",
+              "Se non sei loggato: accedi con le tue credenziali, poi accetta l'invito.",
+              "Dopo l'accettazione: verrai reindirizzato alla dashboard dell'azienda.",
+              "Se il link e scaduto: chiedi al proprietario di reinviarti l'invito.",
+            ],
+            note: "L'invito e legato alla tua email: devi accedere con la stessa email a cui e stato inviato l'invito.",
+            mockupKind: "profile",
+          }),
+          createSection({
+            id: "client-messaggi-login",
+            title: "Messaggi di Login",
+            icon: Shield,
+            intro: "Il portale mostra messaggi specifici quando il login non va a buon fine.",
+            paragraphs: [],
+            bullets: [
+              "Credenziali non valide: email o password errata. Verifica e riprova.",
+              "Account temporaneamente bloccato: troppi tentativi di accesso. Attendi qualche minuto e riprova.",
+              "Account sospeso: il tuo accesso e stato disabilitato. Contatta l'amministratore del portale.",
+            ],
+            note: "Dopo 5 tentativi errati consecutivi, l'account viene bloccato temporaneamente per 15 minuti.",
+            mockupKind: "profile",
+          }),
+        ]
+      : []),
   ];
 }
 
@@ -1523,6 +1581,63 @@ function getAdminExtraSections(): GuideSection[] {
       ],
       note: "L'AI e usata per l'import CV da PDF nella registrazione docente e nel profilo.",
       mockupKind: "admin-ai",
+    }),
+    createSection({
+      id: "admin-server-monitor",
+      title: "Server Monitor",
+      icon: Activity,
+      intro: "Dashboard in tempo reale con 14 metriche server e applicazione. Auto-refresh ogni 60 secondi con soglie colorate verde/giallo/rosso.",
+      paragraphs: [
+        "La pagina combina dati dal server (CPU, RAM, disco, Docker, SSL, Fail2ban, backup, cron jobs) e dati dal database (email, sessioni, conteggi, CV DPR 445, integrita docenti).",
+        "Gli account bloccati sono espandibili con possibilita di sblocco diretto. La sezione sicurezza dettagliata e collapsabile e mostra top IP attaccanti, ultimi tentativi SSH falliti e ultimi login admin.",
+      ],
+      bullets: [
+        "Metriche server: CPU load, RAM, disco con barre colorate (verde < 70%, giallo < 90%, rosso >= 90%).",
+        "Docker: stato container app e db con health check.",
+        "SSL: scadenza certificato con countdown giorni (verde > 30, giallo > 7, rosso <= 7).",
+        "Fail2ban: IP bannati SSH e Nginx, tentativi falliti 24h.",
+        "Backup: ultimo backup con badge rosso se > 25h fa, lista ultimi 7.",
+        "Email: inviate/coda/fallite oggi, ultimo invio riuscito e ultimo errore.",
+        "Account bloccati: click per espandere la lista con bottone Sblocca.",
+        "Sezione sicurezza: espandibile con top 10 IP attaccanti e ultimi login admin.",
+      ],
+      note: "I dati server vengono da uno script cron sull'host che genera un file JSON ogni minuto. Se il file e assente o vecchio di piu di 2 minuti, appare un avviso.",
+      mockupKind: "admin-status",
+    }),
+    createSection({
+      id: "admin-multi-utente-client",
+      title: "Multi-utente Client",
+      icon: UsersRound,
+      intro: "Ogni client puo avere piu amministratori associati. Dal dettaglio cliente, gestisci gli utenti e imposta un limite opzionale.",
+      paragraphs: [
+        "La sezione Amministratori nel dettaglio cliente mostra tutti gli utenti associati con badge Proprietario per l'owner. L'admin puo aggiungere o rimuovere utenti direttamente.",
+        "Il limite amministratori e opzionale: se impostato, blocca nuovi inviti quando raggiunto. Se non impostato, il numero di utenti e illimitato.",
+      ],
+      bullets: [
+        "Aggiungi un utente: inserisci email e nome. Se l'email esiste gia, viene associato; altrimenti viene creato un nuovo account con password temporanea.",
+        "Rimuovi un utente: click sul cestino rosso (il proprietario non puo essere rimosso).",
+        "Imposta il limite: dalla sezione configurazione del dettaglio cliente.",
+        "Il proprietario (badge dorato) puo invitare e rimuovere utenti dal portale client.",
+        "Trasferimento proprieta: il proprietario puo trasferire il ruolo a un altro amministratore.",
+      ],
+      mockupKind: "admin-clienti",
+    }),
+    createSection({
+      id: "admin-messaggi-login",
+      title: "Messaggi Login Differenziati",
+      icon: Shield,
+      intro: "Il sistema mostra messaggi specifici al login in base allo stato dell'account, mantenendo la sicurezza contro l'enumerazione degli utenti.",
+      paragraphs: [
+        "Per motivi di sicurezza, il messaggio 'Credenziali non valide' viene mostrato sia per email non trovata che per password errata. Messaggi specifici appaiono solo per account bloccati o sospesi.",
+      ],
+      bullets: [
+        "Credenziali non valide (rosso): email non trovata, password errata, o account inattivo.",
+        "Account bloccato (ambra con orologio): troppi tentativi di login. Si sblocca automaticamente dopo 15 minuti.",
+        "Account sospeso (rosso con scudo): sospeso da un admin. L'utente deve contattare l'amministratore.",
+        "Il numero di tentativi rimasti e il tempo esatto del blocco non vengono mai mostrati.",
+      ],
+      note: "Dopo 5 tentativi falliti consecutivi, l'account viene bloccato per 15 minuti. Il conteggio si resetta al login riuscito.",
+      mockupKind: "admin-status",
     }),
   ];
 }
