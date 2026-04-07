@@ -16,6 +16,7 @@ declare module "next-auth" {
       adminRoleName?: string | null;
       permissions?: Record<string, string[]> | null;
       isSuperAdmin?: boolean;
+      isClientOwner?: boolean;
     };
   }
 }
@@ -32,5 +33,6 @@ declare module "next-auth/jwt" {
     adminRoleName?: string | null;
     permissions?: Record<string, string[]> | null;
     isSuperAdmin?: boolean;
+    isClientOwner?: boolean;
   }
 }

@@ -1620,7 +1620,7 @@ function getAdminExtraSections(): GuideSection[] {
         "Il proprietario (badge dorato) puo invitare e rimuovere utenti dal portale client.",
         "Trasferimento proprieta: il proprietario puo trasferire il ruolo a un altro amministratore.",
       ],
-      mockupKind: "admin-clienti",
+      mockupKind: "admin-clients",
     }),
     createSection({
       id: "admin-messaggi-login",
