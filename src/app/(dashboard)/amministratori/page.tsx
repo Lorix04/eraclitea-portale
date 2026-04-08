@@ -206,7 +206,7 @@ export default function ClientUsersPage() {
   }
 
   const limitText = data?.limits.max
-    ? `${data.limits.current}/${data.limits.max} amministratori`
+    ? `${data.limits.current} di ${data.limits.max} amministratori`
     : `${data?.limits.current ?? 0} amministratori`;
   const limitDetails =
     data && data.limits.inactiveCount > 0
@@ -226,14 +226,14 @@ export default function ClientUsersPage() {
           <p className="text-sm text-muted-foreground">{limitText}</p>
           <p className="text-xs text-muted-foreground">{limitDetails}</p>
         </div>
-        {canInvite && (
-          <button
-            onClick={() => setShowInviteForm(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <UserPlus className="h-4 w-4" /> Invita amministratore
-          </button>
-        )}
+        <button
+          onClick={() => canInvite && setShowInviteForm(true)}
+          disabled={!canInvite}
+          title={!canInvite ? "Limite raggiunto. Contatta l'amministratore del portale." : undefined}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <UserPlus className="h-4 w-4" /> Invita amministratore
+        </button>
       </div>
 
       {showInviteForm && (
