@@ -8,6 +8,8 @@ import {
   Crown,
   Loader2,
   Mail,
+  PowerOff,
+  RotateCcw,
   Trash2,
   UserPlus,
   Users,
@@ -31,7 +33,12 @@ type ClientUserData = {
     createdAt: string;
     expiresAt: string;
   }[];
-  limits: { current: number; max: number | null };
+  limits: {
+    current: number;
+    max: number | null;
+    activeCount: number;
+    inactiveCount: number;
+  };
   clientName: string;
 };
 
@@ -50,6 +57,7 @@ export default function ClientUsersPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [rowActionUserId, setRowActionUserId] = useState<string | null>(null);
 
   const isOwner = session?.user?.isClientOwner === true;
 
@@ -86,23 +94,72 @@ export default function ClientUsersPage() {
     }
   };
 
-  const handleRemove = async (userId: string, email: string) => {
+  const handleMembershipAction = async (
+    userId: string,
+    email: string,
+    action: "deactivate" | "reactivate" | "delete"
+  ) => {
+    const copy =
+      action === "delete"
+        ? {
+            title: "Elimina amministratore",
+            message: `Eliminare definitivamente ${email}? Questa azione libera lo slot amministratore.`,
+            confirmText: "Elimina",
+            method: "DELETE" as const,
+          }
+        : action === "deactivate"
+          ? {
+              title: "Disattiva amministratore",
+              message: `Disattivare ${email}? Restera nel conteggio del limite amministratori, ma non potra accedere al portale.`,
+              confirmText: "Disattiva",
+              method: "PATCH" as const,
+            }
+          : {
+              title: "Riattiva amministratore",
+              message: `Riattivare ${email}? Tornera ad accedere senza occupare uno slot aggiuntivo.`,
+              confirmText: "Riattiva",
+              method: "PATCH" as const,
+            };
+
     const ok = await confirm({
-      title: "Rimuovi amministratore",
-      message: `Rimuovere ${email} dall'accesso al portale? Non potra piu visualizzare i dati dell'azienda.`,
-      confirmText: "Rimuovi",
-      variant: "danger",
+      title: copy.title,
+      message: copy.message,
+      confirmText: copy.confirmText,
+      variant: action === "reactivate" ? "default" : "danger",
     });
     if (!ok) return;
-    const res = await fetch(`/api/clienti/utenti/${userId}`, {
-      method: "DELETE",
-    });
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) {
-      toast.success("Amministratore rimosso");
-      query.refetch();
-    } else {
-      toast.error(json.error || "Errore");
+
+    setRowActionUserId(userId);
+    try {
+      const res = await fetch(`/api/clienti/utenti/${userId}`, {
+        method: copy.method,
+        headers:
+          copy.method === "PATCH"
+            ? { "Content-Type": "application/json" }
+            : undefined,
+        body:
+          copy.method === "PATCH"
+            ? JSON.stringify({ action })
+            : undefined,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(json.error || "Errore");
+        return;
+      }
+      toast.success(
+        json.message ||
+          (action === "delete"
+            ? "Amministratore eliminato"
+            : action === "deactivate"
+              ? "Amministratore disattivato"
+              : "Amministratore riattivato")
+      );
+      await query.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Errore");
+    } finally {
+      setRowActionUserId(null);
     }
   };
 
@@ -132,8 +189,10 @@ export default function ClientUsersPage() {
 
   if (!isOwner) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-muted-foreground">Accesso riservato al proprietario dell&apos;account.</p>
+      <div className="flex h-96 items-center justify-center">
+        <p className="text-muted-foreground">
+          Accesso riservato al proprietario dell&apos;account.
+        </p>
       </div>
     );
   }
@@ -147,8 +206,12 @@ export default function ClientUsersPage() {
   }
 
   const limitText = data?.limits.max
-    ? `${data.limits.current}/${data.limits.max} max`
+    ? `${data.limits.current}/${data.limits.max} amministratori`
     : `${data?.limits.current ?? 0} amministratori`;
+  const limitDetails =
+    data && data.limits.inactiveCount > 0
+      ? `${data.limits.activeCount} attivi, ${data.limits.inactiveCount} disattivati`
+      : `${data?.limits.activeCount ?? 0} attivi`;
   const canInvite = data?.limits.max
     ? data.limits.current < data.limits.max
     : true;
@@ -161,6 +224,7 @@ export default function ClientUsersPage() {
             <Users className="h-5 w-5" /> Gestione Amministratori
           </h1>
           <p className="text-sm text-muted-foreground">{limitText}</p>
+          <p className="text-xs text-muted-foreground">{limitDetails}</p>
         </div>
         {canInvite && (
           <button
@@ -172,12 +236,14 @@ export default function ClientUsersPage() {
         )}
       </div>
 
-      {/* Invite form */}
       {showInviteForm && (
         <div className="rounded-lg border bg-card p-4">
-          <h3 className="mb-3 text-sm font-semibold">Invita un nuovo amministratore</h3>
+          <h3 className="mb-3 text-sm font-semibold">
+            Invita un nuovo amministratore
+          </h3>
           <p className="mb-3 text-xs text-muted-foreground">
-            L&apos;amministratore ricevera un&apos;email con il link per accettare l&apos;invito e accedere ai dati di {data?.clientName}.
+            L&apos;amministratore ricevera un&apos;email con il link per accettare
+            l&apos;invito e accedere ai dati di {data?.clientName}.
           </p>
           <div className="flex gap-2">
             <input
@@ -197,93 +263,162 @@ export default function ClientUsersPage() {
               {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Invia"}
             </button>
             <button
-              onClick={() => { setShowInviteForm(false); setInviteEmail(""); }}
+              onClick={() => {
+                setShowInviteForm(false);
+                setInviteEmail("");
+              }}
               className="rounded-md border px-3 py-2 text-sm hover:bg-muted"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Un amministratore disattivato continua a occupare uno slot finche non
+            viene eliminato definitivamente.
+          </p>
         </div>
       )}
 
-      {/* Users table */}
       <div className="rounded-lg border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/30">
               <tr>
-                <th className="px-4 py-2.5 text-left font-medium">Amministratore</th>
+                <th className="px-4 py-2.5 text-left font-medium">
+                  Amministratore
+                </th>
                 <th className="px-4 py-2.5 text-left font-medium">Ruolo</th>
-                <th className="px-4 py-2.5 text-left font-medium">Ultimo accesso</th>
+                <th className="px-4 py-2.5 text-left font-medium">Stato</th>
+                <th className="px-4 py-2.5 text-left font-medium">
+                  Ultimo accesso
+                </th>
                 <th className="px-4 py-2.5 text-right font-medium">Azioni</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {data?.users.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{u.name || u.email}</p>
-                    {u.name && (
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.isOwner ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        <Crown className="h-3 w-3" /> Proprietario
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                        Amministratore
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {fmtDate(u.lastLoginAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {!u.isOwner && u.id !== session?.user?.id && (
-                      <div className="flex justify-end gap-1">
-                        <button
-                          onClick={() => handleTransfer(u.id, u.name || u.email)}
-                          className="rounded px-2 py-1 text-xs hover:bg-muted"
-                          title="Trasferisci proprieta"
-                        >
-                          <Crown className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleRemove(u.id, u.email)}
-                          className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                          title="Rimuovi"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {data?.users.map((user) => {
+                const isInactive = user.status === "INACTIVE";
+                const isBusy = rowActionUserId === user.id;
+
+                return (
+                  <tr key={user.id} className={isInactive ? "bg-muted/20" : ""}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{user.name || user.email}</p>
+                      {user.name && (
+                        <p className="text-xs text-muted-foreground">
+                          {user.email}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.isOwner ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                          <Crown className="h-3 w-3" /> Proprietario
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                          Amministratore
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isInactive ? (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                          Disattivato
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                          Attivo
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {fmtDate(user.lastLoginAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {!user.isOwner && user.id !== session?.user?.id && (
+                        <div className="flex justify-end gap-1">
+                          {!isInactive && (
+                            <button
+                              onClick={() =>
+                                handleTransfer(user.id, user.name || user.email)
+                              }
+                              className="rounded px-2 py-1 text-xs hover:bg-muted"
+                              title="Trasferisci proprieta"
+                              disabled={isBusy}
+                            >
+                              <Crown className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {isBusy ? (
+                            <span className="inline-flex items-center px-2 py-1 text-muted-foreground">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            </span>
+                          ) : isInactive ? (
+                            <button
+                              onClick={() =>
+                                handleMembershipAction(
+                                  user.id,
+                                  user.email,
+                                  "reactivate"
+                                )
+                              }
+                              className="rounded px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50"
+                              title="Riattiva"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                handleMembershipAction(
+                                  user.id,
+                                  user.email,
+                                  "deactivate"
+                                )
+                              }
+                              className="rounded px-2 py-1 text-xs text-amber-600 hover:bg-amber-50"
+                              title="Disattiva"
+                            >
+                              <PowerOff className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() =>
+                              handleMembershipAction(user.id, user.email, "delete")
+                            }
+                            className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                            title="Elimina"
+                            disabled={isBusy}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Pending invites */}
       {(data?.invites?.length ?? 0) > 0 && (
         <div className="rounded-lg border bg-card p-4">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
             <Mail className="h-4 w-4" /> Inviti in attesa ({data!.invites.length})
           </h3>
           <div className="space-y-2">
-            {data!.invites.map((inv) => (
+            {data!.invites.map((invite) => (
               <div
-                key={inv.id}
+                key={invite.id}
                 className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
               >
                 <div>
-                  <span>{inv.email}</span>
+                  <span>{invite.email}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
-                    Scade il {fmtDate(inv.expiresAt)}
+                    Scade il {fmtDate(invite.expiresAt)}
                   </span>
                 </div>
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">

@@ -156,6 +156,9 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Proprietario (isOwner): puo invitare/rimuovere utenti, trasferire proprieta
 - Inviti: `ClientInvite` con token unico, scadenza 7 giorni, email automatica
 - Limite utenti: `Client.maxUsers` (null = illimitato), configurabile dall'admin
+- Dettaglio client admin: sezione "Amministratori" con campo "Limite amministratori", placeholder "Illimitato", riepilogo `N` o `N/M` e barra progresso quando il limite e impostato
+- Se `maxUsers` viene impostato sotto gli amministratori associati, il salvataggio e consentito con warning: anche i profili disattivati contano nel limite e vengono bloccati solo i nuovi aggiunti/inviti
+- Gestione amministratori client: azioni separate per disattivare, riattivare ed eliminare definitivamente; la disattivazione mantiene l'utente associato e occupa ancora uno slot, l'eliminazione rimuove davvero l'associazione e libera lo slot
 - Log attivita: `ClientActivityLog` traccia azioni utente (CRUD dipendenti, presenze, ticket, ecc.)
 - API client: `GET /api/clienti/utenti`, `POST .../invite`, `POST .../accept-invite`, `DELETE .../[userId]`, `POST .../transfer-ownership`
 - API admin: `GET/POST /api/admin/clienti/[id]/utenti`, `PUT .../max-users`

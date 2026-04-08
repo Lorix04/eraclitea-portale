@@ -17,15 +17,39 @@ async function seedEmailPreferences() {
 async function main() {
   console.log("🌱 Seeding database...");
 
+  // Create Super Admin role
+  const superAdminRole = await prisma.adminRole.upsert({
+    where: { name: "Super Admin" },
+    update: {},
+    create: {
+      name: "Super Admin",
+      description: "Accesso completo a tutte le funzionalita",
+      isSystem: true,
+      permissions: {},
+    },
+  });
+  console.log("✅ Ruolo Super Admin:", superAdminRole.name);
+
   const adminPassword = await bcrypt.hash("admin123", 12);
   const admin = await prisma.user.upsert({
     where: { email: "admin@enteformazione.it" },
-    update: {},
+    update: {
+      adminRoleId: superAdminRole.id,
+      passwordHash: adminPassword,
+      isActive: true,
+      mustChangePassword: false,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      suspendedAt: null,
+    },
     create: {
       email: "admin@enteformazione.it",
+      name: "Amministratore",
       passwordHash: adminPassword,
       role: Role.ADMIN,
       isActive: true,
+      mustChangePassword: false,
+      adminRoleId: superAdminRole.id,
     },
   });
   console.log("✅ Admin:", admin.email);
@@ -67,7 +91,13 @@ async function main() {
     const userPassword = await bcrypt.hash("cliente123", 12);
     await prisma.user.upsert({
       where: { email: clientData.referenteEmail },
-      update: {},
+      update: {
+        passwordHash: userPassword,
+        isActive: true,
+        mustChangePassword: false,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
       create: {
         email: clientData.referenteEmail,
         passwordHash: userPassword,

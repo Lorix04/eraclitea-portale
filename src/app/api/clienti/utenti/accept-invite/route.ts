@@ -57,15 +57,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check limit
-  const limit = await canAddUser(invite.clientId);
-  if (!limit.allowed) {
-    return NextResponse.json(
-      { error: "Il limite amministratori e stato raggiunto" },
-      { status: 400 }
-    );
-  }
-
   // Check if already member
   const existing = await prisma.clientUser.findUnique({
     where: {
@@ -77,6 +68,16 @@ export async function POST(request: Request) {
       { error: "Sei gia associato a questo client" },
       { status: 409 }
     );
+  }
+
+  if (!existing) {
+    const limit = await canAddUser(invite.clientId);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Il limite amministratori e stato raggiunto" },
+        { status: 400 }
+      );
+    }
   }
 
   // Accept

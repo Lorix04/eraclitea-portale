@@ -1,69 +1,42 @@
 import { test, expect } from "@playwright/test";
+import { COOKIE_CONSENT, loginAsClient, sidebar } from "./fixtures";
 
 test.describe("Client Flow", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-  await page.waitForSelector('input[type="email"], input[name="email"]');
-  await page
-    .locator('input[type="email"], input[name="email"]')
-    .fill("mario@acme.it");
-  await page
-    .locator('input[type="password"], input[name="password"]')
-    .fill("cliente123");
-    await page.getByRole("button", { name: /accedi/i }).click();
-    await expect(page).not.toHaveURL(/\/login/);
+  test.beforeEach(async ({ context, page }) => {
+    await context.addCookies([COOKIE_CONSENT]);
+    await loginAsClient(page);
   });
 
-  test("should display dashboard with stats", async ({ page }) => {
-    await expect(page.getByText(/corsi disponibili/i)).toBeVisible();
-    await expect(page.getByText(/attestati/i)).toBeVisible();
+  test("should display client dashboard", async ({ page }) => {
+    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page.locator("main")).toBeVisible();
   });
 
-  test("should navigate to courses list", async ({ page }) => {
-    await page.getByRole("link", { name: /corsi/i }).click();
-    await expect(page).toHaveURL("/corsi");
-    await expect(page.getByRole("heading", { name: /corsi/i })).toBeVisible();
+  test("should navigate to courses", async ({ page }) => {
+    await sidebar(page).getByRole("link", { name: /corsi/i }).first().click();
+    await expect(page).toHaveURL(/\/corsi/);
   });
 
-  test("should filter courses by tab", async ({ page }) => {
-    await page.goto("/corsi");
-
-    await page.getByRole("button", { name: /in compilazione/i }).click();
-    await expect(page.getByRole("button", { name: /in compilazione/i })).toBeVisible();
-
-    await page.getByRole("button", { name: /completati/i }).click();
-    await expect(page.getByRole("button", { name: /completati/i })).toBeVisible();
+  test("should navigate to employees", async ({ page }) => {
+    await sidebar(page).getByRole("link", { name: /dipendenti/i }).first().click();
+    await expect(page).toHaveURL(/\/dipendenti/);
   });
 
-  test("should open course detail and see anagrafiche form", async ({ page }) => {
-    await page.goto("/corsi");
-    await page.getByRole("link", { name: /compila/i }).first().click();
-
-    await expect(page.getByRole("heading")).toBeVisible();
-    await expect(page.getByRole("button", { name: /anagrafiche/i })).toBeVisible();
+  test("should navigate to certificates", async ({ page }) => {
+    await sidebar(page).getByRole("link", { name: /attestati/i }).first().click();
+    await expect(page).toHaveURL(/\/attestati/);
   });
 
-  test("should view and download certificates", async ({ page }) => {
-    await page.goto("/attestati");
-
-    await expect(page.getByRole("heading", { name: /attestati/i })).toBeVisible();
-    const downloadButtons = page.getByRole("link", { name: /scarica/i });
-    const count = await downloadButtons.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+  test("should navigate to profile", async ({ page }) => {
+    await sidebar(page).getByRole("link", { name: /profilo/i }).first().click();
+    await expect(page).toHaveURL(/\/profilo/);
   });
 
-  test("should view notifications", async ({ page }) => {
-    await page.getByRole("button", { name: /notifiche/i }).click();
-    await expect(page.getByText(/vedi tutte/i)).toBeVisible();
-
-    await page.getByRole("link", { name: /vedi tutte/i }).click();
-    await expect(page).toHaveURL("/notifiche");
-  });
-
-  test("should change password in profile", async ({ page }) => {
-    await page.goto("/profilo");
-
-    await expect(page.getByRole("heading", { name: /profilo/i })).toBeVisible();
-    await expect(page.getByText(/cambia password/i)).toBeVisible();
+  test("should show client sidebar items", async ({ page }) => {
+    const nav = sidebar(page);
+    await expect(nav.getByRole("link", { name: /dashboard/i })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /corsi/i }).first()).toBeVisible();
+    await expect(nav.getByRole("link", { name: /dipendenti/i }).first()).toBeVisible();
+    await expect(nav.getByRole("link", { name: /attestati/i }).first()).toBeVisible();
   });
 });

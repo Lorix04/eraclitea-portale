@@ -39,26 +39,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email non valida" }, { status: 400 });
   }
 
-  // Check limit
-  const limit = await canAddUser(clientId);
-  if (!limit.allowed) {
-    return NextResponse.json(
-      { error: `Limite amministratori raggiunto (${limit.current}/${limit.max})` },
-      { status: 400 }
-    );
-  }
-
   // Check if already a member
   const existingMember = await prisma.clientUser.findFirst({
     where: {
       clientId,
       user: { email: { equals: email, mode: "insensitive" } },
-      status: "ACTIVE",
     },
+    select: { status: true },
   });
   if (existingMember) {
     return NextResponse.json(
-      { error: "Questo amministratore e gia associato" },
+      {
+        error:
+          existingMember.status === "INACTIVE"
+            ? "Questo amministratore e disattivato. Riattivalo dalla lista."
+            : "Questo amministratore e gia associato",
+      },
       { status: 409 }
     );
   }
@@ -71,6 +67,15 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Un invito e gia stato inviato a questo indirizzo" },
       { status: 409 }
+    );
+  }
+
+  // Check limit
+  const limit = await canAddUser(clientId);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Limite amministratori raggiunto (${limit.current}/${limit.max})` },
+      { status: 400 }
     );
   }
 

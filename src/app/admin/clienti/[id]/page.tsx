@@ -392,7 +392,8 @@ export default function AdminClienteDetailPage() {
         <div className="rounded-lg border bg-card p-5">
           <ClientUsersSection
             clientId={client.id}
-            canEdit={can("clienti", "manage-users")}
+            canManageUsers={can("clienti", "manage-users")}
+            canEditLimit={can("clienti", "edit")}
           />
         </div>
       </div>

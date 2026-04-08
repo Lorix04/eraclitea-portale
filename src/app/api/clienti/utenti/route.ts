@@ -34,6 +34,7 @@ export async function GET() {
   });
 
   const activeCount = clientUsers.filter((cu) => cu.status === "ACTIVE").length;
+  const inactiveCount = clientUsers.filter((cu) => cu.status === "INACTIVE").length;
 
   return NextResponse.json({
     users: clientUsers.map((cu) => ({
@@ -52,8 +53,10 @@ export async function GET() {
       expiresAt: inv.expiresAt,
     })),
     limits: {
-      current: activeCount,
+      current: clientUsers.length,
       max: client?.maxUsers ?? null,
+      activeCount,
+      inactiveCount,
     },
     clientName: client?.ragioneSociale ?? "",
   });

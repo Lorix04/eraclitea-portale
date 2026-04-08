@@ -13,6 +13,12 @@ export async function isClientOwner(
 
 export async function countClientUsers(clientId: string): Promise<number> {
   return prisma.clientUser.count({
+    where: { clientId },
+  });
+}
+
+export async function countActiveClientUsers(clientId: string): Promise<number> {
+  return prisma.clientUser.count({
     where: { clientId, status: "ACTIVE" },
   });
 }

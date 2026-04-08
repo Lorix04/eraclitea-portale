@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - button "Passa alla modalita scura" [ref=e4] [cursor=pointer]:
+      - img [ref=e5]
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - link "Sapienta" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - img "Sapienta" [ref=e12]
+        - paragraph [ref=e13]: SAPIENTA
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - img [ref=e17]
+          - heading "Accedi" [level=2] [ref=e20]
+          - paragraph [ref=e21]: Inserisci le tue credenziali
+        - generic [ref=e22]:
+          - img [ref=e23]
+          - text: Credenziali non valide.
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Email *
+            - textbox "email@esempio.com" [ref=e28]: admin@enteformazione.it
+          - generic [ref=e29]:
+            - generic [ref=e30]: Password *
+            - generic [ref=e31]:
+              - textbox "••••••••" [ref=e32]: admin123
+              - button "Mostra password" [ref=e33] [cursor=pointer]:
+                - img [ref=e34]
+          - generic [ref=e37]:
+            - generic [ref=e38] [cursor=pointer]:
+              - checkbox "Ricordami" [ref=e40]
+              - generic [ref=e42]: Ricordami
+            - link "Password dimenticata?" [ref=e43] [cursor=pointer]:
+              - /url: /recupera-password
+          - button "Accedi" [ref=e44] [cursor=pointer]
+      - link "← Torna alla Home" [ref=e46] [cursor=pointer]:
+        - /url: /
+  - region "Notifications alt+T"
+  - alert [ref=e47]
+```

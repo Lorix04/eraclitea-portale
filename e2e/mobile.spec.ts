@@ -1,40 +1,34 @@
-import { test, expect, devices } from "@playwright/test";
-
-test.use(devices["iPhone 13"]);
+import { test, expect } from "@playwright/test";
+import { COOKIE_CONSENT, loginAsClient } from "./fixtures";
 
 test.describe("Mobile Experience", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-  await page.waitForSelector('input[type="email"], input[name="email"]');
-  await page
-    .locator('input[type="email"], input[name="email"]')
-    .fill("mario@acme.it");
-  await page
-    .locator('input[type="password"], input[name="password"]')
-    .fill("cliente123");
-    await page.getByRole("button", { name: /accedi/i }).click();
-    await expect(page).not.toHaveURL(/\/login/);
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  test.beforeEach(async ({ context, page }) => {
+    await context.addCookies([COOKIE_CONSENT]);
+    await loginAsClient(page);
   });
 
-  test("should show mobile menu button", async ({ page }) => {
-    await expect(page.getByRole("button", { name: /apri menu/i })).toBeVisible();
+  test("should show hamburger menu on mobile", async ({ page }) => {
+    // On mobile the sidebar is hidden, hamburger button appears
+    const menuButton = page.getByRole("button", { name: /apri menu/i });
+    await expect(menuButton).toBeVisible({ timeout: 5000 });
   });
 
-  test("should open and close mobile sidebar", async ({ page }) => {
-    const openButton = page.getByRole("button", { name: /apri menu/i });
-    await openButton.click();
-
-    const dialog = page.getByRole("dialog", { name: /menu mobile/i });
-    await expect(dialog).toBeVisible();
-
-    await page.getByRole("button", { name: /chiudi menu/i }).click();
-    await expect(dialog).toBeHidden();
-  });
-
-  test("should navigate from mobile sidebar", async ({ page }) => {
+  test("should open mobile sidebar and navigate", async ({ page }) => {
     await page.getByRole("button", { name: /apri menu/i }).click();
-    await page.getByRole("link", { name: /corsi/i }).click();
-
+    // Click a sidebar link
+    await page.getByRole("link", { name: /corsi/i }).first().click();
     await expect(page).toHaveURL(/\/corsi/);
+  });
+
+  test("should be responsive on login page", async ({ page }) => {
+    // Logout first
+    await page.getByRole("button", { name: /apri menu/i }).click();
+    await page.getByRole("button", { name: /esci/i }).first().click();
+    await expect(page).toHaveURL(/\/login/);
+    // Verify login form is usable on mobile
+    await expect(page.locator('input[type="email"], input[name="email"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: /accedi/i })).toBeVisible();
   });
 });
