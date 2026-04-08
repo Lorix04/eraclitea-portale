@@ -127,6 +127,7 @@ export async function GET(
           pec: reg.employee.pec,
           mansione: reg.employee.mansione,
           note: reg.employee.note,
+          customData: reg.employee.customData,
         },
       })),
       certificates: certificates.map((cert) => ({
