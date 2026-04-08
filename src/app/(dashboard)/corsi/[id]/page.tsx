@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -135,6 +136,20 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const submitMutation = useSubmitRegistrations(params.id);
   const { data: session } = useSession();
+  const clientId = session?.user?.clientId;
+
+  const { data: cfData } = useQuery({
+    queryKey: ["custom-fields-status", clientId],
+    queryFn: async () => {
+      if (!clientId) return { enabled: false, fields: [] };
+      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      if (!res.ok) return { enabled: false, fields: [] };
+      return res.json() as Promise<{ enabled: boolean; fields: { name: string; required: boolean; standardField: string | null }[] }>;
+    },
+    enabled: !!clientId,
+    staleTime: 60_000,
+  });
+  const hasCustomFields = cfData?.enabled && (cfData?.fields?.length ?? 0) > 0;
 
   const loadCourse = useCallback(async () => {
     setLoading(true);
@@ -237,8 +252,30 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const registrationStats = useMemo(() => {
     if (!course) return { total: 0, valid: 0, invalid: 0, canSubmit: false };
     const total = course.registrations.length;
+
     const valid = course.registrations.filter((reg) => {
       const employee = reg.employee;
+
+      if (hasCustomFields && cfData?.fields) {
+        // Custom fields mode: validate only required custom fields + CF as identifier
+        if (!employee.codiceFiscale) return false;
+        for (const field of cfData.fields) {
+          if (!field.required) continue;
+          if (field.standardField) {
+            // Standard-mapped required field
+            const val = (employee as any)[field.standardField];
+            if (!val || String(val).trim() === "") return false;
+          } else {
+            // Pure custom field — check in customData
+            const cd = employee.customData as Record<string, any> | null;
+            const val = cd?.[field.name];
+            if (!val || String(val).trim() === "") return false;
+          }
+        }
+        return true;
+      }
+
+      // Standard mode: all standard fields required
       return (
         employee.nome &&
         employee.cognome &&
@@ -249,9 +286,10 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         employee.email
       );
     }).length;
+
     const invalid = Math.max(0, total - valid);
     return { total, valid, invalid, canSubmit: total > 0 && invalid === 0 };
-  }, [course]);
+  }, [course, hasCustomFields, cfData]);
 
   const isSubmitted = useMemo(() => {
     if (!course) return false;

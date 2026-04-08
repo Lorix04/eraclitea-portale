@@ -402,7 +402,12 @@ export default function ExcelSheet({
       },
       ] : []),
       // Dynamic custom fields columns (standard-mapped use Employee key, pure custom use custom_ prefix)
-      ...(customFields || []).map((cf) => {
+      // Skip custom fields that duplicate the fixed CF/Nome/Cognome columns already shown above
+      ...(customFields || []).filter((cf) => {
+        if (!hasCustom) return true;
+        const fixedKeys = ["codiceFiscale", "nome", "cognome"];
+        return !fixedKeys.includes(cf.standardField ?? "");
+      }).map((cf) => {
         // Standard-mapped fields read/write the Employee column directly
         const dataKey = cf.standardField ? cf.standardField : `custom_${cf.name}`;
         const col: any = {
