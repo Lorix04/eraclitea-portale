@@ -1,8 +1,7 @@
-﻿import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import {
   sendAdminRegistrySubmittedEmail,
   sendRegistryReceivedEmail,
@@ -12,8 +11,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT" || !session.user.clientId) {
+  const effectiveClient = await getEffectiveClientContext();
+  if (!effectiveClient) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -29,7 +28,7 @@ export async function POST(
     },
   });
 
-  if (!edition || edition.clientId !== session.user.clientId) {
+  if (!edition || edition.clientId !== effectiveClient.clientId) {
     return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
@@ -66,7 +65,7 @@ export async function POST(
   const registrations = await prisma.courseRegistration.findMany({
     where: {
       courseEditionId: params.id,
-      clientId: session.user.clientId,
+      clientId: effectiveClient.clientId,
       status: "INSERTED",
     },
     include: { employee: true },
@@ -79,14 +78,48 @@ export async function POST(
     );
   }
 
-  const invalidEmployees = registrations.filter(
-    (reg) =>
-      !reg.employee.nome ||
-      !reg.employee.cognome ||
-      !reg.employee.codiceFiscale ||
-      !reg.employee.dataNascita ||
-      !reg.employee.luogoNascita
-  );
+  // Validate employees based on client's custom fields configuration
+  const clientRecord = await prisma.client.findUnique({
+    where: { id: effectiveClient.clientId },
+    select: { hasCustomFields: true },
+  });
+
+  let requiredCustomFields: { name: string; standardField: string | null }[] = [];
+  if (clientRecord?.hasCustomFields) {
+    requiredCustomFields = await prisma.clientCustomField.findMany({
+      where: { clientId: effectiveClient.clientId, isActive: true, required: true },
+      select: { name: true, standardField: true },
+    });
+  }
+
+  const invalidEmployees = registrations.filter((reg) => {
+    const emp = reg.employee;
+
+    if (clientRecord?.hasCustomFields) {
+      // Custom fields mode: minimum existence (cognome or email) + required custom fields
+      if (!emp.cognome?.trim() && !emp.email?.trim()) return true;
+      for (const field of requiredCustomFields) {
+        if (field.standardField) {
+          const val = (emp as any)[field.standardField];
+          if (!val || !String(val).trim()) return true;
+        } else {
+          const cd = emp.customData as Record<string, any> | null;
+          const val = cd?.[field.name];
+          if (!val || !String(val).trim()) return true;
+        }
+      }
+      return false;
+    }
+
+    // Standard mode: require core fields
+    return (
+      !emp.nome?.trim() ||
+      !emp.cognome?.trim() ||
+      !emp.codiceFiscale?.trim() ||
+      !emp.dataNascita ||
+      !emp.luogoNascita?.trim()
+    );
+  });
 
   if (invalidEmployees.length > 0) {
     return NextResponse.json(
@@ -102,14 +135,14 @@ export async function POST(
   await prisma.courseRegistration.updateMany({
     where: {
       courseEditionId: params.id,
-      clientId: session.user.clientId,
+      clientId: effectiveClient.clientId,
       status: "INSERTED",
     },
     data: { status: "CONFIRMED" },
   });
 
   await logAudit({
-    userId: session.user.id,
+    userId: effectiveClient.userId,
     action: "REGISTRY_SUBMIT",
     entityType: "CourseEdition",
     entityId: params.id,
@@ -117,7 +150,7 @@ export async function POST(
   });
 
   const client = await prisma.client.findUnique({
-    where: { id: session.user.clientId },
+    where: { id: effectiveClient.clientId },
   });
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN", isActive: true },

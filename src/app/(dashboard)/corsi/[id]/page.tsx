@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -134,19 +134,25 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     null
   );
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [liveRows, setLiveRows] = useState<import("@/types").EmployeeFormRow[] | null>(null);
+  const handleRowsChange = useRef((rows: import("@/types").EmployeeFormRow[]) => {
+    setLiveRows(rows);
+  }).current;
   const submitMutation = useSubmitRegistrations(params.id);
   const { data: session } = useSession();
   const clientId = session?.user?.clientId;
 
+  // Use course.clientId (always correct) with session fallback for the custom fields query
+  const cfClientId = course?.clientId ?? clientId;
   const { data: cfData } = useQuery({
-    queryKey: ["custom-fields-status", clientId],
+    queryKey: ["custom-fields-status", cfClientId],
     queryFn: async () => {
-      if (!clientId) return { enabled: false, fields: [] };
-      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      if (!cfClientId) return { enabled: false, fields: [] };
+      const res = await fetch(`/api/custom-fields?clientId=${cfClientId}`);
       if (!res.ok) return { enabled: false, fields: [] };
       return res.json() as Promise<{ enabled: boolean; fields: { name: string; required: boolean; standardField: string | null }[] }>;
     },
-    enabled: !!clientId,
+    enabled: !!cfClientId,
     staleTime: 60_000,
   });
   const hasCustomFields = cfData?.enabled && (cfData?.fields?.length ?? 0) > 0;
@@ -193,7 +199,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     loadAttendance();
   }, [tab, params.id]);
 
-  const rows = useMemo(() => {
+  const rows: import("@/types").EmployeeFormRow[] = useMemo(() => {
     if (!course) return [];
     if (!course.registrations.length) {
       return [
@@ -250,46 +256,80 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   }, [course]);
 
   const registrationStats = useMemo(() => {
-    if (!course) return { total: 0, valid: 0, invalid: 0, canSubmit: false };
-    const total = course.registrations.length;
+    // Use live rows from the spreadsheet when available, fall back to API data
+    const dataRows = liveRows ?? rows;
+    // Filter to non-empty rows (at least cognome, email, or CF)
+    const nonEmpty = dataRows.filter(
+      (r) =>
+        String(r.cognome ?? "").trim() ||
+        String(r.email ?? "").trim() ||
+        String(r.codiceFiscale ?? "").trim()
+    );
+    const total = nonEmpty.length;
+    if (total === 0) return { total: 0, valid: 0, invalid: 0, canSubmit: false };
 
-    const valid = course.registrations.filter((reg) => {
-      const employee = reg.employee;
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[registrationStats] hasCustomFields:", hasCustomFields, "cfClientId:", cfClientId, "cfData:", cfData?.enabled, "fields:", cfData?.fields?.length, "liveRows:", !!liveRows, "total:", total);
+    }
 
+    const valid = nonEmpty.filter((row) => {
       if (hasCustomFields && cfData?.fields) {
-        // Custom fields mode: validate only required custom fields + CF as identifier
-        if (!employee.codiceFiscale) return false;
-        for (const field of cfData.fields) {
-          if (!field.required) continue;
-          if (field.standardField) {
-            // Standard-mapped required field
-            const val = (employee as any)[field.standardField];
-            if (!val || String(val).trim() === "") return false;
-          } else {
-            // Pure custom field — check in customData
-            const cd = employee.customData as Record<string, any> | null;
-            const val = cd?.[field.name];
-            if (!val || String(val).trim() === "") return false;
+        // Custom fields mode: minimum existence check
+        if (!String(row.cognome ?? "").trim() && !String(row.email ?? "").trim()) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[validation] SKIP", row.codiceFiscale, "— no cognome/email");
           }
+          return false;
+        }
+        // Check only required custom fields
+        const requiredFields = cfData.fields.filter((f: any) => f.required);
+        const missingFields: string[] = [];
+        for (const field of requiredFields) {
+          if (field.standardField) {
+            const val = (row as any)[field.standardField];
+            if (!val || String(val).trim() === "") {
+              missingFields.push(`${field.name}(std:${field.standardField})`);
+            }
+          } else {
+            // Check custom_* key (live data) then customData (API fallback)
+            const val =
+              (row as any)[`custom_${field.name}`] ??
+              (row.customData as Record<string, any> | undefined)?.[field.name];
+            if (!val || String(val).trim() === "") {
+              missingFields.push(`${field.name}(custom)`);
+            }
+          }
+        }
+        if (missingFields.length > 0) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[validation] INVALID", row.cognome || row.codiceFiscale, "missing:", missingFields.join(", "));
+          }
+          return false;
         }
         return true;
       }
 
       // Standard mode: all standard fields required
-      return (
-        employee.nome &&
-        employee.cognome &&
-        employee.codiceFiscale &&
-        employee.sesso &&
-        employee.dataNascita &&
-        employee.luogoNascita &&
-        employee.email
-      );
+      const stdMissing: string[] = [];
+      if (!String(row.nome ?? "").trim()) stdMissing.push("nome");
+      if (!String(row.cognome ?? "").trim()) stdMissing.push("cognome");
+      if (!String(row.codiceFiscale ?? "").trim()) stdMissing.push("codiceFiscale");
+      if (!String(row.sesso ?? "").trim()) stdMissing.push("sesso");
+      if (!String(row.dataNascita ?? "").trim()) stdMissing.push("dataNascita");
+      if (!String(row.luogoNascita ?? "").trim()) stdMissing.push("luogoNascita");
+      if (!String(row.email ?? "").trim()) stdMissing.push("email");
+      if (stdMissing.length > 0) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[validation] INVALID (standard)", row.cognome || row.codiceFiscale, "missing:", stdMissing.join(", "));
+        }
+        return false;
+      }
+      return true;
     }).length;
 
     const invalid = Math.max(0, total - valid);
     return { total, valid, invalid, canSubmit: total > 0 && invalid === 0 };
-  }, [course, hasCustomFields, cfData]);
+  }, [liveRows, rows, hasCustomFields, cfData, cfClientId]);
 
   const isSubmitted = useMemo(() => {
     if (!course) return false;
@@ -520,6 +560,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             courseEditionId={course.id}
             clientId={course.clientId}
             readOnly={isAnagraficheReadOnly}
+            onRowsChange={handleRowsChange}
           />
 
           {!isAnagraficheReadOnly ? (

@@ -301,13 +301,18 @@ function ClientCorsiContent() {
                     return (
                       <div
                         key={edition.id}
-                        className="rounded-md border bg-background/40 p-4"
+                        className="rounded-md border bg-background/40 p-4 transition-colors hover:bg-accent/40 cursor-pointer"
+                        onClick={() => router.push(`/corsi/${edition.id}`)}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold">
+                            <Link
+                              href={`/corsi/${edition.id}`}
+                              className="text-sm font-semibold hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               Edizione #{edition.editionNumber ?? "-"}
-                            </p>
+                            </Link>
                             <p className="text-xs text-muted-foreground">
                               {edition.startDate
                                 ? `${formatItalianDate(edition.startDate)}`
@@ -381,7 +386,8 @@ function ClientCorsiContent() {
                           </div>
                         ) : null}
 
-                        <div className="mt-4">
+                        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+                        <div className="mt-4" onClick={(e) => e.stopPropagation()}>
                           {canManageAnagrafiche ? (
                             <Link
                               href={`/corsi/${edition.id}`}

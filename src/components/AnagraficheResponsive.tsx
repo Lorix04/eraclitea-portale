@@ -42,6 +42,7 @@ type AnagraficheResponsiveProps = {
   courseEditionId?: string;
   clientId?: string;
   readOnly?: boolean;
+  onRowsChange?: (rows: EmployeeFormRow[]) => void;
 };
 
 function getRowEmployeeIds(rows: EmployeeFormRow[]) {
@@ -57,6 +58,7 @@ export default function AnagraficheResponsive({
   courseEditionId,
   clientId,
   readOnly,
+  onRowsChange,
 }: AnagraficheResponsiveProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -102,9 +104,11 @@ export default function AnagraficheResponsive({
   );
 
   useEffect(() => {
-    setRows(flattenCustomData(initialData));
+    const flattened = flattenCustomData(initialData);
+    setRows(flattened);
     removedEmployeeIdsRef.current = [];
-  }, [initialData, flattenCustomData]);
+    onRowsChange?.(flattened);
+  }, [initialData, flattenCustomData, onRowsChange]);
 
   const handleSave = () => {
     setStatus(null);
@@ -137,6 +141,7 @@ export default function AnagraficheResponsive({
   const handleChange = (nextRows: EmployeeFormRow[]) => {
     const removedEmployeeIds = updateRemovedEmployeeIds(rows, nextRows);
     setRows(nextRows);
+    onRowsChange?.(nextRows);
     if (!readOnly) {
       debouncedSave(nextRows, removedEmployeeIds);
       setStatus("In compilazione");

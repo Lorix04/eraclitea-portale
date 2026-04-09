@@ -1,27 +1,16 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import GuidePageClient from "@/components/GuidePageClient";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export default async function GuidaPage() {
-  const session = await getServerSession(authOptions);
+  const context = await getEffectiveClientContext();
 
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  if (session.user.role === "ADMIN") {
-    redirect("/admin/guida");
-  }
-
-  if (session.user.role !== "CLIENT") {
+  if (!context) {
     redirect("/");
   }
 
-  return (
-    <GuidePageClient
-      role="CLIENT"
-      userName={session.user.name ?? session.user.email ?? null}
-    />
-  );
+  const userName =
+    context.session.user.name ?? context.session.user.email ?? null;
+
+  return <GuidePageClient role="CLIENT" userName={userName} />;
 }

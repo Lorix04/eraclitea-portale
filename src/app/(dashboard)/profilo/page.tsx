@@ -1,11 +1,10 @@
-﻿import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 export default async function ProfiloPage() {
-  const session = await getServerSession(authOptions);
-  const clientId = session?.user.clientId;
+  const context = await getEffectiveClientContext();
+  const clientId = context?.clientId;
 
   if (!clientId) {
     return (
@@ -65,4 +64,3 @@ export default async function ProfiloPage() {
     </div>
   );
 }
-

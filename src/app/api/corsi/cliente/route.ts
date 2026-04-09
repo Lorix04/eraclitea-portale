@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     .map((edition) => {
       const registrationsCount = edition.registrations.length;
       const completedCount = edition.registrations.filter(
-        (reg) => reg.status === "TRAINED"
+        (reg) => reg.status !== "INSERTED"
       ).length;
       const isSubmitted =
         registrationsCount > 0 &&
