@@ -7,6 +7,8 @@ import { validateBody, validateQuery } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
 import { Prisma } from "@prisma/client";
 import { checkApiPermission, canAccessArea } from "@/lib/permissions";
+import { notifyAllClientUsers } from "@/lib/notify-client";
+import { formatDate } from "@/lib/date-utils";
 
 const querySchema = z.object({
   page: z.coerce.number().min(1).default(1),
@@ -157,7 +159,7 @@ export async function POST(
 
   const edition = await prisma.courseEdition.findFirst({
     where: { id: context.params.edId, courseId: context.params.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, clientId: true, editionNumber: true, course: { select: { title: true } } },
   });
 
   if (!edition) {
@@ -184,6 +186,17 @@ export async function POST(
         notes: notes || null,
       },
     });
+
+    // Notify client users when a lesson is added to a published edition
+    if (edition.status === "PUBLISHED" && edition.clientId) {
+      void notifyAllClientUsers({
+        clientId: edition.clientId,
+        type: "LESSON_CHANGED",
+        title: "Nuova lezione",
+        message: `Aggiunta lezione il ${formatDate(parsedDate)} per ${edition.course.title} (Ed. #${edition.editionNumber}).`,
+        courseEditionId: edition.id,
+      });
+    }
 
     return NextResponse.json({ data: lesson }, { status: 201 });
   } catch (error) {

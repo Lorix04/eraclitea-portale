@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
 import { checkApiPermission } from "@/lib/permissions";
+import { notifyAllClientUsers } from "@/lib/notify-client";
+import { formatDate } from "@/lib/date-utils";
 
 const lessonUpdateSchema = z.object({
   date: z.string().optional(),
@@ -37,7 +39,7 @@ export async function PUT(
 
   const edition = await prisma.courseEdition.findFirst({
     where: { id: context.params.edId, courseId: context.params.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, clientId: true, editionNumber: true, course: { select: { title: true } } },
   });
 
   if (!edition) {
@@ -88,6 +90,17 @@ export async function PUT(
     import("@/lib/teacher-lesson-emails").then(({ sendLessonUpdatedEmails }) => {
       void sendLessonUpdatedEmails(context.params.lessonId);
     }).catch(() => {});
+
+    // Also notify client users
+    if (edition.status === "PUBLISHED" && edition.clientId) {
+      void notifyAllClientUsers({
+        clientId: edition.clientId,
+        type: "LESSON_CHANGED",
+        title: "Lezione modificata",
+        message: `La lezione del ${formatDate(updated.date)} di ${edition.course.title} (Ed. #${edition.editionNumber}) è stata aggiornata.`,
+        courseEditionId: edition.id,
+      });
+    }
   }
 
   return NextResponse.json({ data: updated });
@@ -108,7 +121,7 @@ export async function DELETE(
 
   const edition = await prisma.courseEdition.findFirst({
     where: { id: context.params.edId, courseId: context.params.id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, clientId: true, editionNumber: true, course: { select: { title: true } } },
   });
 
   if (!edition) {
@@ -131,6 +144,17 @@ export async function DELETE(
   }
 
   await prisma.lesson.delete({ where: { id: context.params.lessonId } });
+
+  // Notify client when lesson is deleted from a published edition
+  if (edition.status === "PUBLISHED" && edition.clientId) {
+    void notifyAllClientUsers({
+      clientId: edition.clientId,
+      type: "LESSON_CHANGED",
+      title: "Lezione cancellata",
+      message: `La lezione del ${formatDate(existing.date)} di ${edition.course.title} (Ed. #${edition.editionNumber}) è stata cancellata.`,
+      courseEditionId: edition.id,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

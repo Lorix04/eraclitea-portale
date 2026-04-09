@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody, validateQuery } from "@/lib/api-utils";
 import { checkApiPermission } from "@/lib/permissions";
+import { notifyAllClientUsers } from "@/lib/notify-client";
 
 const querySchema = z.object({
   editionId: z.string().optional(),
@@ -152,6 +153,32 @@ export async function POST(
     if (result.count > 0) {
       const { sendLessonAssignedEmails } = await import("@/lib/teacher-lesson-emails");
       void sendLessonAssignedEmails(teacher.id, lessonIds);
+
+      // Notify client users about teacher assignment
+      try {
+        const teacherInfo = await prisma.teacher.findUnique({
+          where: { id: teacher.id },
+          select: { firstName: true, lastName: true },
+        });
+        const editions = await prisma.lesson.findMany({
+          where: { id: { in: lessonIds } },
+          select: { courseEdition: { select: { id: true, clientId: true, editionNumber: true, status: true, course: { select: { title: true } } } } },
+          distinct: ["courseEditionId"],
+        });
+        const teacherName = `${teacherInfo?.firstName ?? ""} ${teacherInfo?.lastName ?? ""}`.trim() || "Nuovo docente";
+        for (const lesson of editions) {
+          const ed = lesson.courseEdition;
+          if (ed.status === "PUBLISHED" && ed.clientId) {
+            void notifyAllClientUsers({
+              clientId: ed.clientId,
+              type: "TEACHER_CHANGED",
+              title: "Docente aggiornato",
+              message: `Il docente per ${ed.course.title} (Ed. #${ed.editionNumber}) è ora ${teacherName}.`,
+              courseEditionId: ed.id,
+            });
+          }
+        }
+      } catch { /* ignore */ }
     }
 
     return NextResponse.json({ success: true, created: result.count });

@@ -151,6 +151,54 @@ export const EMAIL_PREFERENCE_DEFAULTS: EmailPreferenceSeed[] = [
     isEnabled: true,
     category: "CLIENT",
   },
+  {
+    emailType: "EDITION_INFO_CHANGED",
+    label: "Edizione aggiornata (info)",
+    description:
+      "Notifica quando vengono modificate le informazioni di un'edizione attiva.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "DEADLINE_TODAY",
+    label: "Deadline oggi",
+    description:
+      "Avviso urgente il giorno stesso della scadenza anagrafiche.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "COURSE_STARTING_TOMORROW",
+    label: "Corso in partenza domani",
+    description:
+      "Promemoria il giorno prima dell'inizio del corso.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "REGISTRY_REJECTED",
+    label: "Anagrafiche rifiutate",
+    description:
+      "Notifica quando l'admin richiede modifiche alle anagrafiche inviate.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "CERTIFICATE_EXPIRED",
+    label: "Attestato scaduto",
+    description:
+      "Notifica il giorno di scadenza di un attestato.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "TICKET_REOPENED",
+    label: "Ticket riaperto",
+    description:
+      "Notifica quando un ticket chiuso viene riaperto.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
 ];
 
 export const EMAIL_TYPE_LABEL_MAP: Record<string, string> =

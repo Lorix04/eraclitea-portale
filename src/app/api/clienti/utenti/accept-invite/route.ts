@@ -129,6 +129,27 @@ export async function POST(request: Request) {
     message: `${session.user.name || session.user.email} ha accettato l'invito e ora ha accesso a ${invite.client.ragioneSociale}.`,
   });
 
+  // Check if admin limit is almost reached (N-1 of M)
+  try {
+    const client = await prisma.client.findUnique({
+      where: { id: invite.clientId },
+      select: { maxUsers: true },
+    });
+    if (client?.maxUsers) {
+      const currentCount = await prisma.clientUser.count({
+        where: { clientId: invite.clientId, status: "ACTIVE" },
+      });
+      if (currentCount >= client.maxUsers - 1) {
+        void notifyClientOwner({
+          clientId: invite.clientId,
+          type: "ADMIN_LIMIT_ALMOST_REACHED",
+          title: "Limite amministratori quasi raggiunto",
+          message: `Hai ${currentCount} di ${client.maxUsers} amministratori. ${currentCount >= client.maxUsers ? "Il limite è stato raggiunto." : "Rimane 1 posto disponibile."}`,
+        });
+      }
+    }
+  } catch { /* ignore */ }
+
   return NextResponse.json({
     success: true,
     clientName: invite.client.ragioneSociale,

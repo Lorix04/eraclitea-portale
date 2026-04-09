@@ -41,12 +41,35 @@ export const authOptions: NextAuthOptions = {
           throw new Error("ACCOUNT_LOCKED");
         }
 
-        // Expired lock → reset
+        // Expired lock → reset and notify
         if (user.lockedUntil && user.lockedUntil <= new Date()) {
           await prisma.user.update({
             where: { id: user.id },
             data: { failedLoginAttempts: 0, lockedUntil: null },
           });
+          // Fire-and-forget unlock email
+          import("@/lib/email-service").then(({ sendAutoEmail }) => {
+            import("@/lib/email-templates").then(({ buildEmailHtml, emailParagraph }) => {
+              void sendAutoEmail({
+                emailType: "ACCOUNT_UNLOCKED",
+                recipientEmail: user.email,
+                recipientName: user.name ?? undefined,
+                recipientId: user.id,
+                subject: "Account sbloccato - Sapienta",
+                html: buildEmailHtml({
+                  title: "Account Sbloccato",
+                  greeting: `Gentile ${user.name || user.email},`,
+                  bodyHtml: `
+                    ${emailParagraph("Il tuo account è stato sbloccato dopo il periodo di blocco temporaneo.")}
+                    ${emailParagraph("Se non hai tentato di accedere, ti consigliamo di cambiare la password per sicurezza.")}
+                  `,
+                  ctaText: "Accedi al Portale",
+                  ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/login`,
+                }),
+                ignorePreference: true,
+              });
+            }).catch(() => {});
+          }).catch(() => {});
         }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);

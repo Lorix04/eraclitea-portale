@@ -224,6 +224,9 @@ export async function PUT(
       CLOSED: "chiuso",
     };
 
+    // Detect ticket reopen (CLOSED → any other status)
+    const isReopened = ticket.status === "CLOSED" && status !== "CLOSED";
+
     // Notify the ticket opener
     let notifyUserId: string | null | undefined = ticket.clientId;
     if (!notifyUserId && ticket.teacherId) {
@@ -285,6 +288,38 @@ export async function PUT(
       } catch (emailError) {
         console.error("Errore invio email ticket chiuso:", emailError);
       }
+    }
+
+    // Send email when ticket is reopened
+    if (isReopened && notifyUserId) {
+      try {
+        const ticketUser = await prisma.user.findUnique({
+          where: { id: notifyUserId },
+          select: { email: true, name: true },
+        });
+        if (ticketUser) {
+          const portalUrl = process.env.NEXTAUTH_URL || "https://sapienta.it";
+          const html = buildEmailHtml({
+            title: "Ticket Riaperto",
+            greeting: `Gentile ${ticketUser.name || ticketUser.email},`,
+            bodyHtml: `
+              ${emailParagraph("Il tuo ticket di supporto è stato riaperto:")}
+              ${emailInfoBox(`<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Oggetto:</strong> ${ticket.subject}</p>`)}
+              ${emailParagraph("Puoi continuare la conversazione dal portale.")}
+            `,
+            ctaText: "Vai al Ticket",
+            ctaUrl: `${portalUrl}/supporto/${ticket.id}`,
+          });
+          void sendAutoEmail({
+            emailType: "TICKET_REOPENED",
+            recipientEmail: ticketUser.email,
+            recipientName: ticketUser.name ?? undefined,
+            recipientId: notifyUserId,
+            subject: `Ticket riaperto - ${ticket.subject}`,
+            html,
+          });
+        }
+      } catch { /* ignore */ }
     }
   }
 

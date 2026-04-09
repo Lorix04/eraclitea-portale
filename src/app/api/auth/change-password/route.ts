@@ -6,6 +6,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { sendAutoEmail } from "@/lib/email-service";
+import { buildEmailHtml, emailParagraph } from "@/lib/email-templates";
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -53,6 +55,26 @@ export async function POST(request: Request) {
     entityType: "User",
     entityId: session.user.id,
     ipAddress: getClientIP(request),
+  });
+
+  // Send password changed confirmation email
+  void sendAutoEmail({
+    emailType: "PASSWORD_CHANGED",
+    recipientEmail: user.email,
+    recipientName: user.name ?? undefined,
+    recipientId: user.id,
+    subject: "Password modificata - Sapienta",
+    html: buildEmailHtml({
+      title: "Password Modificata",
+      greeting: `Gentile ${user.name || user.email},`,
+      bodyHtml: `
+        ${emailParagraph("La tua password è stata modificata con successo.")}
+        ${emailParagraph("Se non sei stato tu a effettuare questa modifica, contatta immediatamente l'amministratore.")}
+      `,
+      ctaText: "Accedi al Portale",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/login`,
+    }),
+    ignorePreference: true,
   });
 
   return NextResponse.json({ success: true });

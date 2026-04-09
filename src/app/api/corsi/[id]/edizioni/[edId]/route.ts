@@ -110,6 +110,7 @@ export async function PUT(
       startDate: true,
       endDate: true,
       deadlineRegistry: true,
+      notes: true,
       client: {
         select: {
           id: true,
@@ -326,6 +327,34 @@ export async function PUT(
       ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/attestati`,
       courseEditionId: updated.id,
     });
+  }
+
+  // 1. Edition info changed (notes/presenzaMinima — non-date fields)
+  if (newStatus === "PUBLISHED" && oldStatus === "PUBLISHED") {
+    const notesChanged = (existing.notes ?? "") !== (updated.notes ?? "");
+    if (notesChanged && updated.client.id) {
+      void notifyAllClientUsers({
+        clientId: updated.client.id,
+        type: "EDITION_INFO_CHANGED",
+        title: "Edizione aggiornata",
+        message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stata aggiornata con nuove informazioni.`,
+        courseEditionId: updated.id,
+      });
+      void emailAllClientUsers({
+        clientId: updated.client.id,
+        emailType: "EDITION_INFO_CHANGED",
+        subject: `Edizione aggiornata - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+        title: "Edizione Aggiornata",
+        bodyHtml: `
+          ${emailParagraph("Le informazioni della seguente edizione sono state aggiornate:")}
+          ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
+          ${emailParagraph("Accedi al portale per i dettagli aggiornati.")}
+        `,
+        ctaText: "Vedi Dettagli",
+        ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
+        courseEditionId: updated.id,
+      });
+    }
   }
 
     return NextResponse.json({ data: updated });

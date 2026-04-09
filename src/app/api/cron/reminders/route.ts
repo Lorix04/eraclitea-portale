@@ -7,7 +7,7 @@ import {
   sendCertificateExpiringEmail,
   sendDeadlineReminderEmail,
 } from "@/lib/email-notifications";
-import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);
@@ -38,11 +38,7 @@ async function wasSentToday(params: {
 }
 
 async function ensureClientNotificationToday(params: {
-  type:
-    | "DEADLINE_REMINDER_7D"
-    | "DEADLINE_REMINDER_2D"
-    | "CERTIFICATE_EXPIRING_60D"
-    | "CERTIFICATE_EXPIRING_30D";
+  type: import("@prisma/client").NotificationType;
   title: string;
   message: string;
   courseEditionId: string;
@@ -327,6 +323,244 @@ async function processExpiringCertificates(daysRemaining: 60 | 30) {
   return sentCount;
 }
 
+// === SEZIONE 2: DEADLINE OGGI ===
+async function processDeadlineToday() {
+  const todayFrom = startOfDay(new Date());
+  const todayTo = endOfDay(new Date());
+
+  const editions = await prisma.courseEdition.findMany({
+    where: {
+      status: "PUBLISHED",
+      deadlineRegistry: { gte: todayFrom, lte: todayTo },
+      registrations: { some: { status: "INSERTED" } },
+    },
+    include: {
+      client: { select: { id: true, ragioneSociale: true, referenteEmail: true, isActive: true } },
+      course: { select: { title: true } },
+    },
+  });
+
+  let count = 0;
+  for (const edition of editions) {
+    if (!edition.client?.isActive || !edition.client.id) continue;
+    await ensureClientNotificationToday({
+      type: "DEADLINE_TODAY",
+      title: "Deadline anagrafiche OGGI",
+      message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
+      courseEditionId: edition.id,
+    });
+    void notifyAllClientUsers({
+      clientId: edition.client.id,
+      type: "DEADLINE_TODAY",
+      title: "Deadline anagrafiche OGGI",
+      message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
+      courseEditionId: edition.id,
+    });
+    void emailAllClientUsers({
+      clientId: edition.client.id,
+      emailType: "DEADLINE_TODAY",
+      subject: `DEADLINE OGGI - ${edition.course.title} (Ed. #${edition.editionNumber})`,
+      title: "Deadline Anagrafiche OGGI",
+      bodyHtml: `
+        ${emailParagraph("<strong>La deadline per l'inserimento anagrafiche scade oggi!</strong>")}
+        ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px; color:#CC0000;"><strong>Deadline:</strong> OGGI</p>`)}
+        ${emailParagraph("Invia le anagrafiche entro fine giornata.")}
+      `,
+      ctaText: "Invia Anagrafiche",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${edition.id}`,
+      courseEditionId: edition.id,
+    });
+    count++;
+  }
+  return count;
+}
+
+// === SEZIONE 3: CORSO IN PARTENZA DOMANI ===
+async function processCourseStartingTomorrow() {
+  const tomorrow = addDays(new Date(), 1);
+  const from = startOfDay(tomorrow);
+  const to = endOfDay(tomorrow);
+
+  const editions = await prisma.courseEdition.findMany({
+    where: {
+      status: "PUBLISHED",
+      lessons: { some: { date: { gte: from, lte: to } } },
+    },
+    include: {
+      client: { select: { id: true, isActive: true } },
+      course: { select: { title: true } },
+      lessons: {
+        where: { date: { gte: from, lte: to } },
+        orderBy: { date: "asc" },
+        take: 1,
+        select: { date: true, startTime: true, luogo: true },
+      },
+    },
+  });
+
+  let count = 0;
+  for (const edition of editions) {
+    if (!edition.client?.isActive || !edition.client.id) continue;
+    const lesson = edition.lessons[0];
+    if (!lesson) continue;
+
+    const luogo = lesson.luogo ? ` presso ${lesson.luogo}` : "";
+    const orario = lesson.startTime ? ` alle ${lesson.startTime}` : "";
+
+    await ensureClientNotificationToday({
+      type: "COURSE_STARTING_TOMORROW",
+      title: "Corso in partenza domani",
+      message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
+      courseEditionId: edition.id,
+    });
+    void notifyAllClientUsers({
+      clientId: edition.client.id,
+      type: "COURSE_STARTING_TOMORROW",
+      title: "Corso in partenza domani",
+      message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
+      courseEditionId: edition.id,
+    });
+    void emailAllClientUsers({
+      clientId: edition.client.id,
+      emailType: "COURSE_STARTING_TOMORROW",
+      subject: `Promemoria: ${edition.course.title} inizia domani`,
+      title: "Corso in Partenza Domani",
+      bodyHtml: `
+        ${emailParagraph("Il seguente corso inizia domani:")}
+        ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Data:</strong> ${formatDate(lesson.date)}${orario}</p>${lesson.luogo ? `<p style="margin:4px 0 0; font-size:14px; color:#1A1A1A;"><strong>Luogo:</strong> ${lesson.luogo}</p>` : ""}`)}
+      `,
+      courseEditionId: edition.id,
+    });
+    count++;
+  }
+  return count;
+}
+
+// === SEZIONE 4: ATTESTATI SCADUTI OGGI ===
+async function processExpiredCertificatesToday() {
+  const todayFrom = startOfDay(new Date());
+  const todayTo = endOfDay(new Date());
+
+  const certificates = await prisma.certificate.findMany({
+    where: { expiresAt: { gte: todayFrom, lte: todayTo } },
+    include: {
+      client: { select: { id: true, ragioneSociale: true, referenteEmail: true, isActive: true } },
+      employee: { select: { nome: true, cognome: true } },
+      courseEdition: { include: { course: { select: { title: true } } } },
+    },
+  });
+
+  let count = 0;
+  for (const cert of certificates) {
+    if (!cert.client?.isActive || !cert.client.id) continue;
+    const employeeName = `${cert.employee.cognome} ${cert.employee.nome}`.trim();
+    const courseName = cert.courseEdition?.course?.title || "Corso";
+
+    void notifyAllClientUsers({
+      clientId: cert.client.id,
+      type: "CERTIFICATE_EXPIRED",
+      title: "Attestato scaduto",
+      message: `L'attestato di ${employeeName} per ${courseName} è scaduto oggi.`,
+      courseEditionId: cert.courseEditionId ?? undefined,
+    });
+    void emailAllClientUsers({
+      clientId: cert.client.id,
+      emailType: "CERTIFICATE_EXPIRED",
+      subject: `Attestato scaduto - ${employeeName} (${courseName})`,
+      title: "Attestato Scaduto",
+      bodyHtml: `
+        ${emailParagraph("Un attestato è scaduto oggi:")}
+        ${emailInfoBox(`
+          <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Dipendente:</strong> ${employeeName}</p>
+          <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Corso:</strong> ${courseName}</p>
+        `)}
+        ${emailParagraph("Programma il rinnovo il prima possibile.")}
+      `,
+      ctaText: "Vai agli Attestati",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/attestati`,
+      courseEditionId: cert.courseEditionId ?? undefined,
+    });
+    count++;
+  }
+  return count;
+}
+
+// === SEZIONE 5: TICKET INATTIVI 7 GIORNI ===
+async function processInactiveTickets() {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      status: { in: ["OPEN", "IN_PROGRESS"] },
+      updatedAt: { lt: sevenDaysAgo },
+    },
+    select: {
+      id: true,
+      subject: true,
+      clientId: true,
+      teacherId: true,
+    },
+  });
+
+  let count = 0;
+  for (const ticket of tickets) {
+    // Check if we already notified today
+    const todayStart = startOfDay(new Date());
+    const existing = await prisma.notification.findFirst({
+      where: {
+        type: "TICKET_INACTIVE_REMINDER",
+        ticketId: ticket.id,
+        createdAt: { gte: todayStart },
+      },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const userId = ticket.clientId;
+    if (userId) {
+      await prisma.notification.create({
+        data: {
+          userId,
+          type: "TICKET_INACTIVE_REMINDER",
+          title: "Ticket in attesa",
+          message: `Il tuo ticket "${ticket.subject}" è aperto da 7 giorni senza aggiornamenti.`,
+          ticketId: ticket.id,
+          isGlobal: false,
+        },
+      });
+      count++;
+    }
+  }
+  return count;
+}
+
+// === SEZIONE 6: INVITI SCADUTI ===
+async function processExpiredInvites() {
+  const now = new Date();
+  const expiredInvites = await prisma.clientInvite.findMany({
+    where: { status: "PENDING", expiresAt: { lt: now } },
+    include: { client: { select: { id: true } } },
+  });
+
+  let count = 0;
+  for (const invite of expiredInvites) {
+    await prisma.clientInvite.update({
+      where: { id: invite.id },
+      data: { status: "EXPIRED" },
+    });
+    if (invite.client?.id) {
+      void notifyClientOwner({
+        clientId: invite.client.id,
+        type: "INVITE_EXPIRED_NOTIFY",
+        title: "Invito scaduto",
+        message: `L'invito inviato a ${invite.email} è scaduto senza essere accettato. Puoi reinviarlo dalla pagina Amministratori.`,
+      });
+    }
+    count++;
+  }
+  return count;
+}
+
 export async function GET(request: Request) {
   const apiKey = request.headers.get("x-api-key");
 
@@ -334,21 +568,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [deadline7d, deadline2d, adminExpired, cert60d, cert30d] =
-    await Promise.all([
-      processDeadlineReminders(7),
-      processDeadlineReminders(2),
-      processAdminExpiredDeadline(),
-      processExpiringCertificates(60),
-      processExpiringCertificates(30),
-    ]);
+  const [
+    deadline7d, deadline2d, deadlineToday, adminExpired,
+    courseStarting, cert60d, cert30d, certExpired,
+    inactiveTickets, expiredInvites,
+  ] = await Promise.all([
+    processDeadlineReminders(7),
+    processDeadlineReminders(2),
+    processDeadlineToday(),
+    processAdminExpiredDeadline(),
+    processCourseStartingTomorrow(),
+    processExpiringCertificates(60),
+    processExpiringCertificates(30),
+    processExpiredCertificatesToday(),
+    processInactiveTickets(),
+    processExpiredInvites(),
+  ]);
 
   return NextResponse.json({
     success: true,
     deadline7d,
     deadline2d,
+    deadlineToday,
     adminExpired,
+    courseStarting,
     cert60d,
     cert30d,
+    certExpired,
+    inactiveTickets,
+    expiredInvites,
   });
 }
