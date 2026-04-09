@@ -10,6 +10,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/attendance-utils";
 import { checkApiPermission, canAccessArea } from "@/lib/permissions";
+import { notifyAllClientUsers } from "@/lib/notify-client";
 
 const attendanceSchema = z.object({
   attendances: z
@@ -176,6 +177,7 @@ export async function POST(
     where: { id: context.params.id },
     select: {
       id: true,
+      clientId: true,
       status: true,
       editionNumber: true,
       course: { select: { title: true } },
@@ -261,6 +263,17 @@ export async function POST(
       });
     }
   });
+
+  // Notify client users that attendance was recorded (no email — too frequent)
+  if (edition.clientId) {
+    void notifyAllClientUsers({
+      clientId: edition.clientId,
+      type: "ATTENDANCE_RECORDED",
+      title: "Presenze registrate",
+      message: `Le presenze per ${edition.course.title} (Ed. #${edition.editionNumber}) sono state aggiornate.`,
+      courseEditionId: edition.id,
+    });
+  }
 
   return NextResponse.json({ ok: true, updated: attendances.length });
 }

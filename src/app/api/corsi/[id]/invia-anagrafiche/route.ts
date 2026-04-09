@@ -6,6 +6,7 @@ import {
   sendAdminRegistrySubmittedEmail,
   sendRegistryReceivedEmail,
 } from "@/lib/email-notifications";
+import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -168,6 +169,35 @@ export async function POST(
     });
   } catch (error) {
     console.error("Errore creazione notifica REGISTRY_RECEIVED:", error);
+  }
+
+  // Notify all client users that their registry submission was confirmed
+  try {
+    await notifyAllClientUsers({
+      clientId: effectiveClient.clientId,
+      type: "REGISTRY_CONFIRMED",
+      title: "Anagrafiche inviate con successo",
+      message: `Le anagrafiche per ${edition.course.title} (Ed. #${edition.editionNumber}) sono state inviate. Saranno verificate dall'ente di formazione.`,
+      courseEditionId: edition.id,
+      excludeUserId: effectiveClient.userId,
+    });
+    void emailAllClientUsers({
+      clientId: effectiveClient.clientId,
+      emailType: "REGISTRY_CONFIRMED",
+      subject: `Anagrafiche inviate - ${edition.course.title} (Ed. #${edition.editionNumber})`,
+      title: "Anagrafiche Inviate",
+      bodyHtml: `
+        ${emailParagraph(`Le anagrafiche per il seguente corso sono state inviate con successo:`)}
+        ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Dipendenti inseriti:</strong> ${registrations.length}</p>`)}
+        ${emailParagraph("Le anagrafiche saranno verificate dall'ente di formazione.")}
+      `,
+      ctaText: "Vedi Dettagli",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${edition.id}`,
+      courseEditionId: edition.id,
+      excludeUserId: effectiveClient.userId,
+    });
+  } catch (error) {
+    console.error("Errore notifica REGISTRY_CONFIRMED:", error);
   }
 
   if (client?.referenteEmail) {

@@ -111,6 +111,46 @@ export const EMAIL_PREFERENCE_DEFAULTS: EmailPreferenceSeed[] = [
     isEnabled: true,
     category: "ADMIN",
   },
+  {
+    emailType: "REGISTRY_CONFIRMED",
+    label: "Conferma invio anagrafiche",
+    description:
+      "Email di conferma a tutti gli utenti del client quando le anagrafiche vengono inviate.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "DEADLINE_EXPIRED",
+    label: "Deadline scaduta (al client)",
+    description:
+      "Notifica al client quando la deadline per le anagrafiche e scaduta.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "COURSE_COMPLETED",
+    label: "Corso completato",
+    description:
+      "Notifica quando un'edizione viene completata o chiusa.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "TICKET_CLOSED",
+    label: "Ticket chiuso",
+    description:
+      "Email dedicata quando un ticket di supporto viene chiuso.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
+    emailType: "WEEKLY_SUMMARY",
+    label: "Riepilogo settimanale",
+    description:
+      "Riepilogo settimanale con corsi attivi, deadline, attestati e ticket.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
 ];
 
 export const EMAIL_TYPE_LABEL_MAP: Record<string, string> =

@@ -12,6 +12,7 @@ import {
   sendNewEditionEmail,
 } from "@/lib/email-notifications";
 import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
+import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export const dynamic = "force-dynamic";
 
@@ -300,6 +301,29 @@ export async function PUT(
       clientId: updated.client.id,
       courseName: updated.course.title,
       editionNumber: updated.editionNumber,
+      courseEditionId: updated.id,
+    });
+
+    // Also send COURSE_COMPLETED notification to all client users
+    void notifyAllClientUsers({
+      clientId: updated.client.id,
+      type: "COURSE_COMPLETED",
+      title: "Corso completato",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stato completato. Gli attestati saranno disponibili a breve.`,
+      courseEditionId: updated.id,
+    });
+    void emailAllClientUsers({
+      clientId: updated.client.id,
+      emailType: "COURSE_COMPLETED",
+      subject: `Corso completato - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+      title: "Corso Completato",
+      bodyHtml: `
+        ${emailParagraph("Il seguente corso è stato completato:")}
+        ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
+        ${emailParagraph("Gli attestati saranno disponibili a breve nella sezione dedicata del portale.")}
+      `,
+      ctaText: "Vai agli Attestati",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/attestati`,
       courseEditionId: updated.id,
     });
   }

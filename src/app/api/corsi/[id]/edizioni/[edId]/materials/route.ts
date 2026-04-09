@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
+import { notifyAllClientUsers } from "@/lib/notify-client";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import {
@@ -317,6 +318,17 @@ export async function POST(
         } catch {
           /* ignore notification errors */
         }
+      }
+
+      // Notify client users when admin/teacher uploads a material
+      if (uploadedByRole !== "CLIENT" && edition.clientId) {
+        void notifyAllClientUsers({
+          clientId: edition.clientId,
+          type: "MATERIAL_UPLOADED",
+          title: "Nuovo materiale disponibile",
+          message: `Nuovo documento "${title!.trim()}" disponibile per il tuo corso.`,
+          courseEditionId: edition.id,
+        });
       }
 
       return NextResponse.json({ data: newMaterial }, { status: 201 });

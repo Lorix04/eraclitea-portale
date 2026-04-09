@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { saveCertificateFile } from "@/lib/certificate-storage";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { sendCertificatesAvailableEmail } from "@/lib/email-notifications";
+import { notifyAllClientUsers } from "@/lib/notify-client";
 import {
   calculateAttendanceStats,
   formatPresenceRequirementLabel,
@@ -313,6 +314,15 @@ export async function POST(request: Request) {
       courseName: edition.course.title,
       editionNumber: edition.editionNumber,
       certificateCount: savedFiles.length,
+      courseEditionId: edition.id,
+    });
+
+    // Notify all client users (in-app) about certificates
+    void notifyAllClientUsers({
+      clientId: client.id,
+      type: "CERTIFICATES_AVAILABLE",
+      title: "Attestati disponibili",
+      message: `Sono stati caricati ${savedFiles.length} attestati per ${edition.course.title} (Ed. #${edition.editionNumber}). Scaricali dal portale.`,
       courseEditionId: edition.id,
     });
   }

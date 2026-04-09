@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canAddUser, logClientActivity } from "@/lib/client-users";
+import { notifyClientOwner } from "@/lib/notify-client";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,14 @@ export async function POST(request: Request) {
     userId: session.user.id,
     action: "USER_JOINED",
     details: { email: invite.email },
+  });
+
+  // Notify the owner that a new user has joined
+  void notifyClientOwner({
+    clientId: invite.clientId,
+    type: "INVITE_ACCEPTED",
+    title: "Nuovo amministratore",
+    message: `${session.user.name || session.user.email} ha accettato l'invito e ora ha accesso a ${invite.client.ragioneSociale}.`,
   });
 
   return NextResponse.json({

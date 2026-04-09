@@ -7,6 +7,7 @@ import {
   sendCertificateExpiringEmail,
   sendDeadlineReminderEmail,
 } from "@/lib/email-notifications";
+import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);
@@ -205,6 +206,29 @@ async function processAdminExpiredDeadline() {
       });
 
       if (success) sentCount += 1;
+    }
+
+    // Notify the client that the deadline has expired
+    if (edition.client?.id) {
+      void notifyAllClientUsers({
+        clientId: edition.client.id,
+        type: "DEADLINE_EXPIRED",
+        title: "Deadline anagrafiche scaduta",
+        message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) è scaduta. Contatta l'ente di formazione per informazioni.`,
+        courseEditionId: edition.id,
+      });
+      void emailAllClientUsers({
+        clientId: edition.client.id,
+        emailType: "DEADLINE_EXPIRED",
+        subject: `Deadline scaduta - ${edition.course.title} (Ed. #${edition.editionNumber})`,
+        title: "Deadline Anagrafiche Scaduta",
+        bodyHtml: `
+          ${emailParagraph("La deadline per l'inserimento delle anagrafiche è scaduta:")}
+          ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Deadline:</strong> ${formatDate(edition.deadlineRegistry)}</p>`)}
+          ${emailParagraph("Se non hai ancora inviato le anagrafiche, contatta il tuo referente per informazioni.")}
+        `,
+        courseEditionId: edition.id,
+      });
     }
   }
 

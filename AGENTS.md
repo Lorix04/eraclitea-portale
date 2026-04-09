@@ -291,6 +291,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Tipi email: TEACHER_INVITE, ADMIN_INVITE, LESSON_ASSIGNED, LESSON_REMOVED, LESSON_UPDATED, WELCOME, PASSWORD_RESET, ecc.
 - Coda retry: `src/lib/email-queue.ts` — 1 email ogni 3 secondi, rate limited per Hostinger
 - Auto-retry cron: `GET /api/cron/email-retry` (max 3 tentativi, 15 min intervallo)
+- Riepilogo settimanale cron: `GET /api/cron/weekly-summary` (lunedi mattina, protetto CRON_API_KEY) — corsi attivi, deadline, attestati, ticket
 - Rigenerazione credenziali per email sensibili fallite (non replay vecchio contenuto)
 - UI admin: `/admin/smtp/log` con filtri, retry massivo, barra progresso, checkbox selezione
 - Email automatiche docente: assegnazione/rimozione/modifica lezione (batch singola email per operazioni multiple)
@@ -369,6 +370,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/lib/email-service.ts` — sendAutoEmail con logging
 - `src/lib/email-queue.ts` — coda email con rate limiting
 - `src/lib/email-retry-policy.ts` — classificazione email sensibili/ritentabili
+- `src/lib/notify-client.ts` — notifyAllClientUsers (in-app a tutti gli utenti), emailAllClientUsers, notifyClientOwner
 - `src/lib/rate-limit.ts` — rate limiter tiered (admin/authenticated/login/public), sliding window
 - `src/lib/teacher-document-pdf.ts` — generazione PDF atto di notorieta (pdf-lib)
 - `src/lib/teacher-attendance-pdf.ts` — generazione PDF registro presenze (pdf-lib)
