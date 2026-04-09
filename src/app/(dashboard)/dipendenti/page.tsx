@@ -22,6 +22,7 @@ type EditionOption = {
 
 type EmployeeRow = {
   id: string;
+  clientId?: string;
   nome: string;
   cognome: string;
   codiceFiscale: string;
@@ -57,7 +58,6 @@ function ClientDipendentiContent() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const { data: session } = useSession();
-  const sessionClientId = session?.user?.clientId ?? undefined;
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -109,6 +109,9 @@ function ClientDipendentiContent() {
   });
 
   const allEmployees = useMemo<EmployeeRow[]>(() => data?.data ?? [], [data]);
+  // During admin impersonation, session.user.clientId is null.
+  // Derive the effective clientId from loaded employee data.
+  const sessionClientId = session?.user?.clientId ?? allEmployees[0]?.clientId ?? undefined;
 
   const filteredEmployees = useMemo(() => {
     const term = debouncedSearch.trim().toLowerCase();

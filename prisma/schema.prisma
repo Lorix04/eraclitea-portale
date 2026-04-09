@@ -120,6 +120,7 @@ model Client {
   hasCustomFields   Boolean            @default(false)
   customFields      ClientCustomField[]
   maxUsers          Int?
+  defaultNotifyPolicy NotifyPolicy @default(REFERENT_ONLY)
   clientUsers       ClientUser[]
   clientInvites     ClientInvite[]
   clientActivityLogs ClientActivityLog[]
@@ -220,6 +221,8 @@ model CourseEdition {
   presenzaMinimaType  String?
   presenzaMinimaValue Int?
   notes            String?
+  notifyPolicy       NotifyPolicy @default(ALL)
+  notifyExtraUserIds String[]
   registrations    CourseRegistration[]
   lessons          Lesson[]
   attendances      Attendance[]
@@ -471,6 +474,12 @@ enum CourseStatus {
   PUBLISHED
   CLOSED
   ARCHIVED
+}
+
+enum NotifyPolicy {
+  REFERENT_ONLY
+  REFERENT_PLUS
+  ALL
 }
 
 model CourseVisibility {

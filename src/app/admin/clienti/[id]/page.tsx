@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -17,6 +17,7 @@ import {
   Users,
   BookOpen,
   Award,
+  Bell,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -64,6 +65,78 @@ const STATUS_LABELS: Record<string, { cls: string; label: string }> = {
   CLOSED: { cls: "bg-amber-100 text-amber-700", label: "Chiuso" },
   ARCHIVED: { cls: "bg-gray-100 text-gray-500", label: "Archiviato" },
 };
+
+function DefaultNotifyPolicySection({ clientId }: { clientId: string }) {
+  const [policy, setPolicy] = useState<string>("REFERENT_ONLY");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/clienti/${clientId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((json) => {
+        if (json?.data?.defaultNotifyPolicy) {
+          setPolicy(json.data.defaultNotifyPolicy);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [clientId]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const res = await fetch(`/api/admin/clienti/${clientId}/notify-policy`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ defaultNotifyPolicy: policy }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Default notifiche aggiornato");
+    } else {
+      toast.error("Errore durante il salvataggio");
+    }
+  };
+
+  if (!loaded) return null;
+
+  const options = [
+    { value: "REFERENT_ONLY", label: "Solo referente" },
+    { value: "REFERENT_PLUS", label: "Referente + selezionati" },
+    { value: "ALL", label: "Tutti gli utenti" },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <Bell className="h-4 w-4" />
+        Default notifiche edizioni
+      </h3>
+      <p className="text-xs text-muted-foreground">
+        Questa impostazione viene applicata automaticamente a ogni nuova edizione creata per questo cliente.
+      </p>
+      <div className="flex items-center gap-2">
+        <select
+          value={policy}
+          onChange={(e) => setPolicy(e.target.value)}
+          className="rounded-md border bg-background px-3 py-2 text-sm"
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+        >
+          {saving ? "..." : "Salva"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminClienteDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -386,6 +459,11 @@ export default function AdminClienteDetailPage() {
             clientId={client.id}
             canEdit={can("clienti", "manage-custom-fields")}
           />
+        </div>
+
+        {/* Default Notify Policy */}
+        <div className="rounded-lg border bg-card p-5">
+          <DefaultNotifyPolicySection clientId={client.id} />
         </div>
 
         {/* Users */}

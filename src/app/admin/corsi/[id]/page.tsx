@@ -51,6 +51,8 @@ export default async function AdminCourseDetailPage({
     clientId: edition.client?.id ?? null,
     clientName: edition.client?.ragioneSociale ?? null,
     registrationsCount: edition._count?.registrations ?? 0,
+    notifyPolicy: edition.notifyPolicy,
+    notifyExtraUserIds: edition.notifyExtraUserIds,
   }));
 
   const selectedClients = course.visibility.map((entry) => ({

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
 import { checkApiPermission } from "@/lib/permissions";
-import { notifyAllClientUsers } from "@/lib/notify-client";
+import { notifyEditionUsers } from "@/lib/notify-client";
 import { formatDate } from "@/lib/date-utils";
 
 const lessonUpdateSchema = z.object({
@@ -93,7 +93,8 @@ export async function PUT(
 
     // Also notify client users
     if (edition.status === "PUBLISHED" && edition.clientId) {
-      void notifyAllClientUsers({
+      void notifyEditionUsers({
+        editionId: edition.id,
         clientId: edition.clientId,
         type: "LESSON_CHANGED",
         title: "Lezione modificata",
@@ -147,7 +148,8 @@ export async function DELETE(
 
   // Notify client when lesson is deleted from a published edition
   if (edition.status === "PUBLISHED" && edition.clientId) {
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: edition.id,
       clientId: edition.clientId,
       type: "LESSON_CHANGED",
       title: "Lezione cancellata",

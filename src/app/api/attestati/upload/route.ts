@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { saveCertificateFile } from "@/lib/certificate-storage";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { sendCertificatesAvailableEmail } from "@/lib/email-notifications";
-import { notifyAllClientUsers } from "@/lib/notify-client";
+import { notifyEditionUsers } from "@/lib/notify-client";
 import {
   calculateAttendanceStats,
   formatPresenceRequirementLabel,
@@ -318,7 +318,8 @@ export async function POST(request: Request) {
     });
 
     // Notify all client users (in-app) about certificates
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: edition.id,
       clientId: client.id,
       type: "CERTIFICATES_AVAILABLE",
       title: "Attestati disponibili",

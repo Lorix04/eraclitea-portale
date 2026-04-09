@@ -6,7 +6,7 @@ import {
   sendAdminRegistrySubmittedEmail,
   sendRegistryReceivedEmail,
 } from "@/lib/email-notifications";
-import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -173,7 +173,8 @@ export async function POST(
 
   // Notify all client users that their registry submission was confirmed
   try {
-    await notifyAllClientUsers({
+    await notifyEditionUsers({
+      editionId: edition.id,
       clientId: effectiveClient.clientId,
       type: "REGISTRY_CONFIRMED",
       title: "Anagrafiche inviate con successo",
@@ -181,7 +182,8 @@ export async function POST(
       courseEditionId: edition.id,
       excludeUserId: effectiveClient.userId,
     });
-    void emailAllClientUsers({
+    void emailEditionUsers({
+      editionId: edition.id,
       clientId: effectiveClient.clientId,
       emailType: "REGISTRY_CONFIRMED",
       subject: `Anagrafiche inviate - ${edition.course.title} (Ed. #${edition.editionNumber})`,

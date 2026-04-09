@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateBody, validateQuery } from "@/lib/api-utils";
 import { checkApiPermission } from "@/lib/permissions";
-import { notifyAllClientUsers } from "@/lib/notify-client";
+import { notifyEditionUsers } from "@/lib/notify-client";
 
 const querySchema = z.object({
   editionId: z.string().optional(),
@@ -169,7 +169,8 @@ export async function POST(
         for (const lesson of editions) {
           const ed = lesson.courseEdition;
           if (ed.status === "PUBLISHED" && ed.clientId) {
-            void notifyAllClientUsers({
+            void notifyEditionUsers({
+              editionId: ed.id,
               clientId: ed.clientId,
               type: "TEACHER_CHANGED",
               title: "Docente aggiornato",

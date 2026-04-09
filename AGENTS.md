@@ -73,7 +73,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Utenti e Ruoli
 - `User` (ADMIN/CLIENT/TEACHER) — `name` (opzionale), `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
-- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`, `maxUsers`, `clientUsers`, `clientInvites`, `clientActivityLogs`
+- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`, `maxUsers`, `defaultNotifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `clientUsers`, `clientInvites`, `clientActivityLogs`
 - `ClientUser` — junction table Client-User: `isOwner` (proprietario), `status` (ACTIVE/INACTIVE/PENDING), `invitedBy`; un client puo avere piu utenti, un utente proprietario gestisce inviti
 - `ClientInvite` — inviti utente client: `token` (unique), `email`, `expiresAt` (7 giorni), `status` (PENDING/ACCEPTED/EXPIRED/REVOKED)
 - `ClientActivityLog` — log attivita client: `action`, `entityType`, `entityId`, `details` (JSON), `ipAddress`
@@ -82,7 +82,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 
 ### Formazione
 - `Course` — `CourseEdition` (per cliente), categorie e visibilita, `CourseMaterial[]`
-- `CourseEdition` — lezioni, registrazioni, presenze, certificati, notifiche, materiali, `presenzaMinimaType`/`presenzaMinimaValue`, `referents` (EditionReferent[])
+- `CourseEdition` — lezioni, registrazioni, presenze, certificati, notifiche, materiali, `presenzaMinimaType`/`presenzaMinimaValue`, `referents` (EditionReferent[]), `notifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `notifyExtraUserIds`
 - `CourseMaterial` — materiali a livello di corso (libreria standard), importabili nelle edizioni
 - `Lesson` — data, orario, durata, luogo, titolo, `teacherAssignments`, presenze
 - `Employee` — `nome?`, `cognome?`, `codiceFiscale?` (tutti nullable per custom fields), relazione con registrazioni/presenze/certificati, `customData` (JSON per campi personalizzati)

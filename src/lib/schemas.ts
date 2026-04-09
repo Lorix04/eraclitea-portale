@@ -85,6 +85,8 @@ const courseEditionBaseSchema = z.object({
     z.coerce.number().int().nullable().optional()
   ),
   notes: z.string().max(2000).optional().nullable().or(z.literal("")),
+  notifyPolicy: z.enum(["REFERENT_ONLY", "REFERENT_PLUS", "ALL"]).optional(),
+  notifyExtraUserIds: z.array(z.string()).optional(),
 });
 
 function validateEditionDates(

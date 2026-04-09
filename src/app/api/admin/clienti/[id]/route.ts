@@ -55,6 +55,7 @@ export async function GET(
       faviconPath: client.faviconPath,
       faviconFileName: client.faviconFileName,
       isActive: client.isActive,
+      defaultNotifyPolicy: client.defaultNotifyPolicy,
       user: client.users[0] ?? null,
       categories: client.categories.map((entry) => ({
         id: entry.category.id,

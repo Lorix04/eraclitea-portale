@@ -41,34 +41,21 @@ export const authOptions: NextAuthOptions = {
           throw new Error("ACCOUNT_LOCKED");
         }
 
-        // Expired lock → reset and notify
+        // Expired lock → reset and create notification
         if (user.lockedUntil && user.lockedUntil <= new Date()) {
           await prisma.user.update({
             where: { id: user.id },
             data: { failedLoginAttempts: 0, lockedUntil: null },
           });
-          // Fire-and-forget unlock email
-          import("@/lib/email-service").then(({ sendAutoEmail }) => {
-            import("@/lib/email-templates").then(({ buildEmailHtml, emailParagraph }) => {
-              void sendAutoEmail({
-                emailType: "ACCOUNT_UNLOCKED",
-                recipientEmail: user.email,
-                recipientName: user.name ?? undefined,
-                recipientId: user.id,
-                subject: "Account sbloccato - Sapienta",
-                html: buildEmailHtml({
-                  title: "Account Sbloccato",
-                  greeting: `Gentile ${user.name || user.email},`,
-                  bodyHtml: `
-                    ${emailParagraph("Il tuo account è stato sbloccato dopo il periodo di blocco temporaneo.")}
-                    ${emailParagraph("Se non hai tentato di accedere, ti consigliamo di cambiare la password per sicurezza.")}
-                  `,
-                  ctaText: "Accedi al Portale",
-                  ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/login`,
-                }),
-                ignorePreference: true,
-              });
-            }).catch(() => {});
+          // Create in-app notification about unlock (email sent via separate mechanism)
+          await prisma.notification.create({
+            data: {
+              userId: user.id,
+              type: "ACCOUNT_UNLOCKED",
+              title: "Account sbloccato",
+              message: "Il tuo account è stato sbloccato. Se non hai tentato di accedere, cambia la password.",
+              isGlobal: false,
+            },
           }).catch(() => {});
         }
 

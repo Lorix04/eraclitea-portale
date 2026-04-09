@@ -7,7 +7,7 @@ import {
   sendCertificateExpiringEmail,
   sendDeadlineReminderEmail,
 } from "@/lib/email-notifications";
-import { notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);
@@ -206,14 +206,16 @@ async function processAdminExpiredDeadline() {
 
     // Notify the client that the deadline has expired
     if (edition.client?.id) {
-      void notifyAllClientUsers({
+      void notifyEditionUsers({
+        editionId: edition.id,
         clientId: edition.client.id,
         type: "DEADLINE_EXPIRED",
         title: "Deadline anagrafiche scaduta",
         message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) è scaduta. Contatta l'ente di formazione per informazioni.`,
         courseEditionId: edition.id,
       });
-      void emailAllClientUsers({
+      void emailEditionUsers({
+        editionId: edition.id,
         clientId: edition.client.id,
         emailType: "DEADLINE_EXPIRED",
         subject: `Deadline scaduta - ${edition.course.title} (Ed. #${edition.editionNumber})`,
@@ -349,14 +351,16 @@ async function processDeadlineToday() {
       message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
       courseEditionId: edition.id,
     });
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: edition.id,
       clientId: edition.client.id,
       type: "DEADLINE_TODAY",
       title: "Deadline anagrafiche OGGI",
       message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
       courseEditionId: edition.id,
     });
-    void emailAllClientUsers({
+    void emailEditionUsers({
+      editionId: edition.id,
       clientId: edition.client.id,
       emailType: "DEADLINE_TODAY",
       subject: `DEADLINE OGGI - ${edition.course.title} (Ed. #${edition.editionNumber})`,
@@ -413,14 +417,16 @@ async function processCourseStartingTomorrow() {
       message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
       courseEditionId: edition.id,
     });
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: edition.id,
       clientId: edition.client.id,
       type: "COURSE_STARTING_TOMORROW",
       title: "Corso in partenza domani",
       message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
       courseEditionId: edition.id,
     });
-    void emailAllClientUsers({
+    void emailEditionUsers({
+      editionId: edition.id,
       clientId: edition.client.id,
       emailType: "COURSE_STARTING_TOMORROW",
       subject: `Promemoria: ${edition.course.title} inizia domani`,
@@ -456,14 +462,24 @@ async function processExpiredCertificatesToday() {
     const employeeName = `${cert.employee.cognome} ${cert.employee.nome}`.trim();
     const courseName = cert.courseEdition?.course?.title || "Corso";
 
-    void notifyAllClientUsers({
-      clientId: cert.client.id,
-      type: "CERTIFICATE_EXPIRED",
-      title: "Attestato scaduto",
-      message: `L'attestato di ${employeeName} per ${courseName} è scaduto oggi.`,
-      courseEditionId: cert.courseEditionId ?? undefined,
-    });
-    void emailAllClientUsers({
+    if (cert.courseEditionId) {
+      void notifyEditionUsers({
+        editionId: cert.courseEditionId,
+        clientId: cert.client.id,
+        type: "CERTIFICATE_EXPIRED",
+        title: "Attestato scaduto",
+        message: `L'attestato di ${employeeName} per ${courseName} è scaduto oggi.`,
+        courseEditionId: cert.courseEditionId,
+      });
+    } else {
+      void notifyAllClientUsers({
+        clientId: cert.client.id,
+        type: "CERTIFICATE_EXPIRED",
+        title: "Attestato scaduto",
+        message: `L'attestato di ${employeeName} per ${courseName} è scaduto oggi.`,
+      });
+    }
+    const certEmailParams = {
       clientId: cert.client.id,
       emailType: "CERTIFICATE_EXPIRED",
       subject: `Attestato scaduto - ${employeeName} (${courseName})`,
@@ -479,7 +495,12 @@ async function processExpiredCertificatesToday() {
       ctaText: "Vai agli Attestati",
       ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/attestati`,
       courseEditionId: cert.courseEditionId ?? undefined,
-    });
+    };
+    if (cert.courseEditionId) {
+      void emailEditionUsers({ editionId: cert.courseEditionId, ...certEmailParams });
+    } else {
+      void emailAllClientUsers(certEmailParams);
+    }
     count++;
   }
   return count;

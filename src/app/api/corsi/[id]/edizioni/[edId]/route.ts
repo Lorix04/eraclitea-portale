@@ -12,7 +12,7 @@ import {
   sendNewEditionEmail,
 } from "@/lib/email-notifications";
 import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
-import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export const dynamic = "force-dynamic";
 
@@ -181,6 +181,8 @@ export async function PUT(
       presenzaMinimaType,
       presenzaMinimaValue,
       notes: data.notes ?? undefined,
+      ...(data.notifyPolicy ? { notifyPolicy: data.notifyPolicy } : {}),
+      ...(data.notifyExtraUserIds !== undefined ? { notifyExtraUserIds: data.notifyExtraUserIds ?? [] } : {}),
     },
     include: {
       course: { select: { id: true, title: true, durationHours: true } },
@@ -306,14 +308,16 @@ export async function PUT(
     });
 
     // Also send COURSE_COMPLETED notification to all client users
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: updated.id,
       clientId: updated.client.id,
       type: "COURSE_COMPLETED",
       title: "Corso completato",
       message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stato completato. Gli attestati saranno disponibili a breve.`,
       courseEditionId: updated.id,
     });
-    void emailAllClientUsers({
+    void emailEditionUsers({
+      editionId: updated.id,
       clientId: updated.client.id,
       emailType: "COURSE_COMPLETED",
       subject: `Corso completato - ${updated.course.title} (Ed. #${updated.editionNumber})`,
@@ -333,14 +337,16 @@ export async function PUT(
   if (newStatus === "PUBLISHED" && oldStatus === "PUBLISHED") {
     const notesChanged = (existing.notes ?? "") !== (updated.notes ?? "");
     if (notesChanged && updated.client.id) {
-      void notifyAllClientUsers({
+      void notifyEditionUsers({
+      editionId: updated.id,
         clientId: updated.client.id,
         type: "EDITION_INFO_CHANGED",
         title: "Edizione aggiornata",
         message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stata aggiornata con nuove informazioni.`,
         courseEditionId: updated.id,
       });
-      void emailAllClientUsers({
+      void emailEditionUsers({
+      editionId: updated.id,
         clientId: updated.client.id,
         emailType: "EDITION_INFO_CHANGED",
         subject: `Edizione aggiornata - ${updated.course.title} (Ed. #${updated.editionNumber})`,

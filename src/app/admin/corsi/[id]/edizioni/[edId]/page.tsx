@@ -74,9 +74,13 @@ type EditionDetail = {
   presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   notes?: string | null;
+  notifyPolicy?: "REFERENT_ONLY" | "REFERENT_PLUS" | "ALL";
+  notifyExtraUserIds?: string[];
   registrySentAt?: string | null;
   course: { id: string; title: string; durationHours?: number | null };
   client: { id: string; ragioneSociale: string };
+  clientId?: string;
+  referents?: Array<{ userId: string }>;
   _count?: { registrations: number; lessons: number; certificates: number };
 };
 
@@ -165,6 +169,9 @@ export default function AdminEditionDetailPage({
   const [lessonSaving, setLessonSaving] = useState(false);
   const [lessonDeleting, setLessonDeleting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [notifyPolicy, setNotifyPolicy] = useState<"REFERENT_ONLY" | "REFERENT_PLUS" | "ALL">("ALL");
+  const [notifyExtraUserIds, setNotifyExtraUserIds] = useState<string[]>([]);
+  const [clientUsers, setClientUsers] = useState<Array<{ userId: string; email: string; name: string | null; isOwner: boolean }>>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -254,6 +261,29 @@ export default function AdminEditionDetailPage({
     setPresenzaMinimaValue(
       hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
     );
+    setNotifyPolicy(data.notifyPolicy ?? "ALL");
+    setNotifyExtraUserIds(data.notifyExtraUserIds ?? []);
+    // Load client users for the multi-select
+    const edClientId = data.clientId ?? data.client?.id;
+    if (edClientId) {
+      fetch(`/api/admin/clienti/${edClientId}/utenti`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((json) => {
+          if (json?.data) {
+            setClientUsers(
+              json.data
+                .filter((u: any) => u.status === "ACTIVE")
+                .map((u: any) => ({
+                  userId: u.userId,
+                  email: u.user?.email ?? "",
+                  name: u.user?.name ?? null,
+                  isOwner: u.isOwner ?? false,
+                }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
     setLoading(false);
   }, [params.id, params.edId]);
 
@@ -390,6 +420,8 @@ export default function AdminEditionDetailPage({
         presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
         presenzaMinimaValue: presenzaMinimaPayloadValue,
         notes,
+        notifyPolicy,
+        notifyExtraUserIds: notifyPolicy === "REFERENT_PLUS" ? notifyExtraUserIds : [],
       }),
     });
     setSaving(false);
@@ -761,6 +793,66 @@ export default function AdminEditionDetailPage({
                 Nessun requisito di presenza minima impostato.
               </p>
             )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">Destinatari notifiche</h3>
+            <div className="space-y-2">
+              {(["REFERENT_ONLY", "REFERENT_PLUS", "ALL"] as const).map((policy) => {
+                const labels: Record<string, { title: string; desc: string }> = {
+                  REFERENT_ONLY: { title: "Solo referente", desc: "Le notifiche vanno solo al referente dell'edizione" },
+                  REFERENT_PLUS: { title: "Referente + selezionati", desc: "Aggiungi altri destinatari" },
+                  ALL: { title: "Tutti", desc: "Tutti gli amministratori del cliente ricevono le notifiche" },
+                };
+                return (
+                  <label key={policy} className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/30">
+                    <input
+                      type="radio"
+                      name="notifyPolicy"
+                      value={policy}
+                      checked={notifyPolicy === policy}
+                      onChange={() => setNotifyPolicy(policy)}
+                      disabled={isArchived}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{labels[policy].title}</p>
+                      <p className="text-xs text-muted-foreground">{labels[policy].desc}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            {notifyPolicy === "REFERENT_PLUS" && clientUsers.length > 0 ? (
+              <div className="ml-7 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Destinatari aggiuntivi:</p>
+                {clientUsers.map((cu) => {
+                  const isReferent = edition?.referents?.some((r: any) => r.userId === cu.userId);
+                  const checked = isReferent || notifyExtraUserIds.includes(cu.userId);
+                  return (
+                    <label key={cu.userId} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={isArchived || isReferent}
+                        onChange={(e) => {
+                          if (isReferent) return;
+                          setNotifyExtraUserIds((prev) =>
+                            e.target.checked
+                              ? [...prev, cu.userId]
+                              : prev.filter((id) => id !== cu.userId)
+                          );
+                        }}
+                      />
+                      <span>{cu.name || cu.email}</span>
+                      <span className="text-xs text-muted-foreground">({cu.email})</span>
+                      {cu.isOwner ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">Proprietario</span> : null}
+                      {isReferent ? <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">Referente</span> : null}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {!isArchived ? (

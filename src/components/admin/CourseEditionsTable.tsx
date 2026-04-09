@@ -19,6 +19,8 @@ type EditionRow = {
   clientId?: string | null;
   clientName?: string | null;
   registrationsCount: number;
+  notifyPolicy?: string;
+  notifyExtraUserIds?: string[];
 };
 
 type CourseEditionsTableProps = {
@@ -178,7 +180,16 @@ export default function CourseEditionsTable({
                     : "-"}
                 </td>
                 <td className="px-4 py-3">
-                  <EditionStatusBadge status={edition.status} />
+                  <div className="flex items-center gap-1.5">
+                    <EditionStatusBadge status={edition.status} />
+                    {edition.notifyPolicy === "REFERENT_ONLY" ? (
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600" title="Notifiche solo al referente">Ref.</span>
+                    ) : edition.notifyPolicy === "REFERENT_PLUS" ? (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700" title="Notifiche a referente + selezionati">Ref. +{edition.notifyExtraUserIds?.length ?? 0}</span>
+                    ) : edition.notifyPolicy === "ALL" ? (
+                      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700" title="Notifiche a tutti gli utenti">Tutti</span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-4 py-3">{edition.registrationsCount}</td>
                 <td className="px-4 py-3">

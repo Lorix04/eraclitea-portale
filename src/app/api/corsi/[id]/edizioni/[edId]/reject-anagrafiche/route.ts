@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkApiPermission } from "@/lib/permissions";
-import { notifyAllClientUsers, emailAllClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -61,7 +61,8 @@ export async function POST(
 
   // Notify all client users
   if (edition.clientId) {
-    void notifyAllClientUsers({
+    void notifyEditionUsers({
+      editionId: edition.id,
       clientId: edition.clientId,
       type: "REGISTRY_REJECTED",
       title: "Anagrafiche da rivedere",
@@ -69,7 +70,8 @@ export async function POST(
       courseEditionId: edition.id,
     });
 
-    void emailAllClientUsers({
+    void emailEditionUsers({
+      editionId: edition.id,
       clientId: edition.clientId,
       emailType: "REGISTRY_REJECTED",
       subject: `Anagrafiche da correggere - ${edition.course.title} (Ed. #${edition.editionNumber})`,
