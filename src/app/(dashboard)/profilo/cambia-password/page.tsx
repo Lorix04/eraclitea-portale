@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { BrandedButton } from "@/components/BrandedButton";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormLabel } from "@/components/ui/FormLabel";
+import PasswordRequirements, { isPasswordValid } from "@/components/PasswordRequirements";
 
 export default function ForcedChangePasswordPage() {
   const router = useRouter();
@@ -108,6 +109,11 @@ export default function ForcedChangePasswordPage() {
               </button>
             </div>
             <FormFieldError message={errors.newPassword} />
+            <PasswordRequirements
+              password={newPassword}
+              confirmPassword={confirmPassword}
+              showConfirmMatch
+            />
           </div>
 
           <div>
@@ -146,7 +152,7 @@ export default function ForcedChangePasswordPage() {
             <FormFieldError message={errors.confirmPassword} />
           </div>
 
-          <BrandedButton type="submit" disabled={isSaving} className="min-h-[44px]">
+          <BrandedButton type="submit" disabled={isSaving || !isPasswordValid(newPassword) || newPassword !== confirmPassword} className="min-h-[44px]">
             {isSaving ? "Salvataggio..." : "Salva Nuova Password"}
           </BrandedButton>
         </form>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLayout from "../../AuthLayout";
+import PasswordRequirements, { isPasswordValid } from "@/components/PasswordRequirements";
 
 export default function ResetPasswordPage({
   params,
@@ -219,6 +220,11 @@ export default function ResetPasswordPage({
           {fieldErrors.password ? (
             <p className="mt-1 text-sm text-red-400">{fieldErrors.password}</p>
           ) : null}
+          <PasswordRequirements
+            password={password}
+            confirmPassword={confirmPassword}
+            showConfirmMatch
+          />
         </div>
 
         <div>
@@ -267,7 +273,7 @@ export default function ResetPasswordPage({
         <button
           type="submit"
           className="w-full rounded-lg bg-[#EAB308] px-4 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#FACC15] disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isLoading}
+          disabled={isLoading || !isPasswordValid(password) || password !== confirmPassword}
         >
           {isLoading ? (
             <span className="inline-flex items-center gap-2">

@@ -8,6 +8,7 @@ import { BrandedButton } from "@/components/BrandedButton";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
+import PasswordRequirements, { isPasswordValid } from "@/components/PasswordRequirements";
 
 const passwordSchema = z
   .object({
@@ -154,6 +155,11 @@ export default function ChangePasswordForm() {
           </button>
         </div>
         <FormFieldError message={errors.newPassword} />
+        <PasswordRequirements
+          password={form.newPassword}
+          confirmPassword={form.confirmPassword}
+          showConfirmMatch
+        />
       </div>
       <div>
         <FormLabel required>Conferma nuova password</FormLabel>
@@ -187,7 +193,7 @@ export default function ChangePasswordForm() {
         </div>
         <FormFieldError message={errors.confirmPassword} />
       </div>
-      <BrandedButton type="submit" disabled={loading} className="min-h-[44px]">
+      <BrandedButton type="submit" disabled={loading || !isPasswordValid(form.newPassword) || form.newPassword !== form.confirmPassword || !form.currentPassword} className="min-h-[44px]">
         {loading ? "Salvataggio..." : "Cambia password"}
       </BrandedButton>
       {successVisible ? (
