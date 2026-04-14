@@ -128,6 +128,7 @@ export async function middleware(req: NextRequest) {
     }
 
     const isForceChangePasswordApi = pathname === "/api/profilo/cambia-password";
+    const isBrandingApi = pathname === "/api/branding";
     const isMutationMethod = ["POST", "PUT", "DELETE", "PATCH"].includes(
       req.method
     );
@@ -152,7 +153,8 @@ export async function middleware(req: NextRequest) {
 
     if (
       mustChangePassword &&
-      !isForceChangePasswordApi
+      !isForceChangePasswordApi &&
+      !isBrandingApi
     ) {
       return NextResponse.json(
         { error: "Cambio password obbligatorio" },
