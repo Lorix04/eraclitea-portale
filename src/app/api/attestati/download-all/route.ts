@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { Prisma } from "@prisma/client";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const runtime = "nodejs";
 
@@ -41,8 +42,9 @@ export async function GET(request: Request) {
     new URL(request.url).searchParams.get("courseEditionId") ??
     new URL(request.url).searchParams.get("courseId") ??
     undefined;
-  const isAdmin = session.user.role === "ADMIN";
-  const scopedClientId = isAdmin ? clientId : session.user.clientId;
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdmin = session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
+  const scopedClientId = isAdmin ? clientId : (effectiveClient?.clientId ?? session.user.clientId);
 
   if (!isAdmin && !scopedClientId) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { Prisma } from "@prisma/client";
 import { checkApiPermission, canAccessArea } from "@/lib/permissions";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
 
@@ -57,13 +58,14 @@ export async function GET(request: Request) {
   const safeLimit = limit ?? 20;
   const skip = (safePage - 1) * safeLimit;
 
-  const isAdmin = session.user.role === "ADMIN";
+  const effectiveClient = await getEffectiveClientContext();
+  const isAdmin = session.user.role === "ADMIN" && !effectiveClient?.isImpersonating;
 
   if (isAdmin && !canAccessArea(session.user.permissions, "attestati", session.user.isSuperAdmin)) {
     return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
   }
 
-  const scopedClientId = isAdmin ? clientId : session.user.clientId;
+  const scopedClientId = isAdmin ? clientId : (effectiveClient?.clientId ?? session.user.clientId);
 
   if (!isAdmin && !scopedClientId) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });

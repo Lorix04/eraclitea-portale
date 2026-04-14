@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteCertificateFile, saveCertificateFile } from "@/lib/certificate-storage";
 import { getClientIP, logAudit } from "@/lib/audit";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const runtime = "nodejs";
 const ALLOWED_CERTIFICATE_TYPES = new Set(["application/pdf"]);
@@ -38,9 +39,19 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const effectiveClient = await getEffectiveClientContext();
+  const effectiveClientId = effectiveClient?.clientId ?? session.user.clientId;
   if (
-    session.user.role === "CLIENT" &&
-    certificate.clientId !== session.user.clientId
+    session.user.role !== "ADMIN" &&
+    certificate.clientId !== effectiveClientId
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  // Allow impersonating admin to view client certificates
+  if (
+    session.user.role === "ADMIN" &&
+    effectiveClient?.isImpersonating &&
+    certificate.clientId !== effectiveClient.clientId
   ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const entityType = searchParams.get("entityType");
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
-  const limit = Number(searchParams.get("limit") || 50);
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit") || 50)));
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const skip = (page - 1) * limit;
 
@@ -47,5 +47,5 @@ export async function GET(request: Request) {
     prisma.auditLog.count({ where }),
   ]);
 
-  return NextResponse.json({ data: logs, total, page, limit });
+  return NextResponse.json({ data: logs, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
 }
