@@ -73,9 +73,16 @@ export default function ClientUsersPage() {
 
   const data = query.data;
 
+  const [inviteResult, setInviteResult] = useState<{
+    isNewUser: boolean;
+    tempPassword?: string;
+    message: string;
+  } | null>(null);
+
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
+    setInviteResult(null);
     try {
       const res = await fetch("/api/clienti/utenti/invite", {
         method: "POST",
@@ -86,7 +93,23 @@ export default function ClientUsersPage() {
       if (!res.ok) throw new Error(json.error || "Errore");
       toast.success(json.message || "Invito inviato");
       setInviteEmail("");
-      setShowInviteForm(false);
+      if (json.isNewUser && json.tempPassword) {
+        // SMTP failed — show temp password as fallback
+        setInviteResult({
+          isNewUser: true,
+          tempPassword: json.tempPassword,
+          message: json.message,
+        });
+      } else {
+        setInviteResult({
+          isNewUser: json.isNewUser ?? false,
+          message: json.message,
+        });
+        setTimeout(() => {
+          setShowInviteForm(false);
+          setInviteResult(null);
+        }, 3000);
+      }
       query.refetch();
     } catch (err: any) {
       toast.error(err.message || "Errore");
@@ -318,10 +341,25 @@ export default function ClientUsersPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            Un amministratore disattivato continua a occupare uno slot finche non
-            viene eliminato definitivamente.
-          </p>
+          {inviteResult ? (
+            <div className={`mt-3 rounded-md border p-3 text-sm ${inviteResult.tempPassword ? "border-amber-300 bg-amber-50" : "border-emerald-300 bg-emerald-50"}`}>
+              <p className={inviteResult.tempPassword ? "text-amber-800" : "text-emerald-800"}>
+                {inviteResult.message}
+              </p>
+              {inviteResult.tempPassword ? (
+                <div className="mt-2 rounded border border-amber-200 bg-white p-2 font-mono text-xs">
+                  <p><strong>Email:</strong> {inviteEmail || "—"}</p>
+                  <p><strong>Password:</strong> {inviteResult.tempPassword}</p>
+                  <p className="mt-1 text-amber-600">Comunica queste credenziali in modo sicuro.</p>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Un amministratore disattivato continua a occupare uno slot finche non
+              viene eliminato definitivamente.
+            </p>
+          )}
         </div>
       )}
 

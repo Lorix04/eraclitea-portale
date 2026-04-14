@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveClientContext } from "@/lib/impersonate";
@@ -11,6 +12,18 @@ export const dynamic = "force-dynamic";
 
 const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const special = "!@#$%&*";
+  let password = "";
+  for (let i = 0; i < 10; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  password += special.charAt(Math.floor(Math.random() * special.length));
+  password += Math.floor(Math.random() * 10);
+  return password;
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   const effectiveClient = await getEffectiveClientContext();
@@ -21,7 +34,9 @@ export async function POST(request: Request) {
   const clientId = effectiveClient.clientId;
 
   // Must be owner (or admin impersonating)
-  const owner = effectiveClient.isImpersonating || await isClientOwner(effectiveClient.userId, clientId);
+  const owner =
+    effectiveClient.isImpersonating ||
+    (await isClientOwner(effectiveClient.userId, clientId));
   if (!owner) {
     return NextResponse.json(
       { error: "Solo il proprietario puo invitare amministratori" },
@@ -41,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email non valida" }, { status: 400 });
   }
 
-  // Check if already a member
+  // Check if already a member of this client
   const existingMember = await prisma.clientUser.findFirst({
     where: {
       clientId,
@@ -71,7 +86,9 @@ export async function POST(request: Request) {
     const limit = await canAddUser(clientId);
     if (!limit.allowed) {
       return NextResponse.json(
-        { error: `Limite amministratori raggiunto (${limit.current}/${limit.max})` },
+        {
+          error: `Limite amministratori raggiunto (${limit.current}/${limit.max})`,
+        },
         { status: 400 }
       );
     }
@@ -86,8 +103,112 @@ export async function POST(request: Request) {
     where: { id: effectiveClient.userId },
     select: { name: true, email: true },
   });
+  const clientName = client?.ragioneSociale || "Sapienta";
+  const ownerName =
+    ownerUser?.name || ownerUser?.email || "Un amministratore";
 
-  // Create or update invite (regenerates token on resend, invalidating old link)
+  // Check if user already exists in the system
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  // === CASE A: New user — create account with temp password ===
+  if (!existingUser) {
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: "CLIENT",
+          clientId,
+          isActive: true,
+          mustChangePassword: true,
+        },
+      });
+
+      await tx.clientUser.create({
+        data: {
+          clientId,
+          userId: user.id,
+          isOwner: false,
+          invitedBy: effectiveClient.userId,
+          status: "ACTIVE",
+        },
+      });
+
+      // Create invite record as ACCEPTED (auto-accepted since account was created)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await tx.clientInvite.upsert({
+        where: { clientId_email: { clientId, email } },
+        create: {
+          clientId,
+          email,
+          invitedBy: effectiveClient.userId,
+          expiresAt,
+          status: "ACCEPTED",
+          acceptedAt: new Date(),
+        },
+        update: {
+          status: "ACCEPTED",
+          acceptedAt: new Date(),
+          invitedBy: effectiveClient.userId,
+        },
+      });
+
+      return user;
+    });
+
+    // Send email with credentials
+    const html = buildEmailHtml({
+      title: `Benvenuto su ${clientName}`,
+      greeting: "Ciao,",
+      bodyHtml: `
+        ${emailParagraph(`${ownerName} ti ha invitato come amministratore di <strong>${clientName}</strong> su Portale Sapienta.`)}
+        ${emailParagraph("Ecco le tue credenziali per accedere:")}
+        ${emailInfoBox(`
+          <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Email:</strong> ${email}</p>
+          <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Password temporanea:</strong> ${tempPassword}</p>
+        `)}
+        ${emailParagraph("Per la tua sicurezza, al primo accesso ti verra chiesto di scegliere una nuova password.")}
+      `,
+      ctaText: "Accedi al Portale",
+      ctaUrl: `${PORTAL_URL}/login`,
+      footerNote:
+        "Se non conosci il mittente, ignora questa email.",
+    });
+
+    const emailSent = await sendAutoEmail({
+      emailType: "WELCOME",
+      recipientEmail: email,
+      recipientName: email,
+      recipientId: newUser.id,
+      subject: `Sei stato invitato su ${clientName} — Le tue credenziali`,
+      html,
+      ignorePreference: true,
+    });
+
+    await logClientActivity({
+      clientId,
+      userId: effectiveClient.userId,
+      action: "USER_INVITED",
+      details: { email, isNewUser: true },
+    });
+
+    return NextResponse.json({
+      success: true,
+      isNewUser: true,
+      emailSent,
+      // If SMTP failed, return temp password so the owner can communicate it manually
+      tempPassword: emailSent ? undefined : tempPassword,
+      message: `Account creato per ${email}. ${emailSent ? "Le credenziali temporanee sono state inviate via email." : "ATTENZIONE: l'email non e stata inviata. Comunica la password temporanea in modo sicuro."}`,
+    });
+  }
+
+  // === CASE B: Existing user — send invite link ===
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const newToken = crypto.randomUUID();
   const invite = await prisma.clientInvite.upsert({
@@ -107,12 +228,12 @@ export async function POST(request: Request) {
     },
   });
 
-  // Send email
+  // Send invite email
   const html = buildEmailHtml({
-    title: `Invito a ${client?.ragioneSociale || "Sapienta"}`,
+    title: `Invito a ${clientName}`,
     greeting: "Ciao,",
     bodyHtml: `
-      ${emailParagraph(`${ownerUser?.name || ownerUser?.email || "Un amministratore"} ti ha invitato come amministratore di <strong>${client?.ragioneSociale || "un'azienda"}</strong> su Portale Sapienta.`)}
+      ${emailParagraph(`${ownerName} ti ha invitato come amministratore di <strong>${clientName}</strong> su Portale Sapienta.`)}
       ${emailInfoBox(`<p style="margin:0; font-size:14px;">L'invito scade il ${expiresAt.toLocaleDateString("it-IT", { day: "2-digit", month: "long", year: "numeric" })}.</p>`)}
     `,
     ctaText: "Accetta invito",
@@ -123,7 +244,7 @@ export async function POST(request: Request) {
   void sendAutoEmail({
     emailType: "GENERIC",
     recipientEmail: email,
-    subject: `Invito a ${client?.ragioneSociale || "Sapienta"} — Portale Sapienta`,
+    subject: `Invito a ${clientName} — Portale Sapienta`,
     html,
     ignorePreference: true,
   });
@@ -132,12 +253,15 @@ export async function POST(request: Request) {
     clientId,
     userId: effectiveClient.userId,
     action: "USER_INVITED",
-    details: { email },
+    details: { email, isNewUser: false },
   });
 
   return NextResponse.json({
     success: true,
-    message: isResend ? `Invito reinviato a ${email}` : `Invito inviato a ${email}`,
+    isNewUser: false,
+    message: isResend
+      ? `Invito reinviato a ${email}`
+      : `Invito inviato a ${email}. L'utente ricevera un'email con il link per accettare.`,
     resent: isResend,
   });
 }
