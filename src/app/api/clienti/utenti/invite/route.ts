@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 import { isClientOwner, canAddUser, logClientActivity } from "@/lib/client-users";
 import { sendAutoEmail } from "@/lib/email-service";
 import { buildEmailHtml, emailParagraph, emailInfoBox } from "@/lib/email-templates";
@@ -12,14 +13,15 @@ const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT" || !session.user.clientId) {
+  const effectiveClient = await getEffectiveClientContext();
+  if (!session || !effectiveClient) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  const clientId = session.user.clientId;
+  const clientId = effectiveClient.clientId;
 
-  // Must be owner
-  const owner = await isClientOwner(session.user.id, clientId);
+  // Must be owner (or admin impersonating)
+  const owner = effectiveClient.isImpersonating || await isClientOwner(effectiveClient.userId, clientId);
   if (!owner) {
     return NextResponse.json(
       { error: "Solo il proprietario puo invitare amministratori" },
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
     select: { ragioneSociale: true },
   });
   const ownerUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: effectiveClient.userId },
     select: { name: true, email: true },
   });
 
@@ -96,13 +98,13 @@ export async function POST(request: Request) {
     create: {
       clientId,
       email,
-      invitedBy: session.user.id,
+      invitedBy: effectiveClient.userId,
       expiresAt,
     },
     update: {
       status: "PENDING",
       expiresAt,
-      invitedBy: session.user.id,
+      invitedBy: effectiveClient.userId,
       acceptedAt: null,
     },
   });
@@ -130,7 +132,7 @@ export async function POST(request: Request) {
 
   await logClientActivity({
     clientId,
-    userId: session.user.id,
+    userId: effectiveClient.userId,
     action: "USER_INVITED",
     details: { email },
   });

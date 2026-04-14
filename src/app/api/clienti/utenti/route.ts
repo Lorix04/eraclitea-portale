@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT" || !session.user.clientId) {
+  const effectiveClient = await getEffectiveClientContext();
+  if (!effectiveClient) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  const clientId = session.user.clientId;
+  const clientId = effectiveClient.clientId;
 
   const clientUsers = await prisma.clientUser.findMany({
     where: { clientId },
