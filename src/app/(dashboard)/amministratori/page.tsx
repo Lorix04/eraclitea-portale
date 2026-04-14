@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   Crown,
+  KeyRound,
   Loader2,
   Mail,
   PowerOff,
@@ -232,6 +233,44 @@ export default function ClientUsersPage() {
     }
   };
 
+  const [resetResult, setResetResult] = useState<{
+    email: string;
+    tempPassword?: string;
+  } | null>(null);
+
+  const handleResetPassword = async (userId: string, name: string, userEmail: string) => {
+    const ok = await confirm({
+      title: "Reset Password",
+      message: `Sei sicuro di voler resettare la password di ${name} (${userEmail})?\n\nL'utente ricevera una nuova password temporanea via email e dovra cambiarla al prossimo accesso.`,
+      confirmText: "Reset Password",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    setRowActionUserId(userId);
+    try {
+      const res = await fetch(`/api/clienti/utenti/${userId}/reset-password`, {
+        method: "POST",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(json.error || "Errore reset password");
+        return;
+      }
+      if (json.tempPassword) {
+        // SMTP failed — show password
+        setResetResult({ email: userEmail, tempPassword: json.tempPassword });
+        toast.warning("Email non inviata. Comunica la password in modo sicuro.");
+      } else {
+        toast.success(`Password resettata per ${userEmail}. Email inviata.`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Errore");
+    } finally {
+      setRowActionUserId(null);
+    }
+  };
+
   const handleTransfer = async (userId: string, name: string) => {
     const typed = await prompt({
       title: "Trasferisci proprieta",
@@ -423,16 +462,28 @@ export default function ClientUsersPage() {
                       {!user.isOwner && user.id !== session?.user?.id && (
                         <div className="flex justify-end gap-1">
                           {!isInactive && (
-                            <button
-                              onClick={() =>
-                                handleTransfer(user.id, user.name || user.email)
-                              }
-                              className="rounded px-2 py-1 text-xs hover:bg-muted"
-                              title="Trasferisci proprieta"
-                              disabled={isBusy}
-                            >
-                              <Crown className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleResetPassword(user.id, user.name || user.email, user.email)
+                                }
+                                className="rounded px-2 py-1 text-xs text-amber-600 hover:bg-amber-50"
+                                title="Reset password"
+                                disabled={isBusy}
+                              >
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleTransfer(user.id, user.name || user.email)
+                                }
+                                className="rounded px-2 py-1 text-xs text-purple-600 hover:bg-purple-50"
+                                title="Trasferisci proprieta"
+                                disabled={isBusy}
+                              >
+                                <Crown className="h-3.5 w-3.5" />
+                              </button>
+                            </>
                           )}
                           {isBusy ? (
                             <span className="inline-flex items-center px-2 py-1 text-muted-foreground">
@@ -535,6 +586,28 @@ export default function ClientUsersPage() {
           </div>
         </div>
       )}
+
+      {resetResult ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <h3 className="text-sm font-semibold text-amber-800">Password temporanea</h3>
+          <p className="mt-1 text-xs text-amber-700">
+            L&apos;email non e stata inviata. Comunica queste credenziali in modo sicuro:
+          </p>
+          <div className="mt-2 rounded border border-amber-200 bg-white p-3 font-mono text-xs">
+            <p><strong>Email:</strong> {resetResult.email}</p>
+            {resetResult.tempPassword ? (
+              <p><strong>Password:</strong> {resetResult.tempPassword}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => setResetResult(null)}
+            className="mt-2 text-xs text-amber-600 underline hover:text-amber-800"
+          >
+            Chiudi
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

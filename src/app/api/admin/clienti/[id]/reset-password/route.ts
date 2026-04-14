@@ -32,6 +32,13 @@ export async function POST(
       return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
+    let body: { userId?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // body is optional — defaults to first client user
+    }
+
     const client = await prisma.client.findUnique({
       where: { id: context.params.id },
       select: {
@@ -39,8 +46,8 @@ export async function POST(
         ragioneSociale: true,
         referenteNome: true,
         users: {
-          where: { role: "CLIENT" },
-          select: { id: true, email: true },
+          where: { role: "CLIENT", ...(body.userId ? { id: body.userId } : {}) },
+          select: { id: true, email: true, name: true },
           take: 1,
         },
       },

@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   Crown,
+  KeyRound,
   Loader2,
+  LogIn,
   Plus,
   PowerOff,
   RotateCcw,
@@ -14,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type ClientUserRow = {
@@ -73,6 +76,7 @@ export default function ClientUsersSection({
   canManageUsers: boolean;
   canEditLimit: boolean;
 }) {
+  const router = useRouter();
   const { confirm } = useConfirmDialog();
   const addRequestLockRef = useRef(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -285,6 +289,58 @@ export default function ClientUsersSection({
     }
   };
 
+  const handleImpersonate = async (userId: string) => {
+    try {
+      const res = await fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientUserId: userId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(json.error || "Errore impersonazione");
+        return;
+      }
+      router.push(json.redirectTo || "/dashboard");
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Errore");
+    }
+  };
+
+  const handleResetPassword = async (user: ClientUserRow) => {
+    const ok = await confirm({
+      title: "Reset Password",
+      message: `Resettare la password di ${user.name || user.email} (${user.email})?\n\nL'utente ricevera una password temporanea via email.`,
+      confirmText: "Reset Password",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    setRowActionUserId(user.id);
+    try {
+      const res = await fetch(`/api/admin/clienti/${clientId}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(json.error || "Errore reset");
+        return;
+      }
+      if (json.newPassword) {
+        toast.success(`Password resettata. Nuova password: ${json.newPassword}`, { duration: 15000 });
+      } else {
+        toast.success(`Password resettata per ${user.email}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Errore");
+    } finally {
+      setRowActionUserId(null);
+    }
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -482,6 +538,24 @@ export default function ClientUsersSection({
                   </span>
                   {canManageUsers && !user.isOwner && (
                     <>
+                      {!isInactive && !isBusy && (
+                        <>
+                          <button
+                            onClick={() => handleImpersonate(user.id)}
+                            className="rounded p-1 text-blue-500 hover:bg-blue-50"
+                            title="Accedi come questo utente"
+                          >
+                            <LogIn className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleResetPassword(user)}
+                            className="rounded p-1 text-amber-500 hover:bg-amber-50"
+                            title="Reset password"
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
                       {isBusy ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                       ) : isInactive ? (
