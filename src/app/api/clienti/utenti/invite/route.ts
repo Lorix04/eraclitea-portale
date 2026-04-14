@@ -61,24 +61,20 @@ export async function POST(request: Request) {
     );
   }
 
-  // Check pending invite
+  // Check limit (skip for resends of pending invites)
   const existingInvite = await prisma.clientInvite.findUnique({
     where: { clientId_email: { clientId, email } },
   });
-  if (existingInvite?.status === "PENDING") {
-    return NextResponse.json(
-      { error: "Un invito e gia stato inviato a questo indirizzo" },
-      { status: 409 }
-    );
-  }
+  const isResend = existingInvite?.status === "PENDING";
 
-  // Check limit
-  const limit = await canAddUser(clientId);
-  if (!limit.allowed) {
-    return NextResponse.json(
-      { error: `Limite amministratori raggiunto (${limit.current}/${limit.max})` },
-      { status: 400 }
-    );
+  if (!isResend) {
+    const limit = await canAddUser(clientId);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: `Limite amministratori raggiunto (${limit.current}/${limit.max})` },
+        { status: 400 }
+      );
+    }
   }
 
   // Get client name
@@ -91,8 +87,9 @@ export async function POST(request: Request) {
     select: { name: true, email: true },
   });
 
-  // Create or update invite
+  // Create or update invite (regenerates token on resend, invalidating old link)
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const newToken = crypto.randomUUID();
   const invite = await prisma.clientInvite.upsert({
     where: { clientId_email: { clientId, email } },
     create: {
@@ -102,6 +99,7 @@ export async function POST(request: Request) {
       expiresAt,
     },
     update: {
+      token: newToken,
       status: "PENDING",
       expiresAt,
       invitedBy: effectiveClient.userId,
@@ -139,6 +137,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
-    message: `Invito inviato a ${email}`,
+    message: isResend ? `Invito reinviato a ${email}` : `Invito inviato a ${email}`,
+    resent: isResend,
   });
 }

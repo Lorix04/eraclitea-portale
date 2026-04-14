@@ -10,6 +10,7 @@ import {
   Mail,
   PowerOff,
   RotateCcw,
+  Send,
   Trash2,
   UserPlus,
   Users,
@@ -91,6 +92,51 @@ export default function ClientUsersPage() {
       toast.error(err.message || "Errore");
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleResendInvite = async (email: string) => {
+    const ok = await confirm({
+      title: "Reinvia invito",
+      message: `Reinviare l'invito a ${email}? Il link precedente non sara piu valido.`,
+      confirmText: "Reinvia",
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch("/api/clienti/utenti/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Errore");
+      toast.success(`Invito reinviato a ${email}`);
+      query.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Errore reinvio invito");
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId: string, email: string) => {
+    const ok = await confirm({
+      title: "Revoca invito",
+      message: `Revocare l'invito a ${email}?`,
+      confirmText: "Revoca",
+      variant: "danger",
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/clienti/utenti/invite/${inviteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Errore");
+      }
+      toast.success(`Invito a ${email} revocato`);
+      query.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Errore revoca invito");
     }
   };
 
@@ -421,9 +467,31 @@ export default function ClientUsersPage() {
                     Scade il {fmtDate(invite.expiresAt)}
                   </span>
                 </div>
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                  In attesa
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                    In attesa
+                  </span>
+                  {isOwner ? (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        title="Reinvia invito"
+                        onClick={() => handleResendInvite(invite.email)}
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                        title="Revoca invito"
+                        onClick={() => handleRevokeInvite(invite.id, invite.email)}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
             ))}
           </div>
