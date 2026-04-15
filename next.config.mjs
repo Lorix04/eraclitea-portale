@@ -26,7 +26,7 @@ const cspValue = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-// Report-only CSP: stricter policy for monitoring (logs violations without blocking)
+// Report-only CSP: stricter policy for monitoring (no upgrade-insecure-requests to avoid console warnings)
 const cspReportOnly = [
   "default-src 'self'",
   "script-src 'self'",
@@ -39,7 +39,6 @@ const cspReportOnly = [
   "form-action 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "upgrade-insecure-requests",
 ].join("; ");
 
 const securityHeaders = [
