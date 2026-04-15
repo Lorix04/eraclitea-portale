@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
-import { notifyEditionUsers } from "@/lib/notify-client";
+import { notifyEditionUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import {
@@ -318,6 +318,28 @@ export async function POST(
         } catch {
           /* ignore notification errors */
         }
+      }
+
+      // Notify admins when teacher uploads material needing approval
+      if (isTeacher) {
+        void notifyAllAdmins({
+          type: "ADMIN_MATERIAL_PENDING",
+          title: "Materiale da approvare",
+          message: `${session.user.name || "Un docente"} ha caricato "${title!.trim()}" per ${edition.courseId ? "un corso" : "un'edizione"}.`,
+          courseEditionId: edition.id,
+        });
+        void emailAllAdmins({
+          emailType: "ADMIN_MATERIAL_PENDING",
+          subject: `Materiale da approvare — ${title!.trim()}`,
+          title: "Materiale da Approvare",
+          bodyHtml: `
+            ${emailParagraph(`<strong>${session.user.name || "Un docente"}</strong> ha caricato nuovo materiale:`)}
+            ${emailInfoBox(`<p style="margin:0; font-size:14px;"><strong>Titolo:</strong> ${title!.trim()}</p>`)}
+          `,
+          ctaText: "Vedi Materiale",
+          ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/corsi`,
+          courseEditionId: edition.id,
+        });
       }
 
       // Notify client users when admin/teacher uploads a material

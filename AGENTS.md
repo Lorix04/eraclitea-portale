@@ -292,6 +292,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Coda retry: `src/lib/email-queue.ts` — 1 email ogni 3 secondi, rate limited per Hostinger
 - Auto-retry cron: `GET /api/cron/email-retry` (max 3 tentativi, 15 min intervallo)
 - Riepilogo settimanale cron: `GET /api/cron/weekly-summary` (lunedi mattina, protetto CRON_API_KEY) — corsi attivi, deadline, attestati, ticket
+- Riepilogo giornaliero admin cron: `GET /api/cron/admin-daily-summary` (ogni mattina ore 7, protetto CRON_API_KEY) — anagrafiche, corsi, docenti, attestati, ticket, account
 - Rigenerazione credenziali per email sensibili fallite (non replay vecchio contenuto)
 - UI admin: `/admin/smtp/log` con filtri, retry massivo, barra progresso, checkbox selezione
 - Email automatiche docente: assegnazione/rimozione/modifica lezione (batch singola email per operazioni multiple)

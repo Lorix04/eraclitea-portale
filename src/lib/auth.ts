@@ -77,6 +77,23 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (newAttempts >= MAX_ATTEMPTS) {
+            // Notify admins about lockout (fire-and-forget, no email import)
+            prisma.user.findMany({
+              where: { role: "ADMIN", isActive: true },
+              select: { id: true },
+            }).then((admins) => {
+              if (admins.length > 0) {
+                prisma.notification.createMany({
+                  data: admins.map((a) => ({
+                    userId: a.id,
+                    type: "ADMIN_ACCOUNT_LOCKED" as any,
+                    title: "Account bloccato",
+                    message: `L'account ${user.email} e stato bloccato dopo 5 tentativi falliti.`,
+                    isGlobal: false,
+                  })),
+                }).catch(() => {});
+              }
+            }).catch(() => {});
             throw new Error("ACCOUNT_LOCKED");
           }
           throw new Error("INVALID_CREDENTIALS");

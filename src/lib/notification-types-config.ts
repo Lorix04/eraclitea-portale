@@ -88,6 +88,28 @@ export const NOTIFICATION_TYPES: NotificationTypeConfig[] = [
   { type: "CV_DPR445_REJECTED", label: "CV DPR 445 rifiutato", description: "Quando il CV viene rifiutato con richiesta modifiche", category: "docente", roles: ["TEACHER"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
   { type: "MATERIAL_APPROVED", label: "Materiale approvato", description: "Quando un materiale caricato viene approvato", category: "docente", roles: ["TEACHER"], hasInApp: true, hasEmail: false, locked: false, defaultInApp: true, defaultEmail: false },
   { type: "MATERIAL_REJECTED", label: "Materiale rifiutato", description: "Quando un materiale caricato viene rifiutato", category: "docente", roles: ["TEACHER"], hasInApp: true, hasEmail: false, locked: false, defaultInApp: true, defaultEmail: false },
+
+  // === ADMIN — ANAGRAFICHE ===
+  { type: "ADMIN_DEADLINE_REMINDER_7D", label: "Deadline anagrafiche (7gg)", description: "Client non hanno inviato a 7 giorni dalla scadenza", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+  { type: "ADMIN_DEADLINE_REMINDER_2D", label: "Deadline anagrafiche (2gg)", description: "Client non hanno inviato a 2 giorni dalla scadenza", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+  { type: "ADMIN_DEADLINE_TODAY", label: "Deadline anagrafiche (oggi)", description: "Avviso il giorno della scadenza", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+  { type: "ADMIN_ALL_REGISTRIES_RECEIVED", label: "Anagrafiche complete", description: "Tutti i client hanno inviato per un'edizione", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+
+  // === ADMIN — CORSI ===
+  { type: "ADMIN_COURSE_STARTING", label: "Corso in partenza domani", description: "Un corso inizia domani", category: "corsi", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+
+  // === ADMIN — DOCENTI ===
+  { type: "ADMIN_CV_DPR445_SUBMITTED", label: "CV DPR 445 compilato", description: "Docente ha compilato il CV da approvare", category: "corsi", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+  { type: "ADMIN_MATERIAL_PENDING", label: "Materiale da approvare", description: "Docente ha caricato materiale in attesa di approvazione", category: "materiali", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+
+  // === ADMIN — ACCOUNT ===
+  { type: "ADMIN_ACCOUNT_LOCKED", label: "Account bloccato", description: "Un account e stato bloccato dopo tentativi falliti", category: "account", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+
+  // === ADMIN — PRESENZE ===
+  { type: "ADMIN_ATTENDANCE_BELOW_MIN", label: "Presenze sotto soglia", description: "Dipendenti sotto la presenza minima richiesta", category: "presenze", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+
+  // === ADMIN — RIEPILOGO ===
+  { type: "ADMIN_DAILY_SUMMARY", label: "Riepilogo giornaliero", description: "Email mattutina con panoramica di anagrafiche, corsi, ticket e account", category: "riepilogo", roles: ["ADMIN"], hasInApp: false, hasEmail: true, locked: false, defaultInApp: false, defaultEmail: true },
 ];
 
 export function getNotificationTypesForRole(role: "ADMIN" | "CLIENT" | "TEACHER") {

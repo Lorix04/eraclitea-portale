@@ -7,7 +7,7 @@ import {
   sendCertificateExpiringEmail,
   sendDeadlineReminderEmail,
 } from "@/lib/email-notifications";
-import { notifyEditionUsers, emailEditionUsers, notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);
@@ -144,6 +144,117 @@ async function processDeadlineReminders(daysRemaining: 7 | 2) {
   }
 
   return sentCount;
+}
+
+// === ADMIN DEADLINE REMINDERS (7d, 2d, today) ===
+async function processAdminDeadlineReminder(daysRemaining: 7 | 2 | 0) {
+  const target = daysRemaining === 0 ? new Date() : addDays(new Date(), daysRemaining);
+  const from = startOfDay(target);
+  const to = endOfDay(target);
+  const adminType = daysRemaining === 7
+    ? "ADMIN_DEADLINE_REMINDER_7D" as const
+    : daysRemaining === 2
+      ? "ADMIN_DEADLINE_REMINDER_2D" as const
+      : "ADMIN_DEADLINE_TODAY" as const;
+
+  const editions = await prisma.courseEdition.findMany({
+    where: {
+      status: "PUBLISHED",
+      deadlineRegistry: { gte: from, lte: to },
+      registrations: { some: { status: "INSERTED" } },
+    },
+    include: {
+      client: { select: { ragioneSociale: true } },
+      course: { select: { title: true } },
+      registrations: { select: { status: true } },
+    },
+  });
+
+  let count = 0;
+  for (const edition of editions) {
+    const pending = edition.registrations.filter((r) => r.status === "INSERTED").length;
+    if (pending === 0) continue;
+
+    const todayStart = startOfDay(new Date());
+    const existing = await prisma.notification.findFirst({
+      where: { type: adminType, courseEditionId: edition.id, createdAt: { gte: todayStart } },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const label = daysRemaining === 0 ? "OGGI" : `tra ${daysRemaining} giorni`;
+    void notifyAllAdmins({
+      type: adminType,
+      title: `Deadline anagrafiche ${label}`,
+      message: `${edition.course.title} (Ed. #${edition.editionNumber}) — ${edition.client?.ragioneSociale ?? "Client"}: ${pending} anagrafiche non inviate.`,
+      courseEditionId: edition.id,
+    });
+    void emailAllAdmins({
+      emailType: adminType,
+      subject: `Deadline ${label} — ${edition.course.title} (Ed. #${edition.editionNumber})`,
+      title: `Deadline Anagrafiche ${label}`,
+      bodyHtml: `
+        ${emailParagraph(`Le anagrafiche per la seguente edizione non sono ancora state inviate:`)}
+        ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Client:</strong> ${edition.client?.ragioneSociale ?? "-"}</p><p style="margin:4px 0 0; font-size:14px; color:#CC0000;"><strong>Non inviate:</strong> ${pending}</p>`)}
+      `,
+      courseEditionId: edition.id,
+    });
+    count++;
+  }
+  return count;
+}
+
+// === ADMIN COURSE STARTING TOMORROW ===
+async function processAdminCourseStarting() {
+  const tomorrow = addDays(new Date(), 1);
+  const from = startOfDay(tomorrow);
+  const to = endOfDay(tomorrow);
+
+  const editions = await prisma.courseEdition.findMany({
+    where: {
+      status: "PUBLISHED",
+      lessons: { some: { date: { gte: from, lte: to } } },
+    },
+    include: {
+      client: { select: { ragioneSociale: true } },
+      course: { select: { title: true } },
+      _count: { select: { registrations: true } },
+      lessons: { where: { date: { gte: from, lte: to } }, take: 1, select: { date: true, startTime: true, luogo: true } },
+    },
+  });
+
+  let count = 0;
+  for (const edition of editions) {
+    const todayStart = startOfDay(new Date());
+    const existing = await prisma.notification.findFirst({
+      where: { type: "ADMIN_COURSE_STARTING", courseEditionId: edition.id, createdAt: { gte: todayStart } },
+      select: { id: true },
+    });
+    if (existing) continue;
+
+    const lesson = edition.lessons[0];
+    const luogo = lesson?.luogo ? ` presso ${lesson.luogo}` : "";
+    const orario = lesson?.startTime ? ` alle ${lesson.startTime}` : "";
+
+    void notifyAllAdmins({
+      type: "ADMIN_COURSE_STARTING",
+      title: "Corso in partenza domani",
+      message: `${edition.course.title} (Ed. #${edition.editionNumber}) — ${edition.client?.ragioneSociale ?? ""} inizia domani${orario}${luogo}. ${edition._count.registrations} partecipanti.`,
+      courseEditionId: edition.id,
+    });
+    void emailAllAdmins({
+      emailType: "ADMIN_COURSE_STARTING",
+      subject: `Corso domani — ${edition.course.title} (Ed. #${edition.editionNumber})`,
+      title: "Corso in Partenza Domani",
+      bodyHtml: `
+        ${emailParagraph("Il seguente corso inizia domani:")}
+        ${buildCourseInfoBox(edition.course.title, edition.editionNumber, `<p style="margin:0; font-size:14px;"><strong>Client:</strong> ${edition.client?.ragioneSociale ?? "-"}</p><p style="margin:4px 0 0; font-size:14px;"><strong>Partecipanti:</strong> ${edition._count.registrations}</p>${lesson?.luogo ? `<p style="margin:4px 0 0; font-size:14px;"><strong>Luogo:</strong> ${lesson.luogo}</p>` : ""}`)}
+      `,
+      courseEditionId: edition.id,
+    });
+    count++;
+  }
+  return count;
 }
 
 async function processAdminExpiredDeadline() {
@@ -593,6 +704,7 @@ export async function GET(request: Request) {
     deadline7d, deadline2d, deadlineToday, adminExpired,
     courseStarting, cert60d, cert30d, certExpired,
     inactiveTickets, expiredInvites,
+    adminDeadline7d, adminDeadline2d, adminDeadlineToday, adminCourseStarting,
   ] = await Promise.all([
     processDeadlineReminders(7),
     processDeadlineReminders(2),
@@ -604,19 +716,17 @@ export async function GET(request: Request) {
     processExpiredCertificatesToday(),
     processInactiveTickets(),
     processExpiredInvites(),
+    processAdminDeadlineReminder(7),
+    processAdminDeadlineReminder(2),
+    processAdminDeadlineReminder(0),
+    processAdminCourseStarting(),
   ]);
 
   return NextResponse.json({
     success: true,
-    deadline7d,
-    deadline2d,
-    deadlineToday,
-    adminExpired,
-    courseStarting,
-    cert60d,
-    cert30d,
-    certExpired,
-    inactiveTickets,
-    expiredInvites,
+    deadline7d, deadline2d, deadlineToday, adminExpired,
+    courseStarting, cert60d, cert30d, certExpired,
+    inactiveTickets, expiredInvites,
+    adminDeadline7d, adminDeadline2d, adminDeadlineToday, adminCourseStarting,
   });
 }

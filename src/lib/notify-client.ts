@@ -131,6 +131,92 @@ export async function notifyClientOwner(params: {
   return owner?.userId ?? null;
 }
 
+// ─── Admin notification helpers ───
+
+/**
+ * Send in-app notification to ALL active admins, respecting preferences.
+ */
+export async function notifyAllAdmins(params: {
+  type: NotificationType;
+  title: string;
+  message: string;
+  courseEditionId?: string;
+  excludeUserId?: string;
+}) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN", isActive: true },
+    select: { id: true },
+  });
+
+  const allIds = admins
+    .map((a) => a.id)
+    .filter((id) => id !== params.excludeUserId);
+
+  const filteredIds = await filterUsersForInApp(allIds, params.type);
+
+  if (filteredIds.length > 0) {
+    await prisma.notification.createMany({
+      data: filteredIds.map((userId) => ({
+        userId,
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        courseEditionId: params.courseEditionId ?? null,
+        isGlobal: false,
+      })),
+    });
+  }
+
+  return filteredIds;
+}
+
+/**
+ * Send email to ALL active admins, respecting preferences.
+ */
+export async function emailAllAdmins(params: {
+  emailType: string;
+  subject: string;
+  title: string;
+  bodyHtml: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  courseEditionId?: string;
+  excludeUserId?: string;
+}) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN", isActive: true },
+    select: { id: true, email: true, name: true },
+  });
+
+  const allIds = admins
+    .filter((a) => a.id !== params.excludeUserId)
+    .map((a) => a.id);
+  const filteredIds = new Set(await filterUsersForEmail(allIds, params.emailType));
+
+  for (const admin of admins) {
+    if (!filteredIds.has(admin.id)) continue;
+    const userName = admin.name || admin.email;
+
+    const html = buildEmailHtml({
+      title: params.title,
+      greeting: `Ciao ${userName},`,
+      bodyHtml: params.bodyHtml,
+      ctaText: params.ctaText,
+      ctaUrl: params.ctaUrl,
+    });
+
+    void sendAutoEmail({
+      emailType: params.emailType,
+      recipientEmail: admin.email,
+      recipientName: userName,
+      recipientId: admin.id,
+      subject: params.subject,
+      html,
+      courseEditionId: params.courseEditionId,
+    });
+  }
+}
+
 // ─── Edition-aware notification (respects notifyPolicy) ───
 
 /**

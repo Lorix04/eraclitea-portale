@@ -6,7 +6,7 @@ import {
   sendAdminRegistrySubmittedEmail,
   sendRegistryReceivedEmail,
 } from "@/lib/email-notifications";
-import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyEditionUsers, emailEditionUsers, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -228,6 +228,34 @@ export async function POST(
       })
     )
   );
+
+  // Check if ALL registrations for this edition are now confirmed
+  try {
+    const remaining = await prisma.courseRegistration.count({
+      where: { courseEditionId: edition.id, status: "INSERTED" },
+    });
+    if (remaining === 0) {
+      void notifyAllAdmins({
+        type: "ADMIN_ALL_REGISTRIES_RECEIVED",
+        title: "Anagrafiche complete",
+        message: `Tutte le anagrafiche per ${edition.course.title} (Ed. #${edition.editionNumber}) sono state inviate.`,
+        courseEditionId: edition.id,
+      });
+      void emailAllAdmins({
+        emailType: "ADMIN_ALL_REGISTRIES_RECEIVED",
+        subject: `Anagrafiche complete — ${edition.course.title} (Ed. #${edition.editionNumber})`,
+        title: "Anagrafiche Complete",
+        bodyHtml: `
+          ${emailParagraph("Tutte le anagrafiche sono state ricevute per la seguente edizione:")}
+          ${buildCourseInfoBox(edition.course.title, edition.editionNumber)}
+          ${emailParagraph("Puoi procedere con la verifica.")}
+        `,
+        ctaText: "Vedi Edizione",
+        ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/corsi`,
+        courseEditionId: edition.id,
+      });
+    }
+  } catch { /* ignore */ }
 
   return NextResponse.json({
     success: true,

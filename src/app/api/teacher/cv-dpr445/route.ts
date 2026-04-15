@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveTeacherContext } from "@/lib/impersonate";
+import { notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 import fs from "fs/promises";
 import path from "path";
 
@@ -207,6 +208,31 @@ export async function PUT(request: Request) {
     where: { teacherId: ctx.teacherId },
     data: updateData,
   });
+
+  // Notify admins about CV submission
+  try {
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: ctx.teacherId },
+      select: { firstName: true, lastName: true },
+    });
+    const teacherName = `${teacher?.firstName ?? ""} ${teacher?.lastName ?? ""}`.trim() || "Docente";
+    void notifyAllAdmins({
+      type: "ADMIN_CV_DPR445_SUBMITTED",
+      title: "CV DPR 445 compilato",
+      message: `Il docente ${teacherName} ha compilato il CV DPR 445. Da approvare.`,
+    });
+    void emailAllAdmins({
+      emailType: "ADMIN_CV_DPR445_SUBMITTED",
+      subject: `CV DPR 445 da approvare — ${teacherName}`,
+      title: "CV DPR 445 Compilato",
+      bodyHtml: `
+        ${emailParagraph(`Il docente <strong>${teacherName}</strong> ha compilato il CV DPR 445.`)}
+        ${emailInfoBox(`<p style="margin:0; font-size:14px;">Il documento e in attesa di approvazione.</p>`)}
+      `,
+      ctaText: "Vedi Docente",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/docenti`,
+    });
+  } catch { /* ignore */ }
 
   return NextResponse.json({ success: true });
 }
