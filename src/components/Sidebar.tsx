@@ -86,7 +86,10 @@ const ADMIN_SECTIONS: SidebarSection[] = [
   },
   {
     label: "Comunicazione",
-    items: [{ href: "/admin/ticket", label: "Ticket", icon: MessageCircle, area: "ticket" }],
+    items: [
+      { href: "/admin/ticket", label: "Ticket", icon: MessageCircle, area: "ticket" },
+      { href: "/admin/notifiche", label: "Notifiche", icon: Bell, area: "notifiche" },
+    ],
   },
   {
     label: "Strumenti",

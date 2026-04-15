@@ -170,20 +170,18 @@ export default function NotificationBell() {
                 </button>
               ) : null}
               <Link
-                href={session?.user?.role === "ADMIN" ? "/admin/ticket" : isTeacher ? "/docente/notifiche" : "/notifiche"}
+                href={session?.user?.role === "ADMIN" ? "/admin/notifiche" : isTeacher ? "/docente/notifiche" : "/notifiche"}
                 className="link-brand"
               >
                 Vedi tutte
               </Link>
-              {session?.user?.role !== "ADMIN" ? (
-                <Link
-                  href={isTeacher ? "/docente/preferenze-notifiche" : "/preferenze-notifiche"}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Preferenze notifiche"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                </Link>
-              ) : null}
+              <Link
+                href={session?.user?.role === "ADMIN" ? "/admin/preferenze-notifiche" : isTeacher ? "/docente/preferenze-notifiche" : "/preferenze-notifiche"}
+                className="text-muted-foreground hover:text-foreground"
+                title="Preferenze notifiche"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
           <div className="max-h-[360px] overflow-auto p-2">
