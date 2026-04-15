@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, SlidersHorizontal } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NotificationList, {
@@ -175,6 +175,15 @@ export default function NotificationBell() {
               >
                 Vedi tutte
               </Link>
+              {session?.user?.role !== "ADMIN" ? (
+                <Link
+                  href={isTeacher ? "/docente/preferenze-notifiche" : "/preferenze-notifiche"}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Preferenze notifiche"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                </Link>
+              ) : null}
             </div>
           </div>
           <div className="max-h-[360px] overflow-auto p-2">

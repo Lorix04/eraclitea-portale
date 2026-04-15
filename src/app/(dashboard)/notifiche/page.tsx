@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Check } from "lucide-react";
+import Link from "next/link";
+import { Bell, Check, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import ClientNotificationList, {
   type NotificationItem,
@@ -116,6 +117,15 @@ export default function NotifichePage() {
           <Bell className="h-5 w-5" />
           Notifiche
         </h1>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/preferenze-notifiche"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Preferenze notifiche"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Preferenze</span>
+          </Link>
         {data?.unreadCount ? (
           <BrandedButton
             variant="outline"
@@ -127,6 +137,7 @@ export default function NotifichePage() {
             Segna tutte come lette ({data.unreadCount})
           </BrandedButton>
         ) : null}
+        </div>
       </div>
 
       <BrandedTabs

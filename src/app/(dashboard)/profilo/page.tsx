@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
-import NotificationPreferencesPanel from "@/components/NotificationPreferencesPanel";
+import Link from "next/link";
 
 export default async function ProfiloPage() {
   const context = await getEffectiveClientContext();
@@ -57,7 +57,15 @@ export default async function ProfiloPage() {
       </div>
 
       <div className="rounded-lg border bg-card p-4 md:p-6">
-        <NotificationPreferencesPanel />
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold md:text-lg">Notifiche</h2>
+          <Link
+            href="/preferenze-notifiche"
+            className="text-sm text-brand-primary hover:underline"
+          >
+            Gestisci preferenze notifiche
+          </Link>
+        </div>
       </div>
 
       <div id="cambio-password" className="rounded-lg border bg-card p-4 md:p-6">

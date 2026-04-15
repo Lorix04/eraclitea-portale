@@ -6,7 +6,7 @@ import { Check, Eye, EyeOff, Loader2, UserCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import TeacherCvEditor from "@/components/teacher/cv/TeacherCvEditor";
-import NotificationPreferencesPanel from "@/components/NotificationPreferencesPanel";
+import Link from "next/link";
 
 const EDUCATION_LEVELS = [
   "Licenza media", "Diploma di scuola superiore", "Laurea triennale",
@@ -346,9 +346,17 @@ export default function TeacherProfiloPage() {
         <TeacherCvEditor mode="profile" />
       </div>
 
-      {/* === Notification Preferences === */}
+      {/* === Notification Preferences link === */}
       <div className="rounded-lg border bg-card p-4 md:p-6">
-        <NotificationPreferencesPanel />
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Notifiche</h2>
+          <Link
+            href="/docente/preferenze-notifiche"
+            className="text-sm text-primary hover:underline"
+          >
+            Gestisci preferenze notifiche
+          </Link>
+        </div>
       </div>
 
       {/* === Change password === */}

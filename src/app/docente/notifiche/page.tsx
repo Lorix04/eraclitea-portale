@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   BookOpen,
@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   MessageSquare,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -117,6 +118,15 @@ export default function TeacherNotifichePage() {
             Le tue notifiche recenti.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/docente/preferenze-notifiche"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Preferenze notifiche"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Preferenze</span>
+          </Link>
         {unreadCount > 0 && (
           <button
             type="button"
@@ -127,6 +137,7 @@ export default function TeacherNotifichePage() {
             Segna tutte come lette
           </button>
         )}
+        </div>
       </div>
 
       {/* Filters */}
