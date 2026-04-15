@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import ChangePasswordForm from "@/components/ChangePasswordForm";
+import NotificationPreferencesPanel from "@/components/NotificationPreferencesPanel";
 
 export default async function ProfiloPage() {
   const context = await getEffectiveClientContext();
@@ -53,6 +54,10 @@ export default async function ProfiloPage() {
         <p className="mt-4 text-sm text-muted-foreground">
           Per modificare i dati aziendali contatta l&apos;amministratore.
         </p>
+      </div>
+
+      <div className="rounded-lg border bg-card p-4 md:p-6">
+        <NotificationPreferencesPanel />
       </div>
 
       <div id="cambio-password" className="rounded-lg border bg-card p-4 md:p-6">

@@ -6,6 +6,7 @@ import { Check, Eye, EyeOff, Loader2, UserCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import TeacherCvEditor from "@/components/teacher/cv/TeacherCvEditor";
+import NotificationPreferencesPanel from "@/components/NotificationPreferencesPanel";
 
 const EDUCATION_LEVELS = [
   "Licenza media", "Diploma di scuola superiore", "Laurea triennale",
@@ -343,6 +344,11 @@ export default function TeacherProfiloPage() {
       <div className="rounded-lg border bg-card p-4 md:p-6">
         <h2 className="text-sm font-semibold mb-4">CV e Competenze</h2>
         <TeacherCvEditor mode="profile" />
+      </div>
+
+      {/* === Notification Preferences === */}
+      <div className="rounded-lg border bg-card p-4 md:p-6">
+        <NotificationPreferencesPanel />
       </div>
 
       {/* === Change password === */}

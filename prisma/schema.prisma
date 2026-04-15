@@ -39,6 +39,7 @@ model User {
   editionReferents   EditionReferent[]
   clientUsers        ClientUser[]
   clientActivityLogs ClientActivityLog[]
+  notifPrefs         UserNotificationPreference[] @relation("userNotifPrefs")
 
   // Admin invite fields
   adminInviteToken       String?   @unique
@@ -581,6 +582,19 @@ model EmailPreference {
   isEnabled   Boolean  @default(true)
   category    String
   updatedAt   DateTime @updatedAt
+}
+
+model UserNotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String
+  notificationType   String
+  inAppEnabled       Boolean  @default(true)
+  emailEnabled       Boolean  @default(true)
+
+  user               User     @relation("userNotifPrefs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationType])
+  @@index([userId])
 }
 
 model CourseRegistration {

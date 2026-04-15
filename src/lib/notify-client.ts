@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { NotificationType } from "@prisma/client";
 import { sendAutoEmail } from "@/lib/email-service";
 import { buildEmailHtml, emailInfoBox, emailParagraph } from "@/lib/email-templates";
+import { filterUsersForInApp, filterUsersForEmail } from "@/lib/notification-preferences";
 
 const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
@@ -23,9 +24,12 @@ export async function notifyAllClientUsers(params: {
     select: { userId: true },
   });
 
-  const userIds = clientUsers
+  const allUserIds = clientUsers
     .map((cu) => cu.userId)
     .filter((id) => id !== params.excludeUserId);
+
+  // Filter by user preferences
+  const userIds = await filterUsersForInApp(allUserIds, params.type);
 
   if (userIds.length > 0) {
     await prisma.notification.createMany({
@@ -65,8 +69,15 @@ export async function emailAllClientUsers(params: {
     include: { user: { select: { id: true, email: true, name: true } } },
   });
 
+  // Filter by user email preferences
+  const eligibleUserIds = await filterUsersForEmail(
+    clientUsers.filter((cu) => cu.userId !== params.excludeUserId).map((cu) => cu.userId),
+    params.emailType
+  );
+  const eligibleSet = new Set(eligibleUserIds);
+
   for (const cu of clientUsers) {
-    if (cu.userId === params.excludeUserId) continue;
+    if (!eligibleSet.has(cu.userId)) continue;
     const userName = cu.user.name || cu.user.email;
 
     const html = buildEmailHtml({

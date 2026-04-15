@@ -370,7 +370,9 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/lib/email-service.ts` — sendAutoEmail con logging
 - `src/lib/email-queue.ts` — coda email con rate limiting
 - `src/lib/email-retry-policy.ts` — classificazione email sensibili/ritentabili
-- `src/lib/notify-client.ts` — notifyAllClientUsers (in-app a tutti gli utenti), emailAllClientUsers, notifyClientOwner
+- `src/lib/notify-client.ts` — notifyAllClientUsers (in-app a tutti gli utenti), emailAllClientUsers, notifyClientOwner, notifyEditionUsers, emailEditionUsers
+- `src/lib/notification-types-config.ts` — configurazione tipi notifica per ruolo (CLIENT/ADMIN/TEACHER), categorie, canali (inApp/email), locked
+- `src/lib/notification-preferences.ts` — shouldSendInApp/shouldSendEmail, filterUsersForInApp/filterUsersForEmail (preferenze per-utente)
 - `src/lib/rate-limit.ts` — rate limiter tiered (admin/authenticated/login/public), sliding window
 - `src/lib/teacher-document-pdf.ts` — generazione PDF atto di notorieta (pdf-lib)
 - `src/lib/teacher-attendance-pdf.ts` — generazione PDF registro presenze (pdf-lib)
