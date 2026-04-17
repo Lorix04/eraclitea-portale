@@ -49,7 +49,7 @@ Gestione completa: clienti, corsi, edizioni, lezioni, docenti, dipendenti, attes
 - Sidebar fissa con sezioni raggruppate: Gestione Formazione, Anagrafiche, Comunicazione, Strumenti, Sistema
 - Impersonazione client e docente ("Accedi come")
 - Sistema ruoli e permessi con enforcement API e sidebar condizionale
-- Pagina guida in-portal (`/admin/guida`) con 29 sezioni
+- Pagina guida in-portal (`/admin/guida`) con 47 sezioni
 
 ### Portale Cliente (`/(dashboard)/*`)
 Area cliente: dashboard, corsi, dipendenti, attestati, storico, notifiche, supporto (ticket), profilo, utenti, guida.
@@ -57,7 +57,7 @@ Area cliente: dashboard, corsi, dipendenti, attestati, storico, notifiche, suppo
 - SpreadsheetEditor per compilazione anagrafiche (con colonne custom dinamiche)
 - Multi-utente: il proprietario (isOwner) puo invitare altri utenti, gestirli, trasferire la proprieta
 - Pagina utenti (`/utenti`): visibile solo al proprietario, inviti via email con token 7 giorni, limite configurabile
-- Pagina guida in-portal (`/guida`) con 12 sezioni
+- Pagina guida in-portal (`/guida`) con 16 sezioni
 
 ### Portale Docente (`/docente/*`)
 Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profilo (con CV strutturato), notifiche, supporto (ticket), guida.
@@ -66,7 +66,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Segnatura presenze con ore parziali
 - Download registro presenze PDF
 - CV strutturato a 8 sezioni con import AI da PDF e download Europass
-- Pagina guida in-portal (`/docente/guida`) con 10 sezioni
+- Pagina guida in-portal (`/docente/guida`) con 13 sezioni
 
 ## Database — Modelli Principali
 

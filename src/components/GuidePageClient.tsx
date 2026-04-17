@@ -40,6 +40,10 @@ import {
   Sparkles,
   Wrench,
   AlertTriangle,
+  SlidersHorizontal,
+  Palette,
+  BellRing,
+  KeyRound,
 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -92,7 +96,12 @@ type MockupKind =
   | "admin-cv-dpr445"
   | "admin-amministratori"
   | "admin-integrity"
-  | "admin-ai";
+  | "admin-ai"
+  | "notification-preferences"
+  | "admin-notification-preferences"
+  | "admin-templates"
+  | "admin-notify-policy"
+  | "teacher-notification-preferences";
 
 type GuideSection = {
   id: string;
@@ -889,6 +898,38 @@ function renderMockup(kind: MockupKind): ReactNode {
           </div>
         </MockupCard>
       );
+    case "notification-preferences":
+    case "admin-notification-preferences":
+    case "teacher-notification-preferences":
+      return (
+        <MockupCard title="Preferenze Notifiche">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Nuova edizione disponibile</span><div className="flex gap-3"><span className="flex items-center gap-1 text-xs"><span className="inline-block h-3 w-3 rounded bg-amber-400" /> In-app</span><span className="flex items-center gap-1 text-xs"><span className="inline-block h-3 w-3 rounded bg-blue-400" /> Email</span></div></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Deadline anagrafiche</span><div className="flex gap-3"><span className="flex items-center gap-1 text-xs"><span className="inline-block h-3 w-3 rounded bg-amber-400" /> In-app</span><span className="flex items-center gap-1 text-xs"><span className="inline-block h-3 w-3 rounded bg-blue-400" /> Email</span></div></div>
+            <div className="flex items-center justify-between rounded-md border bg-gray-50 px-3 py-2"><span className="text-sm text-gray-400">Password modificata</span><div className="flex gap-3"><span className="text-[10px] text-gray-400">🔒 Non disattivabile</span></div></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-templates":
+      return (
+        <MockupCard title="Template Anagrafiche">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Template Sicurezza</span><div className="flex gap-2"><span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">8 campi</span><span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">Predefinito</span></div></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Template IT</span><span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">12 campi</span></div>
+            <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2"><span className="text-sm">Template Base</span><span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">5 campi</span></div>
+          </div>
+        </MockupCard>
+      );
+    case "admin-notify-policy":
+      return (
+        <MockupCard title="Destinatari notifiche edizione">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-2"><span className="inline-block h-3 w-3 rounded-full border-2 border-amber-500 bg-amber-500" /><span className="text-sm">Solo referente</span></div>
+            <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-2"><span className="inline-block h-3 w-3 rounded-full border-2 border-gray-300" /><span className="text-sm">Referente + selezionati</span></div>
+            <div className="flex items-center gap-2 rounded-md border bg-white px-3 py-2"><span className="inline-block h-3 w-3 rounded-full border-2 border-gray-300" /><span className="text-sm">Tutti gli utenti</span></div>
+          </div>
+        </MockupCard>
+      );
     default:
       return null;
   }
@@ -965,12 +1006,14 @@ function getBaseSections(role: GuideRole): GuideSection[] {
       paragraphs: [
         "Le celle non valide vengono evidenziate in rosso per correzione immediata.",
         "La validazione include anche controlli sul codice fiscale rispetto ai dati anagrafici inseriti.",
-        "Se il cliente ha i campi personalizzati attivi, il foglio mostra solo CF, Nome, Cognome e le colonne custom. I campi standard aggiuntivi sono accessibili dal pulsante 'Altro'.",
+        "Le colonne del foglio dipendono dal template assegnato all'edizione dall'amministratore. Edizioni diverse dello stesso corso possono avere colonne diverse. I campi obbligatori (*) dipendono dal template.",
       ],
       bullets: [
-        "Compila i campi obbligatori: le colonne variano in base alla configurazione del cliente.",
-        "Con campi personalizzati: il foglio mostra le colonne configurate dall'admin.",
-        "Senza campi personalizzati: 11 colonne standard (Nome, Cognome, CF, Sesso, ecc.).",
+        "Compila i campi obbligatori: le colonne variano in base al template dell'edizione.",
+        "Con template personalizzato: il foglio mostra le colonne configurate dall'admin.",
+        "Senza template: 11 colonne standard (Nome, Cognome, CF, Sesso, ecc.).",
+        "Esporta Anagrafiche: clicca il bottone nella tab Anagrafiche per scaricare un Excel con i dati dei dipendenti iscritti, con le colonne del template.",
+        "Importa CSV/Excel: clicca il bottone e usa 'Scarica Template' per ottenere un file con le colonne corrette per il template dell'edizione.",
         "Controlla eventuali errori evidenziati prima di inviare.",
         "Salva frequentemente per evitare perdita di modifiche.",
       ],
@@ -1036,6 +1079,8 @@ function getBaseSections(role: GuideRole): GuideSection[] {
         "Filtra per corso, anno e stato attestato.",
         "Scarica il singolo PDF o pacchetti multipli quando disponibili.",
         "Controlla i badge colore: valido, in scadenza, scaduto.",
+        "Notifiche automatiche di scadenza a 60 e 30 giorni prima, e il giorno stesso della scadenza.",
+        "Le notifiche di scadenza sono configurabili dalle Preferenze Notifiche.",
       ],
       mockupKind: "certificates",
     }),
@@ -1087,13 +1132,34 @@ function getBaseSections(role: GuideRole): GuideSection[] {
         "Le notifiche informano su nuove edizioni, scadenze operative, disponibilità attestati e aggiornamenti ticket.",
       paragraphs: [
         "La campanella mostra il conteggio non letto e la lista completa è disponibile nella pagina notifiche.",
+        "Ogni lunedi mattina ricevi un'email con il riepilogo settimanale: corsi attivi, deadline imminenti, attestati disponibili, ticket aperti. Puoi disattivarlo dalle Preferenze Notifiche.",
       ],
       bullets: [
         "Apri una notifica per raggiungere direttamente la risorsa collegata.",
         "Monitora le notifiche critiche di scadenza.",
         "Segna come lette quelle già gestite.",
+        "Configura le preferenze: dalla pagina Notifiche, clicca l'icona impostazioni per aprire le Preferenze Notifiche.",
       ],
       mockupKind: "notifications",
+    }),
+    createSection({
+      id: "preferenze-notifiche",
+      title: "Preferenze Notifiche",
+      icon: SlidersHorizontal,
+      intro:
+        "Personalizza quali notifiche ricevere e su quale canale: in-app (campanella) o email. Alcune notifiche di sicurezza non sono disattivabili.",
+      paragraphs: [
+        "Dalla pagina Notifiche, clicca l'icona impostazioni per accedere alle Preferenze Notifiche. Le modifiche vengono salvate immediatamente ad ogni toggle.",
+        "Le notifiche sono organizzate in categorie: Corsi, Anagrafiche, Attestati, Presenze, Materiali, Ticket, Amministratori, Account, Riepilogo.",
+      ],
+      bullets: [
+        "Toggle separati per notifica in-app (campanella) e email per ogni tipo di notifica.",
+        "Notifiche di sicurezza (password modificata, account sbloccato) non disattivabili — indicate con icona lucchetto.",
+        "Bottoni rapidi: 'Attiva tutti', 'Disattiva tutti', 'Solo notifiche in-app'.",
+        "Il riepilogo settimanale (email lunedi mattina) e disattivabile da qui.",
+        "Ogni modifica viene salvata automaticamente senza bisogno di conferma.",
+      ],
+      mockupKind: "notification-preferences",
     }),
     createSection({
       id: "supporto-ticket",
@@ -1119,10 +1185,13 @@ function getBaseSections(role: GuideRole): GuideSection[] {
         "Nel profilo puoi aggiornare i tuoi dati utente, modificare la password e verificare le informazioni dell'account.",
       paragraphs: [
         "Il cambio password periodico è consigliato per mantenere alto il livello di sicurezza dell'accesso.",
+        "Durante il cambio password, una checklist in tempo reale mostra il soddisfacimento dei requisiti: 8+ caratteri, una maiuscola, un numero e un carattere speciale. Una barra di forza indica il livello complessivo.",
       ],
       bullets: [
         "Aggiorna i dati personali quando necessario.",
         "Imposta password robuste e uniche.",
+        "Verifica la barra di forza password: Debole, Scarsa, Media, Forte.",
+        "Il bottone Salva si attiva solo quando tutti i requisiti sono soddisfatti.",
         "Conferma le modifiche per mantenerle attive in sessione.",
       ],
       mockupKind: "profile",
@@ -1384,18 +1453,19 @@ function getAdminExtraSections(): GuideSection[] {
     }),
     createSection({
       id: "admin-impersonazione",
-      title: "Impersonazione Docente",
+      title: "Impersonazione Docente e Cliente",
       icon: LogIn,
-      intro: "L'admin può accedere al portale docente come se fosse il docente selezionato, per verificare dati, risolvere problemi o completare operazioni.",
+      intro: "L'admin può accedere al portale come se fosse un docente o un cliente, per verificare dati, risolvere problemi o completare operazioni nel loro contesto.",
       paragraphs: [
-        "Un banner giallo in cima al portale indica che si sta visualizzando come un altro utente. Tutte le operazioni vengono eseguite nel contesto del docente.",
+        "Un banner giallo in cima al portale indica che si sta visualizzando come un altro utente. Tutte le operazioni vengono eseguite nel contesto dell'utente impersonato.",
       ],
       bullets: [
-        "Dalla lista docenti, clicca 'Accedi come' per un docente attivo.",
-        "Naviga il portale docente vedendo dashboard, lezioni, documenti e profilo del docente.",
-        "Clicca 'Torna all'admin' nel banner per tornare alla sessione admin.",
+        "Impersonazione docente: dalla lista docenti, clicca 'Accedi come' per un docente attivo.",
+        "Impersonazione client: dalla pagina dettaglio cliente, clicca 'Accedi come'. Oppure dalla sezione Amministratori del client, clicca l'icona accesso accanto a un utente.",
+        "Naviga il portale vedendo esattamente cio che vede l'utente impersonato: corsi, anagrafiche, attestati, dipendenti, notifiche.",
+        "Tutte le azioni funzionano normalmente: puoi compilare anagrafiche, inviare dati, gestire dipendenti.",
+        "Clicca 'Torna all'admin' nel banner giallo per tornare alla tua sessione admin.",
       ],
-      note: "L'impersonazione funziona anche per i clienti dalla pagina Clienti.",
       mockupKind: "admin-impersonate",
     }),
     createSection({
@@ -1488,23 +1558,28 @@ function getAdminExtraSections(): GuideSection[] {
     }),
     createSection({
       id: "admin-campi-personalizzati",
-      title: "Campi Personalizzati Anagrafiche",
+      title: "Template Campi Personalizzati",
       icon: Settings,
-      intro: "Configura colonne aggiuntive nelle anagrafiche dei dipendenti, specifiche per ciascun cliente. I campi si integrano automaticamente nel foglio, nell'import e nell'export.",
+      intro: "Ogni cliente puo avere multipli template di campi personalizzati. Ogni edizione puo usare un template diverso, determinando le colonne del foglio anagrafiche.",
       paragraphs: [
-        "Dalla pagina dettaglio del cliente, attiva la sezione Campi Personalizzati. Una volta attivi, il foglio anagrafiche mostra solo CF, Nome, Cognome e le colonne custom.",
-        "Ogni campo puo mappare un campo standard del dipendente (es. Email, Mansione) o essere completamente personalizzato. I dati custom vengono salvati nel campo JSON del dipendente.",
+        "Dalla pagina dettaglio cliente, sezione 'Template Anagrafiche', gestisci i template. Ogni template definisce le colonne del foglio, l'import e l'export.",
+        "I campi possono essere standard (mappati a colonne Employee come Email, Mansione) o completamente personalizzati. I dati custom vengono salvati nel campo JSON del dipendente.",
       ],
       bullets: [
-        "Attiva/disattiva i campi personalizzati per ogni cliente separatamente.",
+        "Crea un template: clicca '+ Nuovo template', inserisci nome, aggiungi campi standard e/o personalizzati.",
+        "Campi standard: clicca 'Campo standard' per aggiungere da un elenco (CF, Nome, Email, ecc.) con badge blu 'Std'.",
+        "Upload CSV/Excel: trascina un file nella zona di upload per auto-rilevare le colonne. Il sistema identifica campi standard e tipi (data, numero, selezione).",
+        "Riordina con drag & drop (trascina) o frecce su/giu.",
+        "Tutti i nomi dei campi sono editabili, anche quelli standard.",
         "5 tipi di campo: Testo, Numero, Data, Selezione (dropdown), Email.",
-        "Importa campi da un template Excel del cliente: il sistema riconosce automaticamente le colonne.",
-        "Riordina i campi con le frecce su/giu per definire l'ordine delle colonne.",
+        "Duplica un template per crearne uno simile.",
+        "Imposta un template come predefinito: le nuove edizioni lo useranno automaticamente.",
+        "Assegnazione: nel dettaglio edizione → tab Info → dropdown 'Template anagrafiche'.",
+        "Eliminazione possibile solo se il template non e usato da edizioni.",
         "I dati non vengono eliminati disattivando i campi — tornano visibili riattivandoli.",
-        "Il template scaricabile riflette esattamente i campi configurati con asterisco sui campi obbligatori.",
       ],
-      note: "In modalita personalizzata, solo i campi marcati come obbligatori vengono validati durante l'import. Nome, Cognome e Codice Fiscale diventano opzionali.",
-      mockupKind: "admin-custom-fields",
+      note: "In modalita personalizzata, solo i campi marcati come obbligatori vengono validati durante l'import. Nome, Cognome e Codice Fiscale diventano opzionali se non nel template.",
+      mockupKind: "admin-templates",
     }),
     createSection({
       id: "admin-import-export",
@@ -1638,6 +1713,101 @@ function getAdminExtraSections(): GuideSection[] {
       ],
       note: "Dopo 5 tentativi falliti consecutivi, l'account viene bloccato per 15 minuti. Il conteggio si resetta al login riuscito.",
       mockupKind: "admin-status",
+    }),
+    createSection({
+      id: "admin-preferenze-notifiche",
+      title: "Preferenze Notifiche Admin",
+      icon: SlidersHorizontal,
+      intro: "Personalizza le notifiche admin: scegli quali ricevere in-app e via email tra 11 tipi specifici per l'amministrazione.",
+      paragraphs: [
+        "Accedi dalla pagina Notifiche, cliccando l'icona impostazioni. Le modifiche vengono salvate immediatamente ad ogni toggle.",
+        "Le notifiche admin coprono aree operative critiche: anagrafiche, corsi, docenti, ticket, presenze e sicurezza.",
+      ],
+      bullets: [
+        "Anagrafiche ricevute: quando un client invia le anagrafiche compilate.",
+        "Deadline anagrafiche: promemoria a 7 giorni, 2 giorni e il giorno stesso della scadenza.",
+        "Corso in partenza domani: avviso per edizioni che iniziano il giorno successivo.",
+        "Tutte le anagrafiche ricevute: quando tutti i client di un'edizione hanno inviato.",
+        "CV DPR 445 compilato: un docente ha inviato il CV da approvare.",
+        "Materiale caricato dal docente: materiale proposto in attesa di approvazione.",
+        "Account client bloccato: un client ha superato i 5 tentativi di login.",
+        "Presenze sotto soglia: dipendenti che non raggiungono la presenza minima richiesta.",
+        "Riepilogo giornaliero: email ogni mattina alle 7:00 con panoramica operativa.",
+        "Notifiche di sicurezza (password, account) non disattivabili.",
+      ],
+      mockupKind: "admin-notification-preferences",
+    }),
+    createSection({
+      id: "admin-esporta-anagrafiche",
+      title: "Esporta Anagrafiche per Edizione",
+      icon: Download,
+      intro: "Dalla tab Anagrafiche di ogni edizione, esporta i dati dei dipendenti iscritti in un file Excel con le colonne del template assegnato.",
+      paragraphs: [
+        "Il bottone 'Esporta Anagrafiche' appare quando ci sono dipendenti iscritti all'edizione. Il file contiene solo i dipendenti di quell'edizione, non tutti i dipendenti del cliente.",
+      ],
+      bullets: [
+        "Apri il dettaglio edizione e vai alla tab Anagrafiche.",
+        "Clicca 'Esporta Anagrafiche' per scaricare il file Excel.",
+        "Le colonne corrispondono al template personalizzato assegnato all'edizione.",
+        "Se l'edizione non ha template, il file usa le 21 colonne standard.",
+        "Disponibile anche per il client nella pagina del corso.",
+      ],
+      mockupKind: "admin-export",
+    }),
+    createSection({
+      id: "admin-notify-policy",
+      title: "Policy Notifiche Edizione",
+      icon: BellRing,
+      intro: "Ogni edizione ha una policy che definisce chi riceve le notifiche relative: solo il referente, referente + selezionati, o tutti gli utenti del client.",
+      paragraphs: [
+        "Configurazione: nel dettaglio edizione, tab Info, sezione 'Destinatari notifiche'. La policy si applica a tutte le notifiche e email relative a quell'edizione.",
+      ],
+      bullets: [
+        "Solo referente: le notifiche vanno solo al referente assegnato all'edizione.",
+        "Referente + selezionati: aggiungi altri utenti del client come destinatari, selezionandoli con checkbox.",
+        "Tutti: tutti gli utenti attivi del client ricevono le notifiche dell'edizione.",
+        "Il client proprietario e i referenti sono sempre inclusi (checkbox disabilitata, non rimovibili).",
+        "Il default puo essere configurato a livello di client.",
+      ],
+      mockupKind: "admin-notify-policy",
+    }),
+    createSection({
+      id: "admin-azioni-amministratori-client",
+      title: "Azioni Amministratori Client",
+      icon: KeyRound,
+      intro: "Nella sezione Amministratori del dettaglio cliente, gestisci gli account utente con azioni rapide: accesso, reset password e trasferimento proprieta.",
+      paragraphs: [
+        "Ogni utente associato al client ha un menu di azioni rapide disponibili in base al ruolo dell'admin e al contesto dell'utente.",
+      ],
+      bullets: [
+        "Accedi come (icona accesso, blu): impersona l'utente per vedere il portale dal suo punto di vista.",
+        "Reset password (icona chiave, ambra): genera una nuova password temporanea e la invia via email. Richiede conferma.",
+        "Trasferisci proprieta (icona corona, viola): rende l'utente selezionato il nuovo proprietario dell'account. Richiede doppia conferma.",
+        "Disattiva: sospende l'accesso dell'utente mantenendo l'associazione (occupa ancora uno slot).",
+        "Riattiva: ripristina l'accesso di un utente disattivato.",
+        "Elimina: rimuove completamente l'associazione e libera lo slot.",
+      ],
+      note: "Il proprietario attuale non puo essere rimosso o disattivato. Il trasferimento di proprieta e irreversibile.",
+      mockupKind: "admin-clients",
+    }),
+    createSection({
+      id: "admin-riepilogo-giornaliero",
+      title: "Riepilogo Giornaliero Admin",
+      icon: Mail,
+      intro: "Ogni mattina alle 7:00 ricevi un'email con la panoramica operativa del portale: anagrafiche, corsi, docenti, attestati, ticket e account.",
+      paragraphs: [
+        "Il riepilogo giornaliero raccoglie automaticamente le informazioni piu rilevanti della giornata precedente e le scadenze imminenti.",
+      ],
+      bullets: [
+        "Anagrafiche: ricevute ieri, in attesa, deadline oggi o scadute.",
+        "Corsi: in partenza oggi o questa settimana, completati ieri.",
+        "Docenti: CV DPR 445 da approvare, materiali da approvare.",
+        "Attestati: in scadenza entro 30 giorni, scaduti.",
+        "Ticket: aperti, in attesa di risposta.",
+        "Account: bloccati, nuovi utenti registrati.",
+        "Disattivabile dalle Preferenze Notifiche Admin.",
+      ],
+      mockupKind: "admin-notification-preferences",
     }),
   ];
 }
@@ -1820,18 +1990,57 @@ function getTeacherSections(): GuideSection[] {
     }),
     createSection({
       id: "teacher-profilo",
-      title: "Profilo",
+      title: "Profilo e Personalizzazione",
       icon: UserCircle,
-      intro: "Aggiorna i tuoi dati anagrafici, cambia la password e gestisci le impostazioni del tuo account.",
+      intro: "Aggiorna i tuoi dati anagrafici, cambia la password e personalizza l'aspetto della sidebar.",
       paragraphs: [
         "L'email non è modificabile dal profilo: contatta l'admin per cambiamenti. Gli altri dati possono essere aggiornati in qualsiasi momento.",
+        "Durante il cambio password, una checklist in tempo reale mostra i requisiti: 8+ caratteri, maiuscola, numero, carattere speciale. Una barra di forza indica il livello complessivo.",
       ],
       bullets: [
         "Aggiorna dati personali, residenza, contatti e dati professionali.",
-        "Cambia password con requisiti: almeno 8 caratteri, maiuscola, numero e carattere speciale.",
+        "Cambia password con indicatore di forza: Debole, Scarsa, Media, Forte.",
+        "Tema sidebar: scegli tra 5 temi grafici — Chiaro, Scuro, Brand, Blu, Verde.",
         "Le modifiche al profilo vengono salvate immediatamente.",
       ],
       mockupKind: "teacher-profile",
+    }),
+    createSection({
+      id: "teacher-preferenze-notifiche",
+      title: "Preferenze Notifiche",
+      icon: SlidersHorizontal,
+      intro: "Personalizza quali notifiche ricevere e su quale canale: in-app (campanella) o email.",
+      paragraphs: [
+        "Dalla pagina Notifiche, clicca l'icona impostazioni per accedere alle Preferenze Notifiche. Le modifiche vengono salvate immediatamente.",
+      ],
+      bullets: [
+        "Lezione assegnata: quando vieni assegnato a una nuova lezione.",
+        "Lezione aggiornata: quando data, orario o luogo di una lezione cambiano.",
+        "Lezione cancellata: quando una lezione a cui eri assegnato viene eliminata.",
+        "Messaggio ricevuto: quando ricevi un messaggio dalla segreteria.",
+        "CV DPR 445 richiesto: quando l'admin richiede la compilazione del CV.",
+        "CV DPR 445 approvato/rifiutato: esito della revisione del tuo CV.",
+        "Materiale approvato/rifiutato: esito della revisione del materiale che hai proposto.",
+        "Toggle separati per notifica in-app ed email per ogni tipo.",
+        "Notifiche di sicurezza (password, account) non disattivabili.",
+      ],
+      mockupKind: "teacher-notification-preferences",
+    }),
+    createSection({
+      id: "teacher-badge-sidebar",
+      title: "Badge e Indicatori Sidebar",
+      icon: BellRing,
+      intro: "La sidebar mostra badge e indicatori per segnalare attivita urgenti o in sospeso.",
+      paragraphs: [
+        "I badge ti aiutano a identificare rapidamente cosa richiede la tua attenzione senza dover navigare in ogni pagina.",
+      ],
+      bullets: [
+        "Notifiche: numero di notifiche non lette accanto alla campanella.",
+        "Supporto: conteggio ticket aperti in attesa di risposta (badge blu).",
+        "CV DPR 445: badge rosso '!' quando il CV e stato richiesto o rifiutato dall'admin.",
+        "Dashboard: avviso in evidenza per CV richiesti con link diretto alla compilazione.",
+      ],
+      mockupKind: "teacher-dashboard",
     }),
   ];
 }
