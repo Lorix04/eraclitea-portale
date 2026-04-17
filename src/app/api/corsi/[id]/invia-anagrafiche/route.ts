@@ -79,24 +79,15 @@ export async function POST(
     );
   }
 
-  // Validate employees based on client's custom fields configuration
-  const clientRecord = await prisma.client.findUnique({
-    where: { id: effectiveClient.clientId },
-    select: { hasCustomFields: true },
-  });
-
-  let requiredCustomFields: { name: string; standardField: string | null }[] = [];
-  if (clientRecord?.hasCustomFields) {
-    requiredCustomFields = await prisma.clientCustomField.findMany({
-      where: { clientId: effectiveClient.clientId, isActive: true, required: true },
-      select: { name: true, standardField: true },
-    });
-  }
+  // Validate employees based on edition's custom fields configuration
+  const { getCustomFieldsForEdition } = await import("@/lib/custom-field-resolver");
+  const cfResult = await getCustomFieldsForEdition(edition.id);
+  const requiredCustomFields = cfResult.fields.filter((f) => f.required);
 
   const invalidEmployees = registrations.filter((reg) => {
     const emp = reg.employee;
 
-    if (clientRecord?.hasCustomFields) {
+    if (cfResult.enabled) {
       // Custom fields mode: minimum existence (cognome or email) + required custom fields
       if (!emp.cognome?.trim() && !emp.email?.trim()) return true;
       for (const field of requiredCustomFields) {

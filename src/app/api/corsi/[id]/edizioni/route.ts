@@ -159,10 +159,14 @@ export async function POST(
         ? data.presenzaMinimaValue
         : null;
 
-    // Read client's default notify policy for new editions
+    // Read client defaults for new editions
     const clientDefaults = await prisma.client.findUnique({
       where: { id: data.clientId },
       select: { defaultNotifyPolicy: true },
+    });
+    const defaultFieldSet = await prisma.customFieldSet.findFirst({
+      where: { clientId: data.clientId, isDefault: true, isActive: true },
+      select: { id: true },
     });
 
     const created = await prisma.courseEdition.create({
@@ -179,6 +183,7 @@ export async function POST(
         notes: data.notes ?? null,
         notifyPolicy: data.notifyPolicy ?? clientDefaults?.defaultNotifyPolicy ?? "REFERENT_ONLY",
         notifyExtraUserIds: data.notifyExtraUserIds ?? [],
+        customFieldSetId: data.customFieldSetId ?? defaultFieldSet?.id ?? null,
       },
       include: {
         client: {

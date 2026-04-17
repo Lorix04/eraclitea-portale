@@ -13,7 +13,7 @@ import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
-import { Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
 type CourseDetail = {
@@ -142,17 +142,23 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const { data: session } = useSession();
   const clientId = session?.user?.clientId;
 
-  // Use course.clientId (always correct) with session fallback for the custom fields query
+  // Use editionId for edition-specific custom fields, fallback to clientId
+  const cfEditionId = course?.id ?? params.id;
   const cfClientId = course?.clientId ?? clientId;
   const { data: cfData } = useQuery({
-    queryKey: ["custom-fields-status", cfClientId],
+    queryKey: ["custom-fields-status", cfEditionId || cfClientId],
     queryFn: async () => {
-      if (!cfClientId) return { enabled: false, fields: [] };
-      const res = await fetch(`/api/custom-fields?clientId=${cfClientId}`);
+      const queryParam = cfEditionId
+        ? `editionId=${cfEditionId}`
+        : cfClientId
+          ? `clientId=${cfClientId}`
+          : "";
+      if (!queryParam) return { enabled: false, fields: [] };
+      const res = await fetch(`/api/custom-fields?${queryParam}`);
       if (!res.ok) return { enabled: false, fields: [] };
       return res.json() as Promise<{ enabled: boolean; fields: { name: string; required: boolean; standardField: string | null }[] }>;
     },
-    enabled: !!cfClientId,
+    enabled: !!(cfEditionId || cfClientId),
     staleTime: 60_000,
   });
   const hasCustomFields = cfData?.enabled && (cfData?.fields?.length ?? 0) > 0;
@@ -563,8 +569,18 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             onRowsChange={handleRowsChange}
           />
 
-          {!isAnagraficheReadOnly ? (
-            <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            {registrationStats.total > 0 ? (
+              <a
+                href={`/api/dipendenti/export?courseEditionId=${course.id}&clientId=${resolvedClientId}&includeCustom=true&fileFormat=xlsx`}
+                download
+                className="inline-flex items-center rounded-md border px-3 py-2 text-sm"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Esporta Anagrafiche
+              </a>
+            ) : null}
+            {!isAnagraficheReadOnly ? (
               <BrandedButton
                 variant="outline"
                 size="sm"
@@ -579,8 +595,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                 <Upload className="mr-2 h-4 w-4" />
                 Importa CSV/Excel
               </BrandedButton>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
           {!isSubmitted && !isEditionLocked ? (
             <BrandedButton

@@ -264,175 +264,78 @@ export default function ExcelSheet({
           return td;
         },
       },
-      // When custom fields are active: show only CF + Nome + Cognome as identifiers
-      // All other standard fields move to "Altro" modal
-      ...(hasCustom ? [] : [{
-        data: "nome",
-        title: "Nome *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      },
-      {
-        data: "cognome",
-        title: "Cognome *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      }]),
-      {
-        data: "codiceFiscale",
-        title: "Codice Fiscale *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          const normalized = String(value ?? "").trim().toUpperCase();
-          callback(Boolean(normalized) && isValidCodiceFiscale(normalized));
-        },
-      },
-      // When custom fields active: Nome and Cognome shown after CF for readability
-      ...(hasCustom ? [{
-        data: "nome",
-        title: "Nome",
-        type: "text",
-      },
-      {
-        data: "cognome",
-        title: "Cognome",
-        type: "text",
-      }] : []),
-      // Standard columns only when NO custom fields
-      ...(!hasCustom ? [
-      {
-        data: "sesso",
-        title: "Sesso *",
-        type: "dropdown",
-        source: ["M", "F"],
-        allowInvalid: false,
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          const normalized = String(value ?? "").trim().toUpperCase();
-          callback(normalized === "M" || normalized === "F");
-        },
-      },
-      {
-        data: "dataNascita",
-        title: "Data Nascita *",
-        type: "text",
-        placeholder: "GG/MM/AAAA",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          if (!value || String(value).trim() === "") {
-            callback(false);
-            return;
-          }
-          callback(isValidItalianDate(String(value)));
-        },
-      },
-      {
-        data: "luogoNascita",
-        title: "Comune Nascita *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      },
-      {
-        data: "email",
-        title: "Email *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          const trimmed = String(value ?? "").trim();
-          callback(Boolean(trimmed) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed));
-        },
-      },
-      {
-        data: "comuneResidenza",
-        title: "Comune Residenza *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      },
-      {
-        data: "cap",
-        title: "CAP *",
-        type: "text",
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          const trimmed = String(value ?? "").trim();
-          callback(Boolean(trimmed) && trimmed.length <= 5);
-        },
-      },
-      ] : []),
-      ...(!hasCustom ? [
-      {
-        data: "provincia",
-        title: "Provincia *",
-        type: "autocomplete",
-        strict: false,
-        filter: false,
-        source: (
-          query: string,
-          process: (choices: string[]) => void
-        ) => {
-          const suggestions = filterProvince(String(query ?? ""))
-            .slice(0, 50)
-            .map((item) => `${item.nome} (${item.sigla})`);
-          process(suggestions);
-        },
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      },
-      {
-        data: "regione",
-        title: "Regione *",
-        type: "autocomplete",
-        strict: false,
-        filter: false,
-        source: (
-          query: string,
-          process: (choices: string[]) => void
-        ) => {
-          const suggestions = filterRegioni(String(query ?? "")).slice(0, 50);
-          process(suggestions);
-        },
-        validator: (value: string, callback: (valid: boolean) => void) => {
-          callback(Boolean(String(value ?? "").trim()));
-        },
-      },
-      ] : []),
-      // Dynamic custom fields columns (standard-mapped use Employee key, pure custom use custom_ prefix)
-      // Skip custom fields that duplicate the fixed CF/Nome/Cognome columns already shown above
-      ...(customFields || []).filter((cf) => {
-        if (!hasCustom) return true;
-        const fixedKeys = ["codiceFiscale", "nome", "cognome"];
-        return !fixedKeys.includes(cf.standardField ?? "");
-      }).map((cf) => {
-        // Standard-mapped fields read/write the Employee column directly
-        const dataKey = cf.standardField ? cf.standardField : `custom_${cf.name}`;
-        const col: any = {
-          data: dataKey,
-          title: `${cf.label}${cf.required ? " *" : ""}`,
-          type: cf.type === "select" ? "dropdown" : "text",
-          width: 130,
-          className: cf.standardField ? "" : "custom-field-cell",
-        };
-        if (cf.type === "select" && cf.options) {
-          col.source = cf.options.split("|").map((o: string) => o.trim());
-        }
-        if (cf.type === "number") {
-          col.type = "numeric";
-        }
-        if (cf.type === "date") {
-          col.placeholder = "GG/MM/AAAA";
-        }
-        if (cf.required) {
-          col.validator = (value: string, callback: (valid: boolean) => void) => {
-            callback(Boolean(String(value ?? "").trim()));
-          };
-        }
-        return col;
-      }),
+      // When template is active: ALL columns come from the template in template order
+      // When no template: show default standard columns
+      ...(hasCustom
+        ? // Template-driven columns — standard + custom in template order
+          (customFields || []).map((cf) => {
+            const dataKey = cf.standardField ? cf.standardField : `custom_${cf.name}`;
+            const col: any = {
+              data: dataKey,
+              title: `${cf.label}${cf.required ? " *" : ""}`,
+              type: cf.type === "select" ? "dropdown" : "text",
+              width: 130,
+              className: cf.standardField ? "" : "custom-field-cell",
+            };
+            // Special validators for known standard fields
+            if (cf.standardField === "codiceFiscale") {
+              col.validator = (value: string, callback: (valid: boolean) => void) => {
+                const normalized = String(value ?? "").trim().toUpperCase();
+                callback(Boolean(normalized) && isValidCodiceFiscale(normalized));
+              };
+            } else if (cf.standardField === "dataNascita" || cf.type === "date") {
+              col.placeholder = "GG/MM/AAAA";
+              if (cf.standardField === "dataNascita") {
+                col.validator = (value: string, callback: (valid: boolean) => void) => {
+                  if (!value || String(value).trim() === "") { callback(!cf.required); return; }
+                  callback(isValidItalianDate(String(value)));
+                };
+              }
+            } else if (cf.standardField === "sesso") {
+              col.type = "dropdown";
+              col.source = ["M", "F"];
+              col.allowInvalid = false;
+            } else if (cf.standardField === "provincia") {
+              col.type = "autocomplete";
+              col.strict = false;
+              col.filter = false;
+              col.source = (query: string, process: (choices: string[]) => void) => {
+                process(filterProvince(String(query ?? "")).slice(0, 50).map((item) => `${item.nome} (${item.sigla})`));
+              };
+            } else if (cf.standardField === "regione") {
+              col.type = "autocomplete";
+              col.strict = false;
+              col.filter = false;
+              col.source = (query: string, process: (choices: string[]) => void) => {
+                process(filterRegioni(String(query ?? "")).slice(0, 50));
+              };
+            }
+            if (cf.type === "select" && cf.options && !col.source) {
+              col.source = cf.options.split("|").map((o: string) => o.trim());
+            }
+            if (cf.type === "number") col.type = "numeric";
+            if (cf.required && !col.validator) {
+              col.validator = (value: string, callback: (valid: boolean) => void) => {
+                callback(Boolean(String(value ?? "").trim()));
+              };
+            }
+            return col;
+          })
+        : // Default standard columns (no template)
+          [
+            { data: "nome", title: "Nome *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "cognome", title: "Cognome *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "codiceFiscale", title: "Codice Fiscale *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const n = String(v ?? "").trim().toUpperCase(); cb(Boolean(n) && isValidCodiceFiscale(n)); } },
+            { data: "sesso", title: "Sesso *", type: "dropdown", source: ["M", "F"], allowInvalid: false, validator: (v: string, cb: (b: boolean) => void) => { const n = String(v ?? "").trim().toUpperCase(); cb(n === "M" || n === "F"); } },
+            { data: "dataNascita", title: "Data Nascita *", type: "text", placeholder: "GG/MM/AAAA", validator: (v: string, cb: (b: boolean) => void) => { if (!v || !String(v).trim()) { cb(false); return; } cb(isValidItalianDate(String(v))); } },
+            { data: "luogoNascita", title: "Comune Nascita *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "email", title: "Email *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(Boolean(t) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)); } },
+            { data: "comuneResidenza", title: "Comune Residenza *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "cap", title: "CAP *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(Boolean(t) && t.length <= 5); } },
+            { data: "provincia", title: "Provincia *", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterProvince(String(q ?? "")).slice(0, 50).map((i) => `${i.nome} (${i.sigla})`)), validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "regione", title: "Regione *", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterRegioni(String(q ?? "")).slice(0, 50)), validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+          ] as any[]
+      ),
       {
         data: "_altro",
         title: "Altro",

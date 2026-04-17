@@ -62,16 +62,21 @@ export default function AnagraficheResponsive({
 }: AnagraficheResponsiveProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Fetch custom fields for this client
+  // Fetch custom fields — prefer edition-specific, fallback to client
   const { data: customFieldsData } = useQuery({
-    queryKey: ["custom-fields", clientId],
+    queryKey: ["custom-fields", courseEditionId || clientId],
     queryFn: async () => {
-      if (!clientId) return { enabled: false, fields: [] };
-      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      const params = courseEditionId
+        ? `editionId=${courseEditionId}`
+        : clientId
+          ? `clientId=${clientId}`
+          : "";
+      if (!params) return { enabled: false, fields: [] };
+      const res = await fetch(`/api/custom-fields?${params}`);
       if (!res.ok) return { enabled: false, fields: [] };
       return res.json();
     },
-    enabled: !!clientId,
+    enabled: !!(courseEditionId || clientId),
   });
   const customFields = useMemo(
     () => (customFieldsData?.enabled ? customFieldsData.fields : []),

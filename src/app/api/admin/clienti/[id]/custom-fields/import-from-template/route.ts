@@ -5,39 +5,15 @@ import { requirePermission } from "@/lib/permissions";
 import { STANDARD_EMPLOYEE_FIELDS } from "@/lib/standard-fields";
 
 // Map of common header variations to standard field keys
+// Built from key, label, and aliases defined in standard-fields.ts
 const HEADER_TO_STANDARD: Record<string, string> = {};
 for (const f of STANDARD_EMPLOYEE_FIELDS) {
   HEADER_TO_STANDARD[f.key.toLowerCase()] = f.key;
   HEADER_TO_STANDARD[f.label.toLowerCase()] = f.key;
+  for (const alias of f.aliases) {
+    HEADER_TO_STANDARD[alias] = f.key;
+  }
 }
-// Additional common aliases
-Object.assign(HEADER_TO_STANDARD, {
-  cf: "codiceFiscale",
-  "codice fiscale": "codiceFiscale",
-  codice_fiscale: "codiceFiscale",
-  "codice fiscale ": "codiceFiscale",
-  genere: "sesso",
-  "data nascita": "dataNascita",
-  "data di nascita": "dataNascita",
-  data_nascita: "dataNascita",
-  "luogo nascita": "luogoNascita",
-  "luogo di nascita": "luogoNascita",
-  "comune nascita": "luogoNascita",
-  "comune di nascita": "luogoNascita",
-  comune_nascita: "luogoNascita",
-  "e-mail": "email",
-  "indirizzo mail": "email",
-  "indirizzo email": "email",
-  "comune residenza": "comuneResidenza",
-  "comune di residenza": "comuneResidenza",
-  comune_residenza: "comuneResidenza",
-  "email aziendale": "emailAziendale",
-  email_aziendale: "emailAziendale",
-  "partita iva": "partitaIva",
-  partita_iva: "partitaIva",
-  "p.iva": "partitaIva",
-  "p. iva": "partitaIva",
-});
 
 // Headers to always ignore (not meaningful columns)
 const IGNORE_HEADERS = new Set(["id", "n.", "n", "#", "numero", "riga", ""]);
@@ -63,6 +39,16 @@ export async function POST(
 
   const clientId = context.params.id;
   const formData = await request.formData();
+
+  // Ensure default set exists
+  let defaultSet = await prisma.customFieldSet.findFirst({
+    where: { clientId, isDefault: true },
+  });
+  if (!defaultSet) {
+    defaultSet = await prisma.customFieldSet.create({
+      data: { clientId, name: "Template predefinito", isDefault: true },
+    });
+  }
 
   // ---- Confirm mode: create selected fields ----
   const confirmCreate = formData.get("confirm") === "true";
@@ -106,6 +92,7 @@ export async function POST(
         await prisma.clientCustomField.create({
           data: {
             clientId,
+            customFieldSetId: defaultSet.id,
             name,
             label: item.header,
             type: stdDef?.type || "text",

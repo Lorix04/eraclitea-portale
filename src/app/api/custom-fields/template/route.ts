@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
+import { getCustomFieldsForEdition, getCustomFieldsForClient } from "@/lib/custom-field-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -13,31 +14,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  let clientId: string | null = null;
+  const url = new URL(request.url);
+  const editionId = url.searchParams.get("editionId");
+  let clientId = url.searchParams.get("clientId");
 
-  // Admin can pass clientId as query param
-  if (session.user.role === "ADMIN") {
-    const url = new URL(request.url);
-    clientId = url.searchParams.get("clientId");
-  }
-
-  // Client uses their own clientId
   if (!clientId) {
     const ctx = await getEffectiveClientContext();
     if (ctx) clientId = ctx.clientId;
   }
 
-  if (!clientId) {
-    return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
+  // Resolve fields from edition or client
+  let cfResult: { enabled: boolean; fields: Array<{ label: string; columnHeader: string | null; required: boolean }> };
+  if (editionId) {
+    cfResult = await getCustomFieldsForEdition(editionId);
+  } else if (clientId) {
+    cfResult = await getCustomFieldsForClient(clientId);
+  } else {
+    return NextResponse.json({ error: "ClientId o editionId mancante" }, { status: 400 });
   }
 
-  // Fetch configured custom fields
-  const fields = await prisma.clientCustomField.findMany({
-    where: { clientId, isActive: true },
-    orderBy: { sortOrder: "asc" },
-    select: { label: true, columnHeader: true, required: true },
-  });
-
+  const fields = cfResult.fields;
   if (fields.length === 0) {
     return NextResponse.json(
       { error: "Nessun campo configurato" },
@@ -51,10 +47,12 @@ export async function GET(request: Request) {
   );
 
   // Fetch client name for filename
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { ragioneSociale: true },
-  });
+  const client = clientId
+    ? await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { ragioneSociale: true },
+      })
+    : null;
   const clientName = (client?.ragioneSociale || "cliente")
     .replace(/[^a-zA-Z0-9\s]/g, "")
     .replace(/\s+/g, "_")

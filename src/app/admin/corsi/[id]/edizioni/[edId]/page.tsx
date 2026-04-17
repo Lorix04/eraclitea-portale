@@ -76,6 +76,7 @@ type EditionDetail = {
   notes?: string | null;
   notifyPolicy?: "REFERENT_ONLY" | "REFERENT_PLUS" | "ALL";
   notifyExtraUserIds?: string[];
+  customFieldSetId?: string | null;
   registrySentAt?: string | null;
   course: { id: string; title: string; durationHours?: number | null };
   client: { id: string; ragioneSociale: string };
@@ -172,6 +173,8 @@ export default function AdminEditionDetailPage({
   const [notifyPolicy, setNotifyPolicy] = useState<"REFERENT_ONLY" | "REFERENT_PLUS" | "ALL">("ALL");
   const [notifyExtraUserIds, setNotifyExtraUserIds] = useState<string[]>([]);
   const [clientUsers, setClientUsers] = useState<Array<{ userId: string; email: string; name: string | null; isOwner: boolean }>>([]);
+  const [customFieldSetId, setCustomFieldSetId] = useState<string | null>(null);
+  const [availableFieldSets, setAvailableFieldSets] = useState<Array<{ id: string; name: string; isDefault: boolean; _count: { fields: number } }>>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -263,9 +266,24 @@ export default function AdminEditionDetailPage({
     );
     setNotifyPolicy(data.notifyPolicy ?? "ALL");
     setNotifyExtraUserIds(data.notifyExtraUserIds ?? []);
+    setCustomFieldSetId(data.customFieldSetId ?? null);
     // Load client users for the multi-select
     const edClientId = data.clientId ?? data.client?.id;
     if (edClientId) {
+      // Load available field sets
+      fetch(`/api/admin/clienti/${edClientId}/custom-field-sets`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((json) => {
+          if (json?.data) {
+            setAvailableFieldSets(json.data.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              isDefault: s.isDefault,
+              _count: { fields: s.fields?.length ?? 0 },
+            })));
+          }
+        })
+        .catch(() => {});
       fetch(`/api/admin/clienti/${edClientId}/utenti`)
         .then((r) => r.ok ? r.json() : null)
         .then((json) => {
@@ -409,25 +427,29 @@ export default function AdminEditionDetailPage({
     const presenzaMinimaPayloadValue = hasPresenzaMinima
       ? Number(presenzaMinimaValue)
       : null;
+    const bodyData = {
+      startDate,
+      endDate,
+      deadlineRegistry,
+      status,
+      presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
+      presenzaMinimaValue: presenzaMinimaPayloadValue,
+      notes,
+      notifyPolicy,
+      notifyExtraUserIds: notifyPolicy === "REFERENT_PLUS" ? notifyExtraUserIds : [],
+      customFieldSetId,
+    };
+    console.log("INVIO PUT edition body:", JSON.stringify(bodyData, null, 2));
     const res = await fetch(`/api/corsi/${params.id}/edizioni/${params.edId}` , {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-        deadlineRegistry,
-        status,
-        presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
-        presenzaMinimaValue: presenzaMinimaPayloadValue,
-        notes,
-        notifyPolicy,
-        notifyExtraUserIds: notifyPolicy === "REFERENT_PLUS" ? notifyExtraUserIds : [],
-      }),
+      body: JSON.stringify(bodyData),
     });
     setSaving(false);
 
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
+      console.log("RISPOSTA ERRORE:", JSON.stringify(json, null, 2));
       const message = String(json.error ?? "");
       if (message.includes("fine")) {
         setErrors((prev) => ({ ...prev, endDate: message }));
@@ -795,6 +817,25 @@ export default function AdminEditionDetailPage({
             )}
           </div>
 
+          {availableFieldSets.length > 0 ? (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">Template anagrafiche</h3>
+              <select
+                value={customFieldSetId ?? ""}
+                onChange={(e) => setCustomFieldSetId(e.target.value || null)}
+                className="rounded-md border bg-background px-3 py-2 text-sm"
+                disabled={isArchived}
+              >
+                <option value="">Nessun template (campi standard)</option>
+                {availableFieldSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{s.isDefault ? " (predefinito)" : ""} — {s._count.fields} campi
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">Destinatari notifiche</h3>
             <div className="space-y-2">
@@ -1074,16 +1115,28 @@ export default function AdminEditionDetailPage({
             <p className="text-sm text-muted-foreground">
               {registrations.length} dipendenti registrati
             </p>
-            {!isArchived ? (
-              <button
-                type="button"
-                className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
-                onClick={() => setImportModalOpen(true)}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Importa CSV/Excel
-              </button>
-            ) : null}
+            <div className="flex gap-2">
+              {registrations.length > 0 ? (
+                <a
+                  href={`/api/dipendenti/export?courseEditionId=${edition.id}&clientId=${edition.client.id}&includeCustom=true&fileFormat=xlsx`}
+                  download
+                  className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Esporta Anagrafiche
+                </a>
+              ) : null}
+              {!isArchived ? (
+                <button
+                  type="button"
+                  className="inline-flex min-h-[44px] items-center rounded-md border px-3 py-2 text-sm"
+                  onClick={() => setImportModalOpen(true)}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Importa CSV/Excel
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {registrationsLoading ? (

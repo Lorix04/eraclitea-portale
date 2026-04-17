@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirmDialog } from "@/components/ui/ConfirmDialog";
-import ClientCustomFieldsConfig from "@/components/admin/ClientCustomFieldsConfig";
+import CustomFieldSetsManager from "@/components/admin/CustomFieldSetsManager";
 import ClientUsersSection from "@/components/admin/ClientUsersSection";
 import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
@@ -455,7 +455,7 @@ export default function AdminClienteDetailPage() {
 
         {/* Custom Fields */}
         <div className="rounded-lg border bg-card p-5">
-          <ClientCustomFieldsConfig
+          <CustomFieldSetsManager
             clientId={client.id}
             canEdit={can("clienti", "manage-custom-fields")}
           />

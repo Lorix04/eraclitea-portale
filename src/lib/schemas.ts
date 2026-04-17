@@ -87,6 +87,7 @@ const courseEditionBaseSchema = z.object({
   notes: z.string().max(2000).optional().nullable().or(z.literal("")),
   notifyPolicy: z.enum(["REFERENT_ONLY", "REFERENT_PLUS", "ALL"]).optional(),
   notifyExtraUserIds: z.array(z.string()).optional(),
+  customFieldSetId: z.string().nullable().optional().transform((val) => val === "" ? null : val),
 });
 
 function validateEditionDates(

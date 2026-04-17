@@ -8,6 +8,7 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { Prisma, RegistrationStatus } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { checkApiPermission } from "@/lib/permissions";
+import { getCustomFieldsForEdition, getCustomFieldsForClient } from "@/lib/custom-field-resolver";
 
 const EMPLOYEE_EXPORT_COLUMNS = [
   "cognome",
@@ -133,17 +134,18 @@ export async function GET(request: Request) {
       ...(dateRange ? { createdAt: dateRange } : {}),
     };
 
-    // Fetch custom fields if exporting for a single client with includeCustom
+    // Fetch custom fields — prefer edition-specific, fallback to client
     const includeCustom = searchParams.get("includeCustom") === "true";
-    let customFieldDefs: { name: string; label: string; columnHeader: string | null; type: string }[] = [];
-    if (clientId && includeCustom) {
-      const cl = await prisma.client.findUnique({ where: { id: clientId }, select: { hasCustomFields: true } });
-      if (cl?.hasCustomFields) {
-        customFieldDefs = await prisma.clientCustomField.findMany({
-          where: { clientId, isActive: true },
-          orderBy: { sortOrder: "asc" },
-          select: { name: true, label: true, columnHeader: true, type: true },
-        });
+    const csvEditionId = searchParams.get("courseEditionId");
+    let customFieldDefs: { name: string; label: string; columnHeader: string | null; type: string; standardField: string | null }[] = [];
+    if (includeCustom) {
+      const cfResult = csvEditionId
+        ? await getCustomFieldsForEdition(csvEditionId)
+        : clientId
+          ? await getCustomFieldsForClient(clientId)
+          : { enabled: false, fields: [] };
+      if (cfResult.enabled) {
+        customFieldDefs = cfResult.fields.map((f) => ({ ...f, type: f.type || "text" }));
       }
     }
 
@@ -179,11 +181,7 @@ export async function GET(request: Request) {
 
     if (includeCustom && customFieldDefs.length > 0) {
       // Custom format: ONLY custom field columns
-      const fullDefs = await prisma.clientCustomField.findMany({
-        where: { clientId: clientId!, isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: { name: true, label: true, columnHeader: true, standardField: true },
-      });
+      const fullDefs = customFieldDefs;
 
       const STANDARD_GETTERS: Record<string, (e: any) => string> = {
         nome: (e) => toValue(e.nome), cognome: (e) => toValue(e.cognome),

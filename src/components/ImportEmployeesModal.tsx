@@ -173,8 +173,9 @@ export default function ImportEmployeesModal({
     setIsDownloadingTemplate(true);
     try {
       // Use custom fields template if in custom mode, otherwise standard
+      // Pass editionId so the template reflects edition-specific custom fields
       const templateUrl = importMode === "custom"
-        ? `/api/custom-fields/template?clientId=${clientId}`
+        ? `/api/custom-fields/template?clientId=${clientId}${editionId ? `&editionId=${editionId}` : ""}`
         : "/api/dipendenti/import/template";
       const response = await fetch(templateUrl);
 
@@ -328,7 +329,7 @@ export default function ImportEmployeesModal({
     setIsDownloadingTemplate(true);
     try {
       const url = mode === "custom"
-        ? `/api/custom-fields/template?clientId=${clientId}`
+        ? `/api/custom-fields/template?clientId=${clientId}${editionId ? `&editionId=${editionId}` : ""}`
         : "/api/dipendenti/import/template";
       const res = await fetch(url);
       if (!res.ok) throw new Error("Errore download");

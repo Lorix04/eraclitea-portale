@@ -94,10 +94,32 @@ export async function PUT(
       return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
     }
 
+    // Clone the request so we can read the body for logging
+    const clonedRequest = request.clone();
+    let rawBody: unknown;
+    try {
+      rawBody = await clonedRequest.json();
+    } catch {
+      rawBody = "[parse error]";
+    }
+    console.log("\n========== PUT edizione ==========");
+    console.log("editionId:", context.params.edId);
+    console.log("BODY RICEVUTO:", JSON.stringify(rawBody, null, 2));
+
     const validation = await validateBody(request, courseEditionUpdateSchema);
     if ("error" in validation) {
+      // Log validation errors
+      try {
+        const schema = courseEditionUpdateSchema;
+        const parseResult = schema.safeParse(rawBody);
+        if (!parseResult.success) {
+          console.log("❌ ZOD VALIDATION FAILED:");
+          console.log(JSON.stringify(parseResult.error.errors, null, 2));
+        }
+      } catch {}
       return validation.error;
     }
+    console.log("✅ VALIDATO:", JSON.stringify(validation.data, null, 2));
 
   const existing = await prisma.courseEdition.findUnique({
     where: { id: context.params.edId },
@@ -183,6 +205,7 @@ export async function PUT(
       notes: data.notes ?? undefined,
       ...(data.notifyPolicy ? { notifyPolicy: data.notifyPolicy } : {}),
       ...(data.notifyExtraUserIds !== undefined ? { notifyExtraUserIds: data.notifyExtraUserIds ?? [] } : {}),
+      ...(data.customFieldSetId !== undefined ? { customFieldSetId: data.customFieldSetId } : {}),
     },
     include: {
       course: { select: { id: true, title: true, durationHours: true } },

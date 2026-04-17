@@ -76,9 +76,19 @@ export async function POST(
       ? slugify(body.name.trim())
       : slugify(label.trim());
 
-  // Check uniqueness
+  // Ensure a default set exists (required since customFieldSetId is now mandatory)
+  let defaultSet = await prisma.customFieldSet.findFirst({
+    where: { clientId, isDefault: true },
+  });
+  if (!defaultSet) {
+    defaultSet = await prisma.customFieldSet.create({
+      data: { clientId, name: "Template predefinito", isDefault: true },
+    });
+  }
+
+  // Check uniqueness within set
   const existing = await prisma.clientCustomField.findUnique({
-    where: { clientId_name: { clientId, name } },
+    where: { customFieldSetId_name: { customFieldSetId: defaultSet.id, name } },
   });
   if (existing) {
     return NextResponse.json(
@@ -96,6 +106,7 @@ export async function POST(
   const field = await prisma.clientCustomField.create({
     data: {
       clientId,
+      customFieldSetId: defaultSet.id,
       name,
       label: label.trim(),
       type: type || "text",

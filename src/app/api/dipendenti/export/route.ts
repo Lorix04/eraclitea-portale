@@ -8,6 +8,7 @@ import { getEffectiveClientContext } from "@/lib/impersonate";
 import { prisma } from "@/lib/prisma";
 import { validateQuery } from "@/lib/api-utils";
 import { formatItalianDate } from "@/lib/date-utils";
+import { getCustomFieldsForEdition, getCustomFieldsForClient } from "@/lib/custom-field-resolver";
 import { Prisma } from "@prisma/client";
 
 const querySchema = z.object({
@@ -19,6 +20,7 @@ const querySchema = z.object({
   hasCourses: z.enum(["all", "with", "without"]).optional(),
   includeCustom: z.enum(["true", "false"]).optional(),
   fileFormat: z.enum(["csv", "xlsx"]).optional(),
+  courseEditionId: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -73,10 +75,13 @@ export async function GET(request: Request) {
     where.AND = andFilters;
   }
 
-  if (hasCourses === "with") {
+  // Filter by edition — only export employees registered in this edition
+  const exportEditionId = validation.data.courseEditionId;
+  if (exportEditionId) {
+    where.registrations = { some: { courseEditionId: exportEditionId } };
+  } else if (hasCourses === "with") {
     where.registrations = { some: {} };
-  }
-  if (hasCourses === "without") {
+  } else if (hasCourses === "without") {
     where.registrations = { none: {} };
   }
 
@@ -122,15 +127,18 @@ export async function GET(request: Request) {
     orderBy,
   });
 
-  // Fetch custom fields if requested
+  // Fetch custom fields if requested — prefer edition-specific, fallback to client
   const includeCustom = validation.data.includeCustom === "true";
   let customFieldDefs: { name: string; label: string; columnHeader: string | null }[] = [];
-  if (includeCustom && scopedClientId) {
-    customFieldDefs = await prisma.clientCustomField.findMany({
-      where: { clientId: scopedClientId, isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { name: true, label: true, columnHeader: true },
-    });
+  if (includeCustom) {
+    const cfResult = exportEditionId
+      ? await getCustomFieldsForEdition(exportEditionId)
+      : scopedClientId
+        ? await getCustomFieldsForClient(scopedClientId)
+        : { enabled: false, fields: [] };
+    if (cfResult.enabled) {
+      customFieldDefs = cfResult.fields;
+    }
   }
 
   const toValue = (value: string | null | undefined) => value ?? "";
@@ -164,12 +172,8 @@ export async function GET(request: Request) {
 
   if (includeCustom && customFieldDefs.length > 0) {
     // Custom format: ONLY custom field columns
-    // Fetch full defs with standardField info
-    const fullDefs = await prisma.clientCustomField.findMany({
-      where: { clientId: scopedClientId!, isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: { name: true, label: true, columnHeader: true, standardField: true },
-    });
+    // fullDefs already have standardField from the resolver
+    const fullDefs = customFieldDefs as Array<{ name: string; label: string; columnHeader: string | null; standardField: string | null }>;
 
     allColumns = fullDefs.map((cf) => cf.columnHeader || cf.label);
 

@@ -77,7 +77,9 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `ClientUser` — junction table Client-User: `isOwner` (proprietario), `status` (ACTIVE/INACTIVE/PENDING), `invitedBy`; un client puo avere piu utenti, un utente proprietario gestisce inviti
 - `ClientInvite` — inviti utente client: `token` (unique), `email`, `expiresAt` (7 giorni), `status` (PENDING/ACCEPTED/EXPIRED/REVOKED)
 - `ClientActivityLog` — log attivita client: `action`, `entityType`, `entityId`, `details` (JSON), `ipAddress`
-- `ClientCustomField` — campi personalizzati per cliente: name, label, type (text/number/date/select/email), required, options, sortOrder, `standardField` (mappa a colonna Employee), `columnHeader`
+- `CustomFieldSet` — template di campi personalizzati per cliente: name, isDefault, isActive; un client puo avere piu set
+- `ClientCustomField` — campi personalizzati: name, label, type (text/number/date/select/email), required, options, sortOrder, `standardField` (mappa a colonna Employee), `columnHeader`, `customFieldSetId` (appartenenza a un set)
+- `CourseEdition.customFieldSetId` — ogni edizione punta a un set specifico; fallback: set default del client, poi legacy
 - `Teacher` — ~40 campi anagrafici, status (INACTIVE/PENDING/ONBOARDING/ACTIVE/SUSPENDED), `userId`, `inviteToken`, province/region, categorie (many-to-many), CV strutturato (8 relazioni)
 
 ### Formazione
@@ -372,6 +374,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/lib/email-queue.ts` — coda email con rate limiting
 - `src/lib/email-retry-policy.ts` — classificazione email sensibili/ritentabili
 - `src/lib/notify-client.ts` — notifyAllClientUsers (in-app a tutti gli utenti), emailAllClientUsers, notifyClientOwner, notifyEditionUsers, emailEditionUsers
+- `src/lib/custom-field-resolver.ts` — getCustomFieldsForEdition (edition→set→default→legacy), getCustomFieldsForClient
 - `src/lib/notification-types-config.ts` — configurazione tipi notifica per ruolo (CLIENT/ADMIN/TEACHER), categorie, canali (inApp/email), locked
 - `src/lib/notification-preferences.ts` — shouldSendInApp/shouldSendEmail, filterUsersForInApp/filterUsersForEmail (preferenze per-utente)
 - `src/lib/rate-limit.ts` — rate limiter tiered (admin/authenticated/login/public), sliding window

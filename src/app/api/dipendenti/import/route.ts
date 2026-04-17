@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseItalianDate } from "@/lib/date-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { normalizeCodiceFiscale, validateEmail } from "@/lib/validators";
+import { getCustomFieldsForEdition, getCustomFieldsForClient } from "@/lib/custom-field-resolver";
 
 const TEMPLATE_HEADERS = [
   "nome",
@@ -265,11 +266,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fetch custom fields for this client
-    const customFieldDefs = await prisma.clientCustomField.findMany({
-      where: { clientId, isActive: true },
-      select: { name: true, label: true, columnHeader: true, standardField: true, required: true },
-    });
+    // Fetch custom fields — prefer edition-specific, fallback to client
+    const cfResult = editionId
+      ? await getCustomFieldsForEdition(editionId)
+      : await getCustomFieldsForClient(clientId);
+    const customFieldDefs = cfResult.fields;
 
     const rawHeaders = rows[0] ?? [];
     const normalizedHeaders = rawHeaders.map((header) => normalizeHeader(header));

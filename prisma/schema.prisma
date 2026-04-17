@@ -120,6 +120,7 @@ model Client {
   categories        ClientCategory[]
   hasCustomFields   Boolean            @default(false)
   customFields      ClientCustomField[]
+  customFieldSets   CustomFieldSet[]
   maxUsers          Int?
   defaultNotifyPolicy NotifyPolicy @default(REFERENT_ONLY)
   clientUsers       ClientUser[]
@@ -224,6 +225,8 @@ model CourseEdition {
   notes            String?
   notifyPolicy       NotifyPolicy @default(ALL)
   notifyExtraUserIds String[]
+  customFieldSetId   String?
+  customFieldSet     CustomFieldSet? @relation(fields: [customFieldSetId], references: [id])
   registrations    CourseRegistration[]
   lessons          Lesson[]
   attendances      Attendance[]
@@ -1154,6 +1157,23 @@ model AiCallLog {
   @@index([status])
 }
 
+model CustomFieldSet {
+  id          String   @id @default(cuid())
+  clientId    String
+  name        String
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fields      ClientCustomField[]
+  editions    CourseEdition[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
+}
+
 model ClientCustomField {
   id           String  @id @default(cuid())
   clientId     String
@@ -1172,10 +1192,14 @@ model ClientCustomField {
   columnWidth   Int?
   standardField String? // maps to Employee column: "codiceFiscale", "nome", "cognome", "email", etc.
 
+  customFieldSetId String
+  customFieldSet   CustomFieldSet @relation(fields: [customFieldSetId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([clientId, name])
+  @@unique([customFieldSetId, name])
   @@index([clientId])
   @@index([clientId, sortOrder])
+  @@index([customFieldSetId])
 }
