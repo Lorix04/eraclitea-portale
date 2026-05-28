@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/permissions";
 import { logAudit, getClientIP } from "@/lib/audit";
 import { canAddUser } from "@/lib/client-users";
+import { sendAutoEmail } from "@/lib/email-service";
+import { buildEmailHtml, emailParagraph, emailInfoBox } from "@/lib/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -184,7 +186,8 @@ export async function POST(
     const limitError = await getLimitErrorResponse(clientId);
     if (limitError) return limitError;
 
-    const passwordHash = await bcrypt.hash(buildTemporaryPassword(), 12);
+    const tempPassword = buildTemporaryPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     const newUser = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -218,11 +221,38 @@ export async function POST(
       ipAddress: getClientIP(request),
     });
 
+    // Send welcome email with login credentials
+    const portalUrl = process.env.NEXTAUTH_URL || "https://sapienta.it";
+    const html = buildEmailHtml({
+      title: "Benvenuto su Sapienta",
+      greeting: body.name ? `Gentile ${body.name},` : "Gentile utente,",
+      bodyHtml: `
+        ${emailParagraph("E stato creato un account amministratore per te sul Portale Sapienta.")}
+        ${emailInfoBox(`
+          <p style="margin:0 0 8px; font-size:14px; color:#1A1A1A;"><strong>Email:</strong> ${email}</p>
+          <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Password temporanea:</strong> ${tempPassword}</p>
+        `)}
+        ${emailParagraph("Al primo accesso ti verra chiesto di cambiare la password.")}
+      `,
+      ctaText: "Accedi al Portale",
+      ctaUrl: `${portalUrl}/login`,
+      footerNote: "Se non hai richiesto questo account, ignora questa email.",
+    });
+
+    void sendAutoEmail({
+      emailType: "WELCOME",
+      recipientEmail: email,
+      recipientId: newUser.id,
+      subject: "Benvenuto su Portale Sapienta — Le tue credenziali di accesso",
+      html,
+      ignorePreference: true,
+    });
+
     return NextResponse.json(
       {
         success: true,
         userId: newUser.id,
-        message: "Nuovo amministratore creato e associato",
+        message: "Nuovo amministratore creato — email con le credenziali inviata",
       },
       { status: 201 }
     );
