@@ -172,7 +172,12 @@ function generateSecurePassword(length = 16): string {
 const createSchema = z.object({
   email: z.string().trim().email("Email non valida"),
   name: z.string().trim().max(200).optional().default(""),
-  adminRoleId: z.string().cuid().optional().nullable(),
+  // Role IDs are not always cuid — default roles use custom string IDs
+  // (es. "role_formazione"). Validity is verified later via DB lookup.
+  adminRoleId: z.preprocess(
+    (val) => (val === "" || val == null ? null : val),
+    z.string().min(1, "Ruolo admin non valido").nullable()
+  ).optional(),
   sendEmail: z.boolean().optional().default(true),
 });
 
@@ -287,6 +292,12 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Esiste gia un utente con questa email" },
+        { status: 409 }
+      );
+    }
     console.error("[ADMIN_UTENTI_POST] Error:", error);
     return NextResponse.json(
       { error: "Errore durante la creazione dell'utente" },
