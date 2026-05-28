@@ -219,16 +219,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "ClientId mancante" }, { status: 400 });
   }
 
-  const normalizedCF = normalizeCodiceFiscale(data.codiceFiscale);
-  const existing = await prisma.employee.findFirst({
-    where: { clientId, codiceFiscale: normalizedCF },
-    select: { id: true },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Dipendente con questo codice fiscale gia presente" },
-      { status: 409 }
-    );
+  const normalizedCF = data.codiceFiscale
+    ? normalizeCodiceFiscale(data.codiceFiscale as string)
+    : null;
+  if (normalizedCF) {
+    const existing = await prisma.employee.findFirst({
+      where: { clientId, codiceFiscale: normalizedCF },
+      select: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Dipendente con questo codice fiscale gia presente" },
+        { status: 409 }
+      );
+    }
   }
 
   const parsedDataNascita =
@@ -238,16 +242,21 @@ export async function POST(request: Request) {
         ? new Date(data.dataNascita)
         : null;
 
+  const customDataValue =
+    data.customData && Object.keys(data.customData).length > 0
+      ? data.customData
+      : undefined;
+
   const created = await prisma.employee.create({
     data: {
       clientId,
-      nome: data.nome,
-      cognome: data.cognome,
+      nome: (data.nome as string | null | undefined) || null,
+      cognome: (data.cognome as string | null | undefined) || null,
       codiceFiscale: normalizedCF,
-      sesso: data.sesso || null,
+      sesso: (data.sesso as string | null | undefined) || null,
       dataNascita: parsedDataNascita,
-      luogoNascita: data.luogoNascita || null,
-      email: data.email || null,
+      luogoNascita: (data.luogoNascita as string | null | undefined) || null,
+      email: (data.email as string | null | undefined) || null,
       telefono: (data.telefono as string | null | undefined) || null,
       cellulare: (data.cellulare as string | null | undefined) || null,
       indirizzo: (data.indirizzo as string | null | undefined) || null,
@@ -263,6 +272,7 @@ export async function POST(request: Request) {
       iban: (data.iban as string | null | undefined) || null,
       mansione: (data.mansione as string | null | undefined) || null,
       note: (data.note as string | null | undefined) || null,
+      ...(customDataValue !== undefined ? { customData: customDataValue } : {}),
     },
   });
 

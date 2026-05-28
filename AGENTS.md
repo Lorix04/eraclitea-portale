@@ -270,8 +270,10 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Dati custom salvati in `Employee.customData` (JSON), campi standard-mapped nei campi Employee diretti
 - **Import da template**: upload Excel del cliente → auto-riconoscimento colonne standard e custom → creazione campi
 - **SpreadsheetEditor** (ExcelSheet.tsx): con custom fields attivi mostra solo CF + Nome + Cognome + campi custom + Altro; senza custom fields mostra tutte le 11 colonne standard
+- **Campi obbligatori standard**: SOLO Nome, Cognome, Codice Fiscale. Tutti gli altri campi standard (Sesso, Data Nascita, Comune Nascita, Email, Comune Residenza, CAP, Provincia, Regione) sono opzionali. Enforcement client-side; `employeeSchema` e lenient (valida il formato solo se valorizzato). Vale per SpreadsheetEditor, invia-anagrafiche, import e form manuale
+- **Aggiungi dipendente manuale** (`AddEmployeeModal`): se il cliente selezionato ha un template, mostra un toggle "Campi Default" / "Campi Personalizzati". Default mode = campi standard (solo Nome/Cognome/CF obbligatori); custom mode = campi del template (standard mappati su colonne Employee, custom salvati in `customData`), obbligatori secondo il template. POST `/api/dipendenti` accetta `customData`
 - **Import dipendenti** (2 step): step 0 scelta formato (standard/personalizzato) → step 1 upload → step 2 column mapping con auto-detect → import
-  - `importMode=standard`: validazione 11 campi obbligatori classici
+  - `importMode=standard`: validazione solo Nome, Cognome, Codice Fiscale (gli altri opzionali, validati se presenti)
   - `importMode=custom`: validazione solo campi con `required=true` nella config custom (nessun campo fisso obbligatorio)
   - Preview API: `POST /api/dipendenti/import/preview` con auto-mapping headers
   - Column mapping UI: tabella con dropdown per ogni colonna, campi obbligatori evidenziati

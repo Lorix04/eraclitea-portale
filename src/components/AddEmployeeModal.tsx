@@ -17,6 +17,19 @@ import { getArrayData } from "@/lib/api-response";
 
 type ClientOption = { id: string; ragioneSociale: string };
 
+type ResolvedCustomField = {
+  id: string;
+  name: string;
+  label: string;
+  type: string;
+  required: boolean;
+  placeholder: string | null;
+  options: string | null;
+  standardField: string | null;
+};
+
+type FieldMode = "default" | "custom";
+
 type AddEmployeeModalProps = {
   open: boolean;
   onClose: () => void;
@@ -95,6 +108,11 @@ export default function AddEmployeeModal({
     ...initialForm,
     clientId: clientId ?? "",
   });
+  const [customFields, setCustomFields] = useState<ResolvedCustomField[]>([]);
+  const [customFieldsEnabled, setCustomFieldsEnabled] = useState(false);
+  const [loadingCustomFields, setLoadingCustomFields] = useState(false);
+  const [mode, setMode] = useState<FieldMode>("default");
+  const [customData, setCustomData] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { data: codiciCatastali } = useCodiciCatastali();
   const { province, filterProvince, filterRegioni, getRegioneByProvincia } =
@@ -120,8 +138,61 @@ export default function AddEmployeeModal({
       ...initialForm,
       clientId: clientId ?? "",
     });
+    setCustomFields([]);
+    setCustomFieldsEnabled(false);
+    setMode("default");
+    setCustomData({});
     lastDecodedCfRef.current = "";
   }, [open, clientId]);
+
+  // Load the client's custom field template when a client is selected
+  useEffect(() => {
+    if (!open) return;
+    const activeClientId = form.clientId || clientId || "";
+    if (!activeClientId) {
+      setCustomFields([]);
+      setCustomFieldsEnabled(false);
+      setMode("default");
+      return;
+    }
+
+    let cancelled = false;
+    const loadCustomFields = async () => {
+      setLoadingCustomFields(true);
+      try {
+        const res = await fetch(`/api/custom-fields?clientId=${activeClientId}`);
+        if (!res.ok) {
+          if (!cancelled) {
+            setCustomFields([]);
+            setCustomFieldsEnabled(false);
+            setMode("default");
+          }
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        const enabled = Boolean(json?.enabled) && Array.isArray(json?.fields) && json.fields.length > 0;
+        setCustomFields(enabled ? json.fields : []);
+        setCustomFieldsEnabled(enabled);
+        // Default to the configured template when available; the user can switch
+        setMode(enabled ? "custom" : "default");
+        setCustomData({});
+      } catch {
+        if (!cancelled) {
+          setCustomFields([]);
+          setCustomFieldsEnabled(false);
+          setMode("default");
+        }
+      } finally {
+        if (!cancelled) setLoadingCustomFields(false);
+      }
+    };
+
+    loadCustomFields();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, form.clientId, clientId]);
 
   useEffect(() => {
     if (!open) return;
@@ -237,6 +308,31 @@ export default function AddEmployeeModal({
     });
   };
 
+  const getCustomFieldValue = (cf: ResolvedCustomField): string => {
+    if (cf.standardField) {
+      return form[cf.standardField as keyof FormState] ?? "";
+    }
+    return customData[cf.name] ?? "";
+  };
+
+  const customFieldErrorKey = (cf: ResolvedCustomField) =>
+    cf.standardField ?? `custom_${cf.name}`;
+
+  const setCustomFieldValue = (cf: ResolvedCustomField, value: string) => {
+    const errorKey = customFieldErrorKey(cf);
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+    }
+    if (cf.standardField) {
+      updateField(cf.standardField as keyof FormState, value);
+      if (cf.standardField === "codiceFiscale" && value.trim().length === 16) {
+        decodeFromCF(value);
+      }
+    } else {
+      setCustomData((prev) => ({ ...prev, [cf.name]: value }));
+    }
+  };
+
   const validate = useMemo(() => {
     return () => {
       const nextErrors: Record<string, string> = {};
@@ -244,35 +340,44 @@ export default function AddEmployeeModal({
       if (!hasFixedClientId && !form.clientId) {
         nextErrors.clientId = "Questo campo è obbligatorio";
       }
-      if (!form.nome.trim()) nextErrors.nome = "Questo campo è obbligatorio";
-      if (!form.cognome.trim()) nextErrors.cognome = "Questo campo è obbligatorio";
 
-      if (!form.codiceFiscale.trim()) {
-        nextErrors.codiceFiscale = "Questo campo è obbligatorio";
-      } else if (!isValidCodiceFiscale(form.codiceFiscale.trim())) {
-        nextErrors.codiceFiscale = "Codice fiscale non valido";
-      }
+      if (mode === "custom" && customFieldsEnabled) {
+        // Custom (template) mode: enforce the template's required fields only
+        for (const cf of customFields) {
+          const value = getCustomFieldValue(cf).trim();
+          const errorKey = customFieldErrorKey(cf);
+          if (cf.required && !value) {
+            nextErrors[errorKey] = "Questo campo è obbligatorio";
+            continue;
+          }
+          if (value && cf.standardField === "codiceFiscale" && !isValidCodiceFiscale(value)) {
+            nextErrors[errorKey] = "Codice fiscale non valido";
+          } else if (value && cf.type === "email" && !isValidEmail(value)) {
+            nextErrors[errorKey] = "Email non valida";
+          }
+        }
+      } else {
+        // Default mode: only Nome, Cognome, Codice Fiscale required
+        if (!form.nome.trim()) nextErrors.nome = "Questo campo è obbligatorio";
+        if (!form.cognome.trim()) nextErrors.cognome = "Questo campo è obbligatorio";
 
-      if (!form.sesso) nextErrors.sesso = "Questo campo è obbligatorio";
-      if (!form.dataNascita.trim()) nextErrors.dataNascita = "Questo campo è obbligatorio";
-      if (!form.luogoNascita.trim()) nextErrors.luogoNascita = "Questo campo è obbligatorio";
+        if (!form.codiceFiscale.trim()) {
+          nextErrors.codiceFiscale = "Questo campo è obbligatorio";
+        } else if (!isValidCodiceFiscale(form.codiceFiscale.trim())) {
+          nextErrors.codiceFiscale = "Codice fiscale non valido";
+        }
 
-      if (!form.email.trim()) {
-        nextErrors.email = "Questo campo è obbligatorio";
-      } else if (!isValidEmail(form.email.trim())) {
-        nextErrors.email = "Email non valida";
-      }
-      if (!form.comuneResidenza.trim()) {
-        nextErrors.comuneResidenza = "Questo campo è obbligatorio";
-      }
-      if (!form.cap.trim()) {
-        nextErrors.cap = "Questo campo è obbligatorio";
+        // Format checks only when the optional field is filled
+        if (form.email.trim() && !isValidEmail(form.email.trim())) {
+          nextErrors.email = "Email non valida";
+        }
       }
 
       setErrors(nextErrors);
       return Object.keys(nextErrors).length === 0;
     };
-  }, [form, hasFixedClientId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, hasFixedClientId, mode, customFieldsEnabled, customFields, customData]);
 
   const selectedClient = useMemo(
     () => clients.find((item) => item.id === form.clientId),
@@ -300,6 +405,19 @@ export default function AddEmployeeModal({
   const handleSubmit = async () => {
     if (!validate()) return;
 
+    // In custom mode, collect non-standard template field values into customData
+    let customDataPayload: Record<string, string> | undefined;
+    if (mode === "custom" && customFieldsEnabled) {
+      const collected: Record<string, string> = {};
+      for (const cf of customFields) {
+        if (!cf.standardField) {
+          const value = (customData[cf.name] ?? "").trim();
+          if (value) collected[cf.name] = value;
+        }
+      }
+      if (Object.keys(collected).length > 0) customDataPayload = collected;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/dipendenti", {
@@ -307,18 +425,18 @@ export default function AddEmployeeModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId: form.clientId || clientId,
-          nome: form.nome.trim(),
-          cognome: form.cognome.trim(),
-          codiceFiscale: form.codiceFiscale.trim().toUpperCase(),
+          nome: form.nome.trim() || null,
+          cognome: form.cognome.trim() || null,
+          codiceFiscale: form.codiceFiscale.trim().toUpperCase() || null,
           sesso: form.sesso || null,
           dataNascita: form.dataNascita || null,
-          luogoNascita: form.luogoNascita.trim(),
-          email: form.email.trim(),
+          luogoNascita: form.luogoNascita.trim() || null,
+          email: form.email.trim() || null,
           telefono: form.telefono || null,
           cellulare: form.cellulare || null,
           indirizzo: form.indirizzo || null,
-          comuneResidenza: form.comuneResidenza.trim(),
-          cap: form.cap.trim(),
+          comuneResidenza: form.comuneResidenza.trim() || null,
+          cap: form.cap.trim() || null,
           provincia: form.provincia.trim() || null,
           regione: form.regione.trim() || null,
           emailAziendale: form.emailAziendale.trim() || null,
@@ -327,6 +445,7 @@ export default function AddEmployeeModal({
           iban: form.iban.trim() || null,
           mansione: form.mansione || null,
           note: form.note || null,
+          customData: customDataPayload,
         }),
       });
 
@@ -489,6 +608,136 @@ export default function AddEmployeeModal({
                 </div>
               ) : null}
 
+              {customFieldsEnabled ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode("default")}
+                    className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                      mode === "default"
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/20 hover:border-muted-foreground/40"
+                    }`}
+                    disabled={saving}
+                  >
+                    <span className="font-medium">Campi Default</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Campi standard del sistema
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("custom")}
+                    className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                      mode === "custom"
+                        ? "border-primary bg-primary/5"
+                        : "border-muted-foreground/20 hover:border-muted-foreground/40"
+                    }`}
+                    disabled={saving}
+                  >
+                    <span className="font-medium">Campi Personalizzati</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {customFields.length} campi dal template
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+
+              {loadingCustomFields ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Caricamento configurazione campi...
+                </div>
+              ) : null}
+
+              {mode === "custom" && customFieldsEnabled ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {customFields.map((cf) => {
+                    const value = getCustomFieldValue(cf);
+                    const errorKey = customFieldErrorKey(cf);
+                    const errorMsg = errors[errorKey];
+                    const errorClass = errorMsg
+                      ? "border-red-500 focus-visible:outline-red-500"
+                      : "";
+                    const isDate = cf.type === "date" || cf.standardField === "dataNascita";
+                    const isSelect = cf.type === "select";
+                    const isSesso = cf.standardField === "sesso";
+                    const fullWidth = cf.type === "textarea";
+
+                    if (isDate) {
+                      return (
+                        <ItalianDateInput
+                          key={cf.id}
+                          label={cf.label}
+                          required={cf.required}
+                          value={value}
+                          onChange={(v) => setCustomFieldValue(cf, v)}
+                          error={errorMsg}
+                          disabled={saving}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={cf.id}
+                        className={`space-y-2 ${fullWidth ? "md:col-span-2" : ""}`}
+                      >
+                        <FormLabel required={cf.required}>{cf.label}</FormLabel>
+                        {isSesso ? (
+                          <select
+                            className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${errorClass}`}
+                            value={value}
+                            onChange={(e) => setCustomFieldValue(cf, e.target.value)}
+                            disabled={saving}
+                          >
+                            <option value="">Seleziona</option>
+                            <option value="M">M</option>
+                            <option value="F">F</option>
+                          </select>
+                        ) : isSelect ? (
+                          <select
+                            className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${errorClass}`}
+                            value={value}
+                            onChange={(e) => setCustomFieldValue(cf, e.target.value)}
+                            disabled={saving}
+                          >
+                            <option value="">Seleziona</option>
+                            {(cf.options ?? "")
+                              .split("|")
+                              .map((o) => o.trim())
+                              .filter(Boolean)
+                              .map((o) => (
+                                <option key={o} value={o}>
+                                  {o}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={cf.type === "number" ? "number" : cf.type === "email" ? "email" : "text"}
+                            className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${errorClass}`}
+                            value={value}
+                            placeholder={cf.placeholder ?? ""}
+                            maxLength={cf.standardField === "codiceFiscale" ? 16 : undefined}
+                            onChange={(e) =>
+                              setCustomFieldValue(
+                                cf,
+                                cf.standardField === "codiceFiscale"
+                                  ? e.target.value.toUpperCase()
+                                  : e.target.value
+                              )
+                            }
+                            disabled={saving}
+                          />
+                        )}
+                        <FormFieldError message={errorMsg} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+              <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <FormLabel required>Nome</FormLabel>
@@ -542,7 +791,7 @@ export default function AddEmployeeModal({
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <FormLabel required>Sesso</FormLabel>
+                  <FormLabel>Sesso</FormLabel>
                   <select
                     className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
                       errors.sesso ? "border-red-500 focus-visible:outline-red-500" : ""
@@ -560,7 +809,6 @@ export default function AddEmployeeModal({
 
                 <ItalianDateInput
                   label="Data Nascita"
-                  required
                   value={form.dataNascita}
                   onChange={(value) => updateField("dataNascita", value)}
                   error={errors.dataNascita}
@@ -570,7 +818,7 @@ export default function AddEmployeeModal({
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <FormLabel required>Comune Nascita</FormLabel>
+                  <FormLabel>Comune Nascita</FormLabel>
                   <input
                     className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
                       errors.luogoNascita
@@ -584,7 +832,7 @@ export default function AddEmployeeModal({
                   <FormFieldError message={errors.luogoNascita} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel required>Email</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <input
                     type="email"
                     className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
@@ -600,7 +848,7 @@ export default function AddEmployeeModal({
 
               <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-2">
-                  <FormLabel required>Comune Residenza</FormLabel>
+                  <FormLabel>Comune Residenza</FormLabel>
                   <input
                     className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
                       errors.comuneResidenza
@@ -616,7 +864,7 @@ export default function AddEmployeeModal({
                   <FormFieldError message={errors.comuneResidenza} />
                 </div>
                 <div className="space-y-2">
-                  <FormLabel required>CAP</FormLabel>
+                  <FormLabel>CAP</FormLabel>
                   <input
                     className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
                       errors.cap ? "border-red-500 focus-visible:outline-red-500" : ""
@@ -750,6 +998,8 @@ export default function AddEmployeeModal({
                   </div>
                 ) : null}
               </div>
+              </>
+              )}
             </div>
           </div>
 

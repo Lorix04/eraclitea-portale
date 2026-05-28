@@ -184,31 +184,38 @@ export const courseEditionUpdateSchema = courseEditionBaseSchema
   .partial()
   .superRefine(validateEditionDates);
 
+// Required fields are enforced client-side per mode (default: Nome/Cognome/CF;
+// custom: template required fields). The schema validates format when present
+// so the same endpoint serves both default and template (custom fields) mode.
+// Employee.nome/cognome/codiceFiscale are nullable in the DB.
 export const employeeSchema = z.object({
-  nome: z.string().trim().min(1, "Nome obbligatorio").max(100),
-  cognome: z.string().trim().min(1, "Cognome obbligatorio").max(100),
-  codiceFiscale: z
-    .string()
-    .trim()
-    .length(16, "Il codice fiscale deve essere di 16 caratteri")
-    .refine(isValidCodiceFiscale, "Codice Fiscale non valido"),
-  sesso: z.enum(["M", "F"], { required_error: "Sesso obbligatorio" }),
-  dataNascita: requiredDate,
-  luogoNascita: z.string().trim().min(1, "Comune di nascita obbligatorio").max(100),
-  email: z
-    .string()
-    .trim()
-    .min(1, "Email obbligatoria")
-    .email("Email non valida"),
+  nome: optionalString(100),
+  cognome: optionalString(100),
+  codiceFiscale: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z
+      .string()
+      .trim()
+      .length(16, "Il codice fiscale deve essere di 16 caratteri")
+      .refine(isValidCodiceFiscale, "Codice Fiscale non valido")
+      .optional()
+      .nullable()
+  ),
+  sesso: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.enum(["M", "F"]).optional()
+  ),
+  dataNascita: optionalDate,
+  luogoNascita: optionalString(100),
+  email: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.string().trim().email("Email non valida").optional()
+  ),
   telefono: optionalString(30),
   cellulare: optionalString(30),
   indirizzo: optionalString(255),
-  comuneResidenza: z
-    .string()
-    .trim()
-    .min(1, "Comune di residenza obbligatorio")
-    .max(100),
-  cap: z.string().trim().min(1, "CAP obbligatorio").max(5),
+  comuneResidenza: optionalString(100),
+  cap: optionalString(5),
   provincia: optionalString(100),
   regione: optionalString(100),
   emailAziendale: optionalString(255),
@@ -217,6 +224,7 @@ export const employeeSchema = z.object({
   iban: optionalString(50),
   mansione: optionalString(100),
   note: optionalString(500),
+  customData: z.record(z.string()).optional().nullable(),
 });
 
 export const clientSchema = z.object({
