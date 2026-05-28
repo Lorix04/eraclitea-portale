@@ -11,6 +11,7 @@ import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
 import { ComuneAutocomplete, type ComuneMatch } from "@/components/ui/ComuneAutocomplete";
 import { decodeCF } from "@/lib/codice-fiscale-decoder";
+import { formatItalianDate } from "@/lib/date-utils";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import { useCodiciCatastali } from "@/hooks/useCodiciCatastali";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
@@ -120,6 +121,9 @@ export default function AddEmployeeModal({
     useProvinceRegioni();
   const lastDecodedCfRef = useRef("");
   const clientComboboxRef = useRef<HTMLDivElement | null>(null);
+  const lookupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLookupKeyRef = useRef("");
+  const lookupToastIdRef = useRef<string | number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -144,7 +148,16 @@ export default function AddEmployeeModal({
     setMode("default");
     setCustomData({});
     lastDecodedCfRef.current = "";
+    lastLookupKeyRef.current = "";
   }, [open, clientId]);
+
+  // Cleanup any pending CF lookup timer / toast on unmount
+  useEffect(() => {
+    return () => {
+      if (lookupTimeoutRef.current) clearTimeout(lookupTimeoutRef.current);
+      if (lookupToastIdRef.current) toast.dismiss(lookupToastIdRef.current);
+    };
+  }, []);
 
   // Load the client's custom field template when a client is selected
   useEffect(() => {
@@ -252,6 +265,7 @@ export default function AddEmployeeModal({
 
     if (key === "codiceFiscale") {
       lastDecodedCfRef.current = "";
+      lastLookupKeyRef.current = "";
     }
   };
 
@@ -325,6 +339,98 @@ export default function AddEmployeeModal({
     });
   };
 
+  const fillFromExistingEmployee = (employee: Record<string, any>) => {
+    setForm((prev) => ({
+      ...prev,
+      nome: employee.nome ?? prev.nome,
+      cognome: employee.cognome ?? prev.cognome,
+      sesso: employee.sesso ?? prev.sesso,
+      dataNascita: employee.dataNascita
+        ? formatItalianDate(employee.dataNascita)
+        : prev.dataNascita,
+      luogoNascita: employee.luogoNascita ?? prev.luogoNascita,
+      email: employee.email ?? prev.email,
+      telefono: employee.telefono ?? prev.telefono,
+      cellulare: employee.cellulare ?? prev.cellulare,
+      indirizzo: employee.indirizzo ?? prev.indirizzo,
+      comuneResidenza: employee.comuneResidenza ?? prev.comuneResidenza,
+      cap: employee.cap ?? prev.cap,
+      provincia: employee.provincia ?? prev.provincia,
+      regione: employee.regione ?? prev.regione,
+      emailAziendale: employee.emailAziendale ?? prev.emailAziendale,
+      pec: employee.pec ?? prev.pec,
+      partitaIva: employee.partitaIva ?? prev.partitaIva,
+      iban: employee.iban ?? prev.iban,
+      mansione: employee.mansione ?? prev.mansione,
+      note: employee.note ?? prev.note,
+    }));
+    setErrors({});
+  };
+
+  const triggerEmployeeLookup = (cfValue: string) => {
+    const normalizedCF = cfValue.trim().toUpperCase();
+    if (normalizedCF.length !== 16) return;
+    const activeClientId = form.clientId || clientId || "";
+    if (!activeClientId) return;
+
+    const key = `${activeClientId}:${normalizedCF}`;
+    if (lastLookupKeyRef.current === key) return;
+    lastLookupKeyRef.current = key;
+
+    if (lookupTimeoutRef.current) clearTimeout(lookupTimeoutRef.current);
+    lookupTimeoutRef.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("cf", normalizedCF);
+        params.set("clientId", activeClientId);
+        const res = await fetch(`/api/dipendenti/lookup?${params.toString()}`);
+        if (!res.ok) return;
+        const json = await res.json().catch(() => ({}));
+        const employee = json.data;
+        if (!employee) return;
+
+        if (lookupToastIdRef.current) toast.dismiss(lookupToastIdRef.current);
+        const toastId = `add-emp-lookup-${normalizedCF}`;
+        lookupToastIdRef.current = toastId;
+
+        toast(
+          <div className="flex flex-col gap-2">
+            <span className="font-medium">
+              Dipendente trovato: {employee.nome} {employee.cognome} ({employee.codiceFiscale})
+            </span>
+            <div className="flex items-center gap-3 text-sm">
+              <button
+                type="button"
+                className="text-blue-600 underline hover:text-blue-800"
+                onClick={() => {
+                  fillFromExistingEmployee(employee);
+                  toast.dismiss(toastId);
+                  lookupToastIdRef.current = null;
+                  toast.success("Dati compilati automaticamente");
+                }}
+              >
+                Compila automaticamente
+              </button>
+              <button
+                type="button"
+                className="text-muted-foreground underline hover:text-foreground"
+                onClick={() => {
+                  toast.dismiss(toastId);
+                  lookupToastIdRef.current = null;
+                }}
+              >
+                Ignora
+              </button>
+            </div>
+          </div>,
+          { id: toastId, duration: 8000 }
+        );
+      } catch {
+        // silent fail
+      }
+    }, 500);
+  };
+
   const getCustomFieldValue = (cf: ResolvedCustomField): string => {
     if (cf.standardField) {
       return form[cf.standardField as keyof FormState] ?? "";
@@ -344,6 +450,7 @@ export default function AddEmployeeModal({
       updateField(cf.standardField as keyof FormState, value);
       if (cf.standardField === "codiceFiscale" && value.trim().length === 16) {
         decodeFromCF(value);
+        triggerEmployeeLookup(value);
       }
     } else {
       setCustomData((prev) => ({ ...prev, [cf.name]: value }));
@@ -813,9 +920,13 @@ export default function AddEmployeeModal({
                     updateField("codiceFiscale", nextValue);
                     if (nextValue.trim().length === 16) {
                       decodeFromCF(nextValue);
+                      triggerEmployeeLookup(nextValue);
                     }
                   }}
-                  onBlur={() => decodeFromCF(form.codiceFiscale)}
+                  onBlur={() => {
+                    decodeFromCF(form.codiceFiscale);
+                    triggerEmployeeLookup(form.codiceFiscale);
+                  }}
                   maxLength={16}
                   disabled={saving}
                 />
