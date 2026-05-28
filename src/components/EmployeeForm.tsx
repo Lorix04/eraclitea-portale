@@ -10,6 +10,7 @@ import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
+import { ComuneAutocomplete, type ComuneMatch } from "@/components/ui/ComuneAutocomplete";
 
 export type EmployeeFormData = {
   nome: string;
@@ -172,6 +173,22 @@ export default function EmployeeForm({
       }
       return next;
     });
+  };
+
+  const handleComuneResidenzaSelected = (comune: ComuneMatch) => {
+    setForm((prev) => {
+      const next = { ...prev };
+      if (comune.cap) next.cap = comune.cap;
+      const fullProvincia =
+        province.find(
+          (p) => p.sigla.toUpperCase() === comune.provincia.toUpperCase()
+        )?.nome ?? comune.provincia;
+      next.provincia = fullProvincia;
+      const regione = getRegioneByProvincia(fullProvincia);
+      if (regione) next.regione = regione;
+      return next;
+    });
+    setErrors((prev) => ({ ...prev, cap: "", comuneResidenza: "" }));
   };
 
   const provinciaSuggestions = useMemo(
@@ -468,12 +485,13 @@ export default function EmployeeForm({
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm">
           <FormLabel required>Comune nascita</FormLabel>
-          <input
+          <ComuneAutocomplete
+            value={form.luogoNascita}
+            onChange={(v) => updateField("luogoNascita", v)}
             className={`rounded-md border bg-background px-3 py-2 ${
               errors.luogoNascita ? "border-red-500 focus-visible:outline-red-500" : ""
             }`}
-            value={form.luogoNascita}
-            onChange={(event) => updateField("luogoNascita", event.target.value)}
+            placeholder="Es. Catania"
           />
           <FormFieldError message={errors.luogoNascita} />
         </label>
@@ -493,12 +511,14 @@ export default function EmployeeForm({
       <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
         <label className="flex flex-col gap-2 text-sm">
           <FormLabel required>Comune residenza</FormLabel>
-          <input
+          <ComuneAutocomplete
+            value={form.comuneResidenza}
+            onChange={(v) => updateField("comuneResidenza", v)}
+            onComuneSelected={handleComuneResidenzaSelected}
             className={`rounded-md border bg-background px-3 py-2 ${
               errors.comuneResidenza ? "border-red-500 focus-visible:outline-red-500" : ""
             }`}
-            value={form.comuneResidenza}
-            onChange={(event) => updateField("comuneResidenza", event.target.value)}
+            placeholder="Es. Catania"
           />
           <FormFieldError message={errors.comuneResidenza} />
         </label>

@@ -9,6 +9,7 @@ import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
+import { ComuneAutocomplete, type ComuneMatch } from "@/components/ui/ComuneAutocomplete";
 import { decodeCF } from "@/lib/codice-fiscale-decoder";
 import { isValidCodiceFiscale } from "@/lib/validators";
 import { useCodiciCatastali } from "@/hooks/useCodiciCatastali";
@@ -281,6 +282,22 @@ export default function AddEmployeeModal({
       }
       return next;
     });
+  };
+
+  const handleComuneResidenzaSelected = (comune: ComuneMatch) => {
+    setForm((prev) => {
+      const next = { ...prev };
+      if (comune.cap) next.cap = comune.cap;
+      const fullProvincia =
+        province.find(
+          (p) => p.sigla.toUpperCase() === comune.provincia.toUpperCase()
+        )?.nome ?? comune.provincia;
+      next.provincia = fullProvincia;
+      const regione = getRegioneByProvincia(fullProvincia);
+      if (regione) next.regione = regione;
+      return next;
+    });
+    setErrors((prev) => ({ ...prev, cap: "", comuneResidenza: "" }));
   };
 
   const decodeFromCF = (value: string) => {
@@ -662,6 +679,9 @@ export default function AddEmployeeModal({
                     const isDate = cf.type === "date" || cf.standardField === "dataNascita";
                     const isSelect = cf.type === "select";
                     const isSesso = cf.standardField === "sesso";
+                    const isComune =
+                      cf.standardField === "luogoNascita" ||
+                      cf.standardField === "comuneResidenza";
                     const fullWidth = cf.type === "textarea";
 
                     if (isDate) {
@@ -695,6 +715,19 @@ export default function AddEmployeeModal({
                             <option value="M">M</option>
                             <option value="F">F</option>
                           </select>
+                        ) : isComune ? (
+                          <ComuneAutocomplete
+                            value={value}
+                            onChange={(v) => setCustomFieldValue(cf, v)}
+                            onComuneSelected={
+                              cf.standardField === "comuneResidenza"
+                                ? handleComuneResidenzaSelected
+                                : undefined
+                            }
+                            hasError={!!errorMsg}
+                            disabled={saving}
+                            placeholder={cf.placeholder ?? "Es. Catania"}
+                          />
                         ) : isSelect ? (
                           <select
                             className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${errorClass}`}
@@ -819,15 +852,12 @@ export default function AddEmployeeModal({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <FormLabel>Comune Nascita</FormLabel>
-                  <input
-                    className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
-                      errors.luogoNascita
-                        ? "border-red-500 focus-visible:outline-red-500"
-                        : ""
-                    }`}
+                  <ComuneAutocomplete
                     value={form.luogoNascita}
-                    onChange={(event) => updateField("luogoNascita", event.target.value)}
+                    onChange={(v) => updateField("luogoNascita", v)}
+                    hasError={!!errors.luogoNascita}
                     disabled={saving}
+                    placeholder="Es. Catania"
                   />
                   <FormFieldError message={errors.luogoNascita} />
                 </div>
@@ -849,17 +879,13 @@ export default function AddEmployeeModal({
               <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
                 <div className="space-y-2">
                   <FormLabel>Comune Residenza</FormLabel>
-                  <input
-                    className={`w-full rounded-md border bg-background px-3 py-2 text-sm ${
-                      errors.comuneResidenza
-                        ? "border-red-500 focus-visible:outline-red-500"
-                        : ""
-                    }`}
+                  <ComuneAutocomplete
                     value={form.comuneResidenza}
-                    onChange={(event) =>
-                      updateField("comuneResidenza", event.target.value)
-                    }
+                    onChange={(v) => updateField("comuneResidenza", v)}
+                    onComuneSelected={handleComuneResidenzaSelected}
+                    hasError={!!errors.comuneResidenza}
                     disabled={saving}
+                    placeholder="Es. Catania"
                   />
                   <FormFieldError message={errors.comuneResidenza} />
                 </div>

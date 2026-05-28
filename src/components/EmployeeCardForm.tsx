@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { ItalianDateInput } from "@/components/ui/italian-date-input";
+import { ComuneAutocomplete, type ComuneMatch } from "@/components/ui/ComuneAutocomplete";
+import { useProvinceRegioni } from "@/hooks/useProvinceRegioni";
 import { BrandedButton } from "@/components/BrandedButton";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
@@ -95,6 +97,8 @@ export default function EmployeeCardForm({
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const lastLookupCfRef = useRef("");
 
+  const { province, getRegioneByProvincia } = useProvinceRegioni();
+
   const updateField = (key: keyof EmployeeFormRow, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) {
@@ -104,6 +108,22 @@ export default function EmployeeCardForm({
       setLookupSuggestion(null);
       lastLookupCfRef.current = "";
     }
+  };
+
+  const handleComuneResidenzaSelected = (comune: ComuneMatch) => {
+    setForm((prev) => {
+      const next = { ...prev };
+      if (comune.cap) next.cap = comune.cap;
+      const fullProvincia =
+        province.find(
+          (p) => p.sigla.toUpperCase() === comune.provincia.toUpperCase()
+        )?.nome ?? comune.provincia;
+      next.provincia = fullProvincia;
+      const regione = getRegioneByProvincia(fullProvincia);
+      if (regione) next.regione = regione;
+      return next;
+    });
+    setErrors((prev) => ({ ...prev, cap: "", comuneResidenza: "" }));
   };
 
   const applyDecodeFromCF = (normalizedCF: string) => {
@@ -416,15 +436,16 @@ export default function EmployeeCardForm({
 
           <div className="flex flex-col gap-2 text-sm">
             <FormLabel required>Comune Nascita</FormLabel>
-            <input
+            <ComuneAutocomplete
+              value={form.luogoNascita || ""}
+              onChange={(v) => updateField("luogoNascita", v)}
               className={`rounded-md border bg-background px-3 py-2 text-sm ${
                 errors.luogoNascita
                   ? "border-red-500 focus-visible:outline-red-500"
                   : ""
               }`}
-              value={form.luogoNascita || ""}
-              onChange={(event) => updateField("luogoNascita", event.target.value)}
               disabled={readOnly}
+              placeholder="Es. Catania"
             />
             <FormFieldError message={errors.luogoNascita} />
           </div>
@@ -445,15 +466,17 @@ export default function EmployeeCardForm({
           <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
             <div className="flex flex-col gap-2 text-sm">
               <FormLabel required>Comune residenza</FormLabel>
-              <input
+              <ComuneAutocomplete
+                value={form.comuneResidenza || ""}
+                onChange={(v) => updateField("comuneResidenza", v)}
+                onComuneSelected={handleComuneResidenzaSelected}
                 className={`rounded-md border bg-background px-3 py-2 text-sm ${
                   errors.comuneResidenza
                     ? "border-red-500 focus-visible:outline-red-500"
                     : ""
                 }`}
-                value={form.comuneResidenza || ""}
-                onChange={(event) => updateField("comuneResidenza", event.target.value)}
                 disabled={readOnly}
+                placeholder="Es. Catania"
               />
               <FormFieldError message={errors.comuneResidenza} />
             </div>
