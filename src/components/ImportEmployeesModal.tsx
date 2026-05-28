@@ -376,7 +376,7 @@ export default function ImportEmployeesModal({
             <p className="text-xs text-muted-foreground flex-1">
               I 20 campi standard del sistema: Nome, Cognome, Codice Fiscale, Sesso, Data di Nascita, ecc.
             </p>
-            <p className="text-xs text-muted-foreground mt-2">11 campi obbligatori</p>
+            <p className="text-xs text-muted-foreground mt-2">3 campi obbligatori: Nome, Cognome, Codice Fiscale</p>
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
@@ -523,22 +523,16 @@ export default function ImportEmployeesModal({
                 <li>Nome</li>
                 <li>Cognome</li>
                 <li>Codice Fiscale</li>
-                <li>Sesso (M o F)</li>
-                <li>Data di Nascita (formato GG/MM/AAAA)</li>
-                <li>Comune di Nascita</li>
-                <li>Email</li>
-                <li>Comune di Residenza</li>
-                <li>CAP</li>
-                <li>Provincia</li>
-                <li>Regione</li>
               </ul>
             </div>
 
             <div className="space-y-2">
               <p className="font-medium">Campi opzionali:</p>
               <p className="text-muted-foreground">
-                Indirizzo, Telefono, Cellulare, Mansione, Email Aziendale, PEC,
-                Partita IVA, IBAN, Note
+                Sesso (M o F), Data di Nascita (GG/MM/AAAA), Comune di Nascita,
+                Email, Comune di Residenza, CAP, Provincia, Regione, Indirizzo,
+                Telefono, Cellulare, Mansione, Email Aziendale, PEC, Partita IVA,
+                IBAN, Note
               </p>
             </div>
 
@@ -868,9 +862,7 @@ export default function ImportEmployeesModal({
         </div>
 
         <p className="text-muted-foreground">
-          Campi obbligatori: Nome, Cognome, Codice Fiscale, Sesso, Data di
-          Nascita, Comune di Nascita, Email, Comune di Residenza, CAP,
-          Provincia, Regione
+          Campi obbligatori: Nome, Cognome, Codice Fiscale
         </p>
 
         {detailsList.length ? (

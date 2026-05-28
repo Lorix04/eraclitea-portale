@@ -103,13 +103,11 @@ export async function POST(
       return false;
     }
 
-    // Standard mode: require core fields
+    // Standard mode: only Nome, Cognome, Codice Fiscale required
     return (
       !emp.nome?.trim() ||
       !emp.cognome?.trim() ||
-      !emp.codiceFiscale?.trim() ||
-      !emp.dataNascita ||
-      !emp.luogoNascita?.trim()
+      !emp.codiceFiscale?.trim()
     );
   });
 

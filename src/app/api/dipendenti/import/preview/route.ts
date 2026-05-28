@@ -14,9 +14,9 @@ const TEMPLATE_HEADERS = [
   "email_aziendale", "pec", "partita_iva", "iban", "note",
 ] as const;
 
+// Standard mode: only Nome, Cognome, Codice Fiscale required
 const REQUIRED_FIELDS = [
-  "nome", "cognome", "codice_fiscale", "sesso", "data_nascita",
-  "comune_nascita", "email", "comune_residenza", "cap", "provincia", "regione",
+  "nome", "cognome", "codice_fiscale",
 ] as const;
 
 // Common aliases for standard fields

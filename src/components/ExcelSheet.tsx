@@ -321,19 +321,19 @@ export default function ExcelSheet({
             }
             return col;
           })
-        : // Default standard columns (no template)
+        : // Default standard columns (no template) — only Nome, Cognome, CF required
           [
             { data: "nome", title: "Nome *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
             { data: "cognome", title: "Cognome *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
             { data: "codiceFiscale", title: "Codice Fiscale *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const n = String(v ?? "").trim().toUpperCase(); cb(Boolean(n) && isValidCodiceFiscale(n)); } },
-            { data: "sesso", title: "Sesso *", type: "dropdown", source: ["M", "F"], allowInvalid: false, validator: (v: string, cb: (b: boolean) => void) => { const n = String(v ?? "").trim().toUpperCase(); cb(n === "M" || n === "F"); } },
-            { data: "dataNascita", title: "Data Nascita *", type: "text", placeholder: "GG/MM/AAAA", validator: (v: string, cb: (b: boolean) => void) => { if (!v || !String(v).trim()) { cb(false); return; } cb(isValidItalianDate(String(v))); } },
-            { data: "luogoNascita", title: "Comune Nascita *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
-            { data: "email", title: "Email *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(Boolean(t) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)); } },
-            { data: "comuneResidenza", title: "Comune Residenza *", type: "text", validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
-            { data: "cap", title: "CAP *", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(Boolean(t) && t.length <= 5); } },
-            { data: "provincia", title: "Provincia *", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterProvince(String(q ?? "")).slice(0, 50).map((i) => `${i.nome} (${i.sigla})`)), validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
-            { data: "regione", title: "Regione *", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterRegioni(String(q ?? "")).slice(0, 50)), validator: (v: string, cb: (b: boolean) => void) => cb(Boolean(String(v ?? "").trim())) },
+            { data: "sesso", title: "Sesso", type: "dropdown", source: ["M", "F"], allowInvalid: false, validator: (v: string, cb: (b: boolean) => void) => { const n = String(v ?? "").trim().toUpperCase(); cb(n === "" || n === "M" || n === "F"); } },
+            { data: "dataNascita", title: "Data Nascita", type: "text", placeholder: "GG/MM/AAAA", validator: (v: string, cb: (b: boolean) => void) => { if (!v || !String(v).trim()) { cb(true); return; } cb(isValidItalianDate(String(v))); } },
+            { data: "luogoNascita", title: "Comune Nascita", type: "text" },
+            { data: "email", title: "Email", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(!t || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)); } },
+            { data: "comuneResidenza", title: "Comune Residenza", type: "text" },
+            { data: "cap", title: "CAP", type: "text", validator: (v: string, cb: (b: boolean) => void) => { const t = String(v ?? "").trim(); cb(!t || t.length <= 5); } },
+            { data: "provincia", title: "Provincia", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterProvince(String(q ?? "")).slice(0, 50).map((i) => `${i.nome} (${i.sigla})`)) },
+            { data: "regione", title: "Regione", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterRegioni(String(q ?? "")).slice(0, 50)) },
           ] as any[]
       ),
       {

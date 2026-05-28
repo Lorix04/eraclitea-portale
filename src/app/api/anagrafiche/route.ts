@@ -176,15 +176,11 @@ export async function POST(request: Request) {
       const pec = String(row.pec ?? "").trim();
       const rawDate = row.dataNascita ? String(row.dataNascita).trim() : "";
 
+      // Standard mode: only Nome e Cognome required (Codice Fiscale presence
+      // garantita dal filtro a monte, validita controllata sotto)
       const missingFields: string[] = [];
       if (!nome) missingFields.push("nome");
       if (!cognome) missingFields.push("cognome");
-      if (!sessoRaw) missingFields.push("sesso");
-      if (!rawDate) missingFields.push("dataNascita");
-      if (!luogoNascita) missingFields.push("luogoNascita");
-      if (!emailRaw) missingFields.push("email");
-      if (!String(row.comuneResidenza ?? "").trim()) missingFields.push("comuneResidenza");
-      if (!String(row.cap ?? "").trim()) missingFields.push("cap");
 
       if (missingFields.length > 0) {
         errors.push({

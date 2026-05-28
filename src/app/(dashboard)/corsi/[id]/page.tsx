@@ -315,15 +315,11 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
         return true;
       }
 
-      // Standard mode: all standard fields required
+      // Standard mode: only Nome, Cognome, Codice Fiscale required
       const stdMissing: string[] = [];
       if (!String(row.nome ?? "").trim()) stdMissing.push("nome");
       if (!String(row.cognome ?? "").trim()) stdMissing.push("cognome");
       if (!String(row.codiceFiscale ?? "").trim()) stdMissing.push("codiceFiscale");
-      if (!String(row.sesso ?? "").trim()) stdMissing.push("sesso");
-      if (!String(row.dataNascita ?? "").trim()) stdMissing.push("dataNascita");
-      if (!String(row.luogoNascita ?? "").trim()) stdMissing.push("luogoNascita");
-      if (!String(row.email ?? "").trim()) stdMissing.push("email");
       if (stdMissing.length > 0) {
         if (process.env.NODE_ENV === "development") {
           console.warn("[validation] INVALID (standard)", row.cognome || row.codiceFiscale, "missing:", stdMissing.join(", "));

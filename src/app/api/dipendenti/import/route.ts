@@ -32,18 +32,11 @@ const TEMPLATE_HEADERS = [
   "note",
 ] as const;
 
+// Standard mode: only Nome, Cognome, Codice Fiscale required
 const REQUIRED_FIELDS = [
   "nome",
   "cognome",
   "codice_fiscale",
-  "sesso",
-  "data_nascita",
-  "comune_nascita",
-  "email",
-  "comune_residenza",
-  "cap",
-  "provincia",
-  "regione",
 ] as const;
 
 type TemplateHeader = (typeof TEMPLATE_HEADERS)[number];
