@@ -64,6 +64,9 @@ function ClientCorsiContent() {
     : "tutti";
 
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [scope, setScope] = useState<"mine" | "all">(
+    searchParams.get("scope") === "all" ? "all" : "mine"
+  );
   const [categoryFilter, setCategoryFilter] = useState(
     searchParams.get("categoryId") ?? ""
   );
@@ -76,20 +79,20 @@ function ClientCorsiContent() {
   const debouncedSearch = useDebounce(search, 250);
 
   const { data, isLoading, isFetching, isError } = useQuery<{ data: CourseGroup[] }>({
-    queryKey: ["courses", "cliente", activeTab, categoryFilter],
+    queryKey: ["courses", "cliente", activeTab, categoryFilter, scope],
     queryFn: () =>
       fetchCourses(
-        `${activeTab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}`
+        `${activeTab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
       ),
     placeholderData: (previousData) => previousData,
   });
 
   const prefetchTab = (tab: Tab) => {
     queryClient.prefetchQuery({
-      queryKey: ["courses", "cliente", tab, categoryFilter],
+      queryKey: ["courses", "cliente", tab, categoryFilter, scope],
       queryFn: () =>
         fetchCourses(
-          `${tab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}`
+          `${tab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
         ),
       staleTime: 60 * 1000,
     });
@@ -97,7 +100,7 @@ function ClientCorsiContent() {
 
   useEffect(() => {
     const loadCategories = async () => {
-      const res = await fetch("/api/corsi/cliente?tab=tutti&all=true");
+      const res = await fetch("/api/corsi/cliente?tab=tutti&all=true&scope=all");
       if (!res.ok) return;
       const json = await res.json();
       const courses: CourseGroup[] = json.data ?? [];
@@ -117,6 +120,7 @@ function ClientCorsiContent() {
   useEffect(() => {
     const params = new URLSearchParams();
     params.set("tab", activeTab);
+    if (scope === "all") params.set("scope", "all");
     if (categoryFilter) params.set("categoryId", categoryFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (yearFilter) params.set("year", yearFilter);
@@ -124,7 +128,7 @@ function ClientCorsiContent() {
     router.replace(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
     });
-  }, [activeTab, categoryFilter, debouncedSearch, yearFilter, router, pathname]);
+  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, router, pathname]);
 
   const courses = useMemo(() => data?.data ?? [], [data]);
   const yearOptions = useMemo(() => {
@@ -201,6 +205,31 @@ function ClientCorsiContent() {
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="inline-flex rounded-full border bg-background p-0.5 text-sm">
+        <button
+          type="button"
+          onClick={() => setScope("mine")}
+          className={`rounded-full px-4 py-1.5 transition-colors ${
+            scope === "mine"
+              ? "bg-brand-primary text-white"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Le mie edizioni
+        </button>
+        <button
+          type="button"
+          onClick={() => setScope("all")}
+          className={`rounded-full px-4 py-1.5 transition-colors ${
+            scope === "all"
+              ? "bg-brand-primary text-white"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Tutte le edizioni
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

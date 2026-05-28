@@ -6,7 +6,7 @@ import {
   sendAdminRegistrySubmittedEmail,
   sendRegistryReceivedEmail,
 } from "@/lib/email-notifications";
-import { notifyEditionUsers, emailEditionUsers, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -162,7 +162,7 @@ export async function POST(
 
   // Notify all client users that their registry submission was confirmed
   try {
-    await notifyEditionUsers({
+    await notifyAssignedClientUsers({
       editionId: edition.id,
       clientId: effectiveClient.clientId,
       type: "REGISTRY_CONFIRMED",
@@ -171,7 +171,7 @@ export async function POST(
       courseEditionId: edition.id,
       excludeUserId: effectiveClient.userId,
     });
-    void emailEditionUsers({
+    void emailAssignedClientUsers({
       editionId: edition.id,
       clientId: effectiveClient.clientId,
       emailType: "REGISTRY_CONFIRMED",

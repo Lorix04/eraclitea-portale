@@ -37,6 +37,7 @@ model User {
   notifications      Notification[]
   teacher            Teacher?
   editionReferents   EditionReferent[]
+  editionClientAssignments EditionClientAssignment[]
   clientUsers        ClientUser[]
   clientActivityLogs ClientActivityLog[]
   notifPrefs         UserNotificationPreference[] @relation("userNotifPrefs")
@@ -234,6 +235,7 @@ model CourseEdition {
   notifications    Notification[]
   materials        EditionMaterial[]
   referents        EditionReferent[]
+  clientAssignments EditionClientAssignment[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -241,6 +243,24 @@ model CourseEdition {
   @@index([courseId])
   @@index([clientId])
   @@index([status])
+}
+
+// Client-side admin assignment to a specific edition.
+// SEPARATE from EditionReferent (Sapienta-side referents).
+// If an edition has assignments, only assigned client users see it by default
+// and receive its notifications; with no assignments, all client users do.
+model EditionClientAssignment {
+  id              String        @id @default(cuid())
+  courseEditionId String
+  courseEdition   CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAt      DateTime      @default(now())
+  assignedById    String?
+
+  @@unique([courseEditionId, userId])
+  @@index([courseEditionId])
+  @@index([userId])
 }
 
 model EditionReferent {

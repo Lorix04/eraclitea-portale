@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
-import { notifyEditionUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { notifyAssignedClientUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import {
@@ -344,7 +344,7 @@ export async function POST(
 
       // Notify client users when admin/teacher uploads a material
       if (uploadedByRole !== "CLIENT" && edition.clientId) {
-        void notifyEditionUsers({
+        void notifyAssignedClientUsers({
           editionId: edition.id,
           clientId: edition.clientId,
           type: "MATERIAL_UPLOADED",

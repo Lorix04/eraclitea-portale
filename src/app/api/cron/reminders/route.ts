@@ -7,7 +7,7 @@ import {
   sendCertificateExpiringEmail,
   sendDeadlineReminderEmail,
 } from "@/lib/email-notifications";
-import { notifyEditionUsers, emailEditionUsers, notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, notifyAllClientUsers, emailAllClientUsers, notifyClientOwner, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph, emailInfoBox } from "@/lib/notify-client";
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base);
@@ -317,7 +317,7 @@ async function processAdminExpiredDeadline() {
 
     // Notify the client that the deadline has expired
     if (edition.client?.id) {
-      void notifyEditionUsers({
+      void notifyAssignedClientUsers({
         editionId: edition.id,
         clientId: edition.client.id,
         type: "DEADLINE_EXPIRED",
@@ -325,7 +325,7 @@ async function processAdminExpiredDeadline() {
         message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) è scaduta. Contatta l'ente di formazione per informazioni.`,
         courseEditionId: edition.id,
       });
-      void emailEditionUsers({
+      void emailAssignedClientUsers({
         editionId: edition.id,
         clientId: edition.client.id,
         emailType: "DEADLINE_EXPIRED",
@@ -462,7 +462,7 @@ async function processDeadlineToday() {
       message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
       courseEditionId: edition.id,
     });
-    void notifyEditionUsers({
+    void notifyAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.client.id,
       type: "DEADLINE_TODAY",
@@ -470,7 +470,7 @@ async function processDeadlineToday() {
       message: `La deadline per ${edition.course.title} (Ed. #${edition.editionNumber}) scade oggi! Invia le anagrafiche entro fine giornata.`,
       courseEditionId: edition.id,
     });
-    void emailEditionUsers({
+    void emailAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.client.id,
       emailType: "DEADLINE_TODAY",
@@ -528,7 +528,7 @@ async function processCourseStartingTomorrow() {
       message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
       courseEditionId: edition.id,
     });
-    void notifyEditionUsers({
+    void notifyAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.client.id,
       type: "COURSE_STARTING_TOMORROW",
@@ -536,7 +536,7 @@ async function processCourseStartingTomorrow() {
       message: `${edition.course.title} (Ed. #${edition.editionNumber}) inizia domani ${formatDate(lesson.date)}${orario}${luogo}.`,
       courseEditionId: edition.id,
     });
-    void emailEditionUsers({
+    void emailAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.client.id,
       emailType: "COURSE_STARTING_TOMORROW",
@@ -574,7 +574,7 @@ async function processExpiredCertificatesToday() {
     const courseName = cert.courseEdition?.course?.title || "Corso";
 
     if (cert.courseEditionId) {
-      void notifyEditionUsers({
+      void notifyAssignedClientUsers({
         editionId: cert.courseEditionId,
         clientId: cert.client.id,
         type: "CERTIFICATE_EXPIRED",
@@ -608,7 +608,7 @@ async function processExpiredCertificatesToday() {
       courseEditionId: cert.courseEditionId ?? undefined,
     };
     if (cert.courseEditionId) {
-      void emailEditionUsers({ editionId: cert.courseEditionId, ...certEmailParams });
+      void emailAssignedClientUsers({ editionId: cert.courseEditionId, ...certEmailParams });
     } else {
       void emailAllClientUsers(certEmailParams);
     }

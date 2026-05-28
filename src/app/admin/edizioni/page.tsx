@@ -31,7 +31,7 @@ type EditionRow = {
     luogo?: string | null;
     _count?: { teacherAssignments: number };
   }>;
-  _count?: { registrations: number };
+  _count?: { registrations: number; clientAssignments?: number };
   referents?: Array<{
     user: { id: string; email: string };
   }>;
@@ -551,6 +551,23 @@ function AdminEdizioniContent() {
                     </span>
                   ))}
                   {extra ? <span className="text-xs text-muted-foreground">{extra}</span> : null}
+                </span>
+              );
+            },
+          },
+          {
+            key: "clientAssignments",
+            header: "Assegnati cliente",
+            hideOnCard: true,
+            render: (e) => {
+              const count = e._count?.clientAssignments ?? 0;
+              return count > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">
+                  👥 {count} assegnati
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                  👥 Tutti
                 </span>
               );
             },

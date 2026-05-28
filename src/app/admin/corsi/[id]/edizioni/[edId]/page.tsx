@@ -173,6 +173,8 @@ export default function AdminEditionDetailPage({
   const [notifyPolicy, setNotifyPolicy] = useState<"REFERENT_ONLY" | "REFERENT_PLUS" | "ALL">("ALL");
   const [notifyExtraUserIds, setNotifyExtraUserIds] = useState<string[]>([]);
   const [clientUsers, setClientUsers] = useState<Array<{ userId: string; email: string; name: string | null; isOwner: boolean }>>([]);
+  const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
+  const [savingAssignments, setSavingAssignments] = useState(false);
   const [customFieldSetId, setCustomFieldSetId] = useState<string | null>(null);
   const [availableFieldSets, setAvailableFieldSets] = useState<Array<{ id: string; name: string; isDefault: boolean; _count: { fields: number } }>>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -287,14 +289,15 @@ export default function AdminEditionDetailPage({
       fetch(`/api/admin/clienti/${edClientId}/utenti`)
         .then((r) => r.ok ? r.json() : null)
         .then((json) => {
-          if (json?.data) {
+          const list = json?.users ?? json?.data;
+          if (Array.isArray(list)) {
             setClientUsers(
-              json.data
+              list
                 .filter((u: any) => u.status === "ACTIVE")
                 .map((u: any) => ({
-                  userId: u.userId,
-                  email: u.user?.email ?? "",
-                  name: u.user?.name ?? null,
+                  userId: u.id ?? u.userId,
+                  email: u.email ?? u.user?.email ?? "",
+                  name: u.name ?? u.user?.name ?? null,
                   isOwner: u.isOwner ?? false,
                 }))
             );
@@ -302,6 +305,15 @@ export default function AdminEditionDetailPage({
         })
         .catch(() => {});
     }
+    // Load existing client-admin assignments for this edition
+    fetch(`/api/corsi/${params.id}/edizioni/${params.edId}/client-assignments`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json && Array.isArray(json.assignedUserIds)) {
+          setAssignedUserIds(json.assignedUserIds);
+        }
+      })
+      .catch(() => {});
     setLoading(false);
   }, [params.id, params.edId]);
 
@@ -483,6 +495,29 @@ export default function AdminEditionDetailPage({
       hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
     );
     toast.success("Edizione aggiornata");
+  };
+
+  const handleSaveAssignments = async () => {
+    setSavingAssignments(true);
+    const res = await fetch(
+      `/api/corsi/${params.id}/edizioni/${params.edId}/client-assignments`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: assignedUserIds }),
+      }
+    );
+    setSavingAssignments(false);
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      toast.error(json.error ?? "Errore salvataggio assegnazioni");
+      return;
+    }
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json.assignedUserIds)) {
+      setAssignedUserIds(json.assignedUserIds);
+    }
+    toast.success("Assegnazioni salvate");
   };
 
   const handleLessonSubmit = async (data: {
@@ -835,6 +870,52 @@ export default function AdminEditionDetailPage({
               </select>
             </div>
           ) : null}
+
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <h3 className="text-sm font-semibold">Amministratori cliente assegnati</h3>
+            <p className="text-xs text-muted-foreground">
+              Seleziona quali amministratori del cliente possono vedere questa edizione e ricevere le sue notifiche.
+              Se non selezioni nessuno, l&apos;edizione e visibile a <strong>tutti</strong> gli amministratori del cliente (comportamento predefinito).
+            </p>
+            {clientUsers.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nessun amministratore attivo per questo cliente.</p>
+            ) : (
+              <div className="space-y-2">
+                {clientUsers.map((cu) => {
+                  const checked = assignedUserIds.includes(cu.userId);
+                  return (
+                    <label key={cu.userId} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={isArchived}
+                        onChange={(e) => {
+                          setAssignedUserIds((prev) =>
+                            e.target.checked
+                              ? [...prev, cu.userId]
+                              : prev.filter((id) => id !== cu.userId)
+                          );
+                        }}
+                      />
+                      <span>{cu.name || cu.email}</span>
+                      <span className="text-xs text-muted-foreground">({cu.email})</span>
+                      {cu.isOwner ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">Proprietario</span> : null}
+                    </label>
+                  );
+                })}
+                {!isArchived ? (
+                  <button
+                    type="button"
+                    className="mt-2 inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+                    onClick={handleSaveAssignments}
+                    disabled={savingAssignments}
+                  >
+                    {savingAssignments ? "Salvataggio..." : "Salva assegnazioni"}
+                  </button>
+                ) : null}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold">Destinatari notifiche</h3>

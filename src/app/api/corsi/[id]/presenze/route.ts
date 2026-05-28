@@ -10,7 +10,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/attendance-utils";
 import { checkApiPermission, canAccessArea } from "@/lib/permissions";
-import { notifyEditionUsers } from "@/lib/notify-client";
+import { notifyAssignedClientUsers } from "@/lib/notify-client";
 
 const attendanceSchema = z.object({
   attendances: z
@@ -266,7 +266,7 @@ export async function POST(
 
   // Notify client users that attendance was recorded (no email — too frequent)
   if (edition.clientId) {
-    void notifyEditionUsers({
+    void notifyAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.clientId,
       type: "ATTENDANCE_RECORDED",

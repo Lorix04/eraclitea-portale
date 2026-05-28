@@ -7,7 +7,7 @@ import { validateBody, validateQuery } from "@/lib/api-utils";
 import { parseItalianDate } from "@/lib/date-utils";
 import { Prisma } from "@prisma/client";
 import { checkApiPermission, canAccessArea } from "@/lib/permissions";
-import { notifyEditionUsers } from "@/lib/notify-client";
+import { notifyAssignedClientUsers } from "@/lib/notify-client";
 import { formatDate } from "@/lib/date-utils";
 
 const querySchema = z.object({
@@ -189,7 +189,7 @@ export async function POST(
 
     // Notify client users when a lesson is added to a published edition
     if (edition.status === "PUBLISHED" && edition.clientId) {
-      void notifyEditionUsers({
+      void notifyAssignedClientUsers({
         editionId: edition.id,
         clientId: edition.clientId,
         type: "LESSON_CHANGED",

@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       limit: z.coerce.number().min(1).max(100).optional(),
       all: z.enum(["true", "false"]).optional(),
       categoryId: z.string().cuid().optional(),
+      scope: z.enum(["mine", "all"]).optional(),
     })
   );
   if ("error" in validation) {
@@ -34,6 +35,9 @@ export async function GET(request: Request) {
   const limit = validation.data.limit;
   const includeAll = validation.data.all === "true" || tab === "tutti";
   const categoryId = validation.data.categoryId;
+  // "mine" (default): assigned editions + editions with no assignments.
+  // "all": every edition of the client.
+  const scope = validation.data.scope ?? "mine";
 
   const editions = await prisma.courseEdition.findMany({
     where: {
@@ -41,6 +45,14 @@ export async function GET(request: Request) {
       status: { not: "DRAFT" },
       ...(categoryId
         ? { course: { categories: { some: { categoryId } } } }
+        : {}),
+      ...(scope === "mine"
+        ? {
+            OR: [
+              { clientAssignments: { none: {} } },
+              { clientAssignments: { some: { userId: context.userId } } },
+            ],
+          }
         : {}),
     },
     include: {

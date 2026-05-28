@@ -6,13 +6,9 @@ import { validateBody } from "@/lib/api-utils";
 import { courseEditionUpdateSchema } from "@/lib/schemas";
 import { deleteCertificateFile } from "@/lib/certificate-storage";
 import { formatDate } from "@/lib/date-utils";
-import {
-  sendEditionCancelledEmail,
-  sendEditionDatesChangedEmail,
-  sendNewEditionEmail,
-} from "@/lib/email-notifications";
+import { sendEditionCancelledEmail } from "@/lib/email-notifications";
 import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
-import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export const dynamic = "force-dynamic";
 
@@ -226,14 +222,13 @@ export async function PUT(
     oldStatus === "PUBLISHED" &&
     updated.status === "PUBLISHED"
   ) {
-    await prisma.notification.create({
-      data: {
-        type: "NEW_EDITION",
-        title: "Nuova edizione disponibile",
-        message: `${updated.course.title} (Ed. #${updated.editionNumber}) e ora disponibile.`,
-        courseEditionId: updated.id,
-        isGlobal: false,
-      },
+    void notifyAssignedClientUsers({
+      editionId: updated.id,
+      clientId: updated.client.id,
+      type: "NEW_EDITION",
+      title: "Nuova edizione disponibile",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) e ora disponibile.`,
+      courseEditionId: updated.id,
     });
   }
 
@@ -253,85 +248,98 @@ export async function PUT(
 
   if (
     oldStatus !== "PUBLISHED" &&
-    newStatus === "PUBLISHED" &&
-    updated.client.referenteEmail
+    newStatus === "PUBLISHED"
   ) {
-    await prisma.notification.create({
-      data: {
-        type: "NEW_EDITION",
-        title: "Nuova edizione disponibile",
-        message: `${updated.course.title} (Ed. #${updated.editionNumber}) e ora disponibile.`,
-        courseEditionId: updated.id,
-        isGlobal: false,
-      },
+    void notifyAssignedClientUsers({
+      editionId: updated.id,
+      clientId: updated.client.id,
+      type: "NEW_EDITION",
+      title: "Nuova edizione disponibile",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) e ora disponibile.`,
+      courseEditionId: updated.id,
     });
 
-    void sendNewEditionEmail({
-      clientEmail: updated.client.referenteEmail,
-      clientName: updated.client.referenteNome || updated.client.ragioneSociale,
+    void emailAssignedClientUsers({
+      editionId: updated.id,
       clientId: updated.client.id,
-      courseName: updated.course.title,
-      editionNumber: updated.editionNumber,
-      startDate: formatDate(updated.startDate),
-      endDate: formatDate(updated.endDate),
-      deadlineRegistry: formatDate(updated.deadlineRegistry),
+      emailType: "NEW_EDITION",
+      subject: `Nuova edizione disponibile - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+      title: "Nuova edizione disponibile",
+      bodyHtml: `
+        ${emailParagraph("E disponibile una nuova edizione del corso:")}
+        ${buildCourseInfoBox(updated.course.title, updated.editionNumber, `
+          <p style="margin:0 0 4px; font-size:14px; color:#1A1A1A;"><strong>Inizio:</strong> ${formatDate(updated.startDate)}</p>
+          <p style="margin:0 0 4px; font-size:14px; color:#1A1A1A;"><strong>Fine:</strong> ${formatDate(updated.endDate)}</p>
+          <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Deadline anagrafiche:</strong> ${formatDate(updated.deadlineRegistry)}</p>
+        `)}
+        ${emailParagraph("Accedi al portale per compilare le anagrafiche dei partecipanti.")}
+      `,
+      ctaText: "Vai al Corso",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
       courseEditionId: updated.id,
     });
   }
 
-  if (newStatus === "PUBLISHED" && datesChanged && updated.client.referenteEmail) {
-    await prisma.notification.create({
-      data: {
-        type: "EDITION_DATES_CHANGED",
-        title: "Date edizione modificate",
-        message: `${updated.course.title} (Ed. #${updated.editionNumber}) ha nuove date: ${formatDate(updated.startDate)} - ${formatDate(updated.endDate)}`,
-        courseEditionId: updated.id,
-        isGlobal: false,
-      },
+  if (newStatus === "PUBLISHED" && datesChanged) {
+    void notifyAssignedClientUsers({
+      editionId: updated.id,
+      clientId: updated.client.id,
+      type: "EDITION_DATES_CHANGED",
+      title: "Date edizione modificate",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) ha nuove date: ${formatDate(updated.startDate)} - ${formatDate(updated.endDate)}`,
+      courseEditionId: updated.id,
     });
 
-    void sendEditionDatesChangedEmail({
-      clientEmail: updated.client.referenteEmail,
-      clientName: updated.client.referenteNome || updated.client.ragioneSociale,
+    void emailAssignedClientUsers({
+      editionId: updated.id,
       clientId: updated.client.id,
-      courseName: updated.course.title,
-      editionNumber: updated.editionNumber,
-      oldStartDate: formatDate(existing.startDate),
-      newStartDate: formatDate(updated.startDate),
-      oldEndDate: formatDate(existing.endDate),
-      newEndDate: formatDate(updated.endDate),
-      oldDeadline: formatDate(existing.deadlineRegistry),
-      newDeadline: formatDate(updated.deadlineRegistry),
+      emailType: "EDITION_DATES_CHANGED",
+      subject: `Date modificate - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+      title: "Date edizione modificate",
+      bodyHtml: `
+        ${emailParagraph("Le date della seguente edizione sono state aggiornate:")}
+        ${buildCourseInfoBox(updated.course.title, updated.editionNumber, `
+          <p style="margin:0 0 4px; font-size:14px; color:#1A1A1A;"><strong>Inizio:</strong> ${formatDate(updated.startDate)}</p>
+          <p style="margin:0 0 4px; font-size:14px; color:#1A1A1A;"><strong>Fine:</strong> ${formatDate(updated.endDate)}</p>
+          <p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Deadline anagrafiche:</strong> ${formatDate(updated.deadlineRegistry)}</p>
+        `)}
+      `,
+      ctaText: "Vedi Dettagli",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
       courseEditionId: updated.id,
     });
   }
 
   if (
     oldStatus === "PUBLISHED" &&
-    (newStatus === "CLOSED" || newStatus === "ARCHIVED") &&
-    updated.client.referenteEmail
+    (newStatus === "CLOSED" || newStatus === "ARCHIVED")
   ) {
-    await prisma.notification.create({
-      data: {
-        type: "EDITION_CANCELLED",
-        title: "Edizione annullata",
-        message: `${updated.course.title} (Ed. #${updated.editionNumber}) e stata annullata o chiusa.`,
-        courseEditionId: updated.id,
-        isGlobal: false,
-      },
+    void notifyAssignedClientUsers({
+      editionId: updated.id,
+      clientId: updated.client.id,
+      type: "EDITION_CANCELLED",
+      title: "Edizione annullata",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) e stata annullata o chiusa.`,
+      courseEditionId: updated.id,
     });
 
-    void sendEditionCancelledEmail({
-      clientEmail: updated.client.referenteEmail,
-      clientName: updated.client.referenteNome || updated.client.ragioneSociale,
+    void emailAssignedClientUsers({
+      editionId: updated.id,
       clientId: updated.client.id,
-      courseName: updated.course.title,
-      editionNumber: updated.editionNumber,
+      emailType: "EDITION_CANCELLED",
+      subject: `Edizione annullata - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+      title: "Edizione annullata",
+      bodyHtml: `
+        ${emailParagraph("La seguente edizione e stata annullata o chiusa:")}
+        ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
+      `,
+      ctaText: "Vai al Portale",
+      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi`,
       courseEditionId: updated.id,
     });
 
     // Also send COURSE_COMPLETED notification to all client users
-    void notifyEditionUsers({
+    void notifyAssignedClientUsers({
       editionId: updated.id,
       clientId: updated.client.id,
       type: "COURSE_COMPLETED",
@@ -339,7 +347,7 @@ export async function PUT(
       message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stato completato. Gli attestati saranno disponibili a breve.`,
       courseEditionId: updated.id,
     });
-    void emailEditionUsers({
+    void emailAssignedClientUsers({
       editionId: updated.id,
       clientId: updated.client.id,
       emailType: "COURSE_COMPLETED",
@@ -360,7 +368,7 @@ export async function PUT(
   if (newStatus === "PUBLISHED" && oldStatus === "PUBLISHED") {
     const notesChanged = (existing.notes ?? "") !== (updated.notes ?? "");
     if (notesChanged && updated.client.id) {
-      void notifyEditionUsers({
+      void notifyAssignedClientUsers({
       editionId: updated.id,
         clientId: updated.client.id,
         type: "EDITION_INFO_CHANGED",
@@ -368,7 +376,7 @@ export async function PUT(
         message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stata aggiornata con nuove informazioni.`,
         courseEditionId: updated.id,
       });
-      void emailEditionUsers({
+      void emailAssignedClientUsers({
       editionId: updated.id,
         clientId: updated.client.id,
         emailType: "EDITION_INFO_CHANGED",

@@ -192,7 +192,7 @@ export async function GET(request: Request) {
             user: { select: { id: true, email: true } },
           },
         },
-        _count: { select: { registrations: true } },
+        _count: { select: { registrations: true, clientAssignments: true } },
       },
       orderBy,
       skip,

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkApiPermission } from "@/lib/permissions";
-import { notifyEditionUsers, emailEditionUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 
 export async function POST(
   request: Request,
@@ -61,7 +61,7 @@ export async function POST(
 
   // Notify all client users
   if (edition.clientId) {
-    void notifyEditionUsers({
+    void notifyAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.clientId,
       type: "REGISTRY_REJECTED",
@@ -70,7 +70,7 @@ export async function POST(
       courseEditionId: edition.id,
     });
 
-    void emailEditionUsers({
+    void emailAssignedClientUsers({
       editionId: edition.id,
       clientId: edition.clientId,
       emailType: "REGISTRY_REJECTED",

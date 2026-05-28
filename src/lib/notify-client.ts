@@ -217,6 +217,139 @@ export async function emailAllAdmins(params: {
   }
 }
 
+// ─── Client-assignment-aware notification (EditionClientAssignment) ───
+//
+// SEPARATE from notifyEditionUsers/notifyPolicy (Sapienta referents).
+// If the edition has client assignments → notify only assigned client users.
+// If it has none → fall back to notifyAllClientUsers (broad, backward-compatible).
+
+/**
+ * Send an in-app notification to the client users assigned to an edition,
+ * or to all active client users when the edition has no assignments.
+ */
+export async function notifyAssignedClientUsers(params: {
+  editionId: string;
+  clientId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  courseEditionId?: string;
+  excludeUserId?: string;
+}) {
+  const courseEditionId = params.courseEditionId ?? params.editionId;
+
+  const assignments = await prisma.editionClientAssignment.findMany({
+    where: { courseEditionId: params.editionId },
+    select: { userId: true },
+  });
+
+  if (assignments.length === 0) {
+    return notifyAllClientUsers({ ...params, courseEditionId });
+  }
+
+  const assignedIds = assignments.map((a) => a.userId);
+  // Intersect assignments with the client's active users
+  const activeAssigned = await prisma.clientUser.findMany({
+    where: {
+      clientId: params.clientId,
+      status: "ACTIVE",
+      userId: { in: assignedIds },
+    },
+    select: { userId: true },
+  });
+
+  const allUserIds = activeAssigned
+    .map((cu) => cu.userId)
+    .filter((id) => id !== params.excludeUserId);
+
+  const userIds = await filterUsersForInApp(allUserIds, params.type);
+
+  if (userIds.length > 0) {
+    await prisma.notification.createMany({
+      data: userIds.map((userId) => ({
+        userId,
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        courseEditionId,
+        isGlobal: false,
+      })),
+    });
+  }
+
+  return userIds;
+}
+
+/**
+ * Send an email to the client users assigned to an edition,
+ * or to all active client users when the edition has no assignments.
+ */
+export async function emailAssignedClientUsers(params: {
+  editionId: string;
+  clientId: string;
+  emailType: string;
+  subject: string;
+  title: string;
+  greeting?: string;
+  bodyHtml: string;
+  ctaText?: string;
+  ctaUrl?: string;
+  courseEditionId?: string;
+  excludeUserId?: string;
+}) {
+  const courseEditionId = params.courseEditionId ?? params.editionId;
+
+  const assignments = await prisma.editionClientAssignment.findMany({
+    where: { courseEditionId: params.editionId },
+    select: { userId: true },
+  });
+
+  if (assignments.length === 0) {
+    return emailAllClientUsers({ ...params, courseEditionId });
+  }
+
+  const assignedIds = assignments.map((a) => a.userId);
+  const clientUsers = await prisma.clientUser.findMany({
+    where: {
+      clientId: params.clientId,
+      status: "ACTIVE",
+      userId: { in: assignedIds },
+    },
+    include: { user: { select: { id: true, email: true, name: true } } },
+  });
+
+  const eligibleUserIds = await filterUsersForEmail(
+    clientUsers
+      .filter((cu) => cu.userId !== params.excludeUserId)
+      .map((cu) => cu.userId),
+    params.emailType
+  );
+  const eligibleSet = new Set(eligibleUserIds);
+
+  for (const cu of clientUsers) {
+    if (!eligibleSet.has(cu.userId)) continue;
+    const userName = cu.user.name || cu.user.email;
+
+    const html = buildEmailHtml({
+      title: params.title,
+      greeting: params.greeting ?? `Gentile ${userName},`,
+      bodyHtml: params.bodyHtml,
+      ctaText: params.ctaText,
+      ctaUrl: params.ctaUrl,
+    });
+
+    void sendAutoEmail({
+      emailType: params.emailType,
+      recipientEmail: cu.user.email,
+      recipientName: userName,
+      recipientId: cu.user.id,
+      subject: params.subject,
+      html,
+      courseEditionId,
+    });
+  }
+}
+
 // ─── Edition-aware notification (respects notifyPolicy) ───
 
 /**
