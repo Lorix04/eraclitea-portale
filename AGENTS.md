@@ -506,6 +506,7 @@ docker compose logs -f app
 - API `/api/auth/*` escluse dal rate limiting (chiamate interne NextAuth)
 - Colonne custom anagrafiche: prefisso `custom_` nel SpreadsheetEditor, campi standard-mapped usano la chiave Employee diretta
 - Employee.nome/cognome/codiceFiscale sono nullable (per custom fields mode che non li richiede)
+- `adminRoleId`, `customFieldSetId`, `clientUserId` possono essere UUID o stringhe custom (ruoli predefiniti seminati con ID tipo `role_formazione`, record migrati con `gen_random_uuid()`) — usare `z.string().min(1)` nelle validazioni Zod, MAI `.cuid()`
 - Export CSV: BOM UTF-8 (`\uFEFF`) preposto a tutti i file CSV per compatibilita Excel con accenti italiani
 - Export dipendenti: supporta xlsx e csv, formato standard (21 colonne fisse) o formato cliente (solo colonne custom)
 - Import dipendenti con custom fields: `importMode=custom` nel FormData attiva validazione solo sui campi custom required
