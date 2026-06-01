@@ -43,6 +43,14 @@ export default async function ProfiloPage() {
             <p className="text-lg font-medium">{client.piva}</p>
           </div>
           <div>
+            <p className="text-sm text-muted-foreground">Codice Fiscale</p>
+            <p className="text-lg font-medium">
+              {client.codiceFiscale || (
+                <span className="text-sm text-muted-foreground">Non impostato</span>
+              )}
+            </p>
+          </div>
+          <div>
             <p className="text-sm text-muted-foreground">Referente</p>
             <p>{client.referenteNome}</p>
           </div>

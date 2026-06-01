@@ -137,6 +137,7 @@ export default function ClientForm({
   const [form, setForm] = useState<ClientFormData>({
     ragioneSociale: initialData?.ragioneSociale ?? "",
     piva: initialData?.piva ?? "",
+    codiceFiscale: initialData?.codiceFiscale ?? "",
     indirizzo: initialData?.indirizzo ?? "",
     referenteNome: initialData?.referenteNome ?? "",
     referenteEmail: initialData?.referenteEmail ?? "",
@@ -448,6 +449,7 @@ export default function ClientForm({
       client: {
         ragioneSociale: parsed.data.ragioneSociale,
         piva: parsed.data.piva,
+        codiceFiscale: parsed.data.codiceFiscale,
         indirizzo: parsed.data.indirizzo,
         referenteNome: parsed.data.referenteNome,
         referenteEmail: parsed.data.referenteEmail,
@@ -549,6 +551,22 @@ export default function ClientForm({
           />
           <FormFieldError message={errors.piva} />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <FormLabel required>Codice Fiscale</FormLabel>
+        <input
+          className={`rounded-md border bg-background px-3 py-2 uppercase ${
+            errors.codiceFiscale ? "border-red-500 focus-visible:outline-red-500" : ""
+          }`}
+          value={form.codiceFiscale}
+          onChange={(event) =>
+            updateField("codiceFiscale", event.target.value.toUpperCase())
+          }
+          placeholder="11 cifre o 16 caratteri"
+          maxLength={16}
+        />
+        <FormFieldError message={errors.codiceFiscale} />
       </div>
 
       <label className="flex flex-col gap-2 text-sm">

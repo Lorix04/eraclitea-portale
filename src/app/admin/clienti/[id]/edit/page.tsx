@@ -22,6 +22,7 @@ export default async function AdminEditClientePage({
   const initialData = {
     ragioneSociale: client.ragioneSociale,
     piva: client.piva,
+    codiceFiscale: client.codiceFiscale ?? "",
     indirizzo: client.indirizzo ?? "",
     referenteNome: client.referenteNome,
     referenteEmail: client.referenteEmail,

@@ -73,7 +73,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Utenti e Ruoli
 - `User` (ADMIN/CLIENT/TEACHER) — `name` (opzionale), `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
-- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `hasCustomFields`, `customFields`, `maxUsers`, `defaultNotifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `clientUsers`, `clientInvites`, `clientActivityLogs`
+- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `piva` (unique), `codiceFiscale` (unique, nullable in DB ma obbligatorio dal layer Zod — 11 cifre o 16 alfanumerici), `hasCustomFields`, `customFields`, `maxUsers`, `defaultNotifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `clientUsers`, `clientInvites`, `clientActivityLogs`
 - `ClientUser` — junction table Client-User: `isOwner` (proprietario), `status` (ACTIVE/INACTIVE/PENDING), `invitedBy`; un client puo avere piu utenti, un utente proprietario gestisce inviti
 - `ClientInvite` — inviti utente client: `token` (unique), `email`, `expiresAt` (7 giorni), `status` (PENDING/ACCEPTED/EXPIRED/REVOKED)
 - `ClientActivityLog` — log attivita client: `action`, `entityType`, `entityId`, `details` (JSON), `ipAddress`

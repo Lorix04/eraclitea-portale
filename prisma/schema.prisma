@@ -95,6 +95,10 @@ model Client {
   id                String             @id @default(cuid())
   ragioneSociale    String
   piva              String             @unique
+  // Nullable in DB for safe migration on existing rows; required at the Zod
+  // application layer (16-char personal CF or 11-digit entity CF). Postgres
+  // unique indexes allow multiple NULLs, so legacy rows can coexist.
+  codiceFiscale     String?            @unique
   indirizzo         String?
   referenteNome     String
   referenteEmail    String

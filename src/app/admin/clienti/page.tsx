@@ -18,6 +18,7 @@ type ClientRow = {
   id: string;
   ragioneSociale: string;
   piva: string;
+  codiceFiscale?: string | null;
   referenteNome: string;
   referenteEmail: string;
   telefono?: string | null;
@@ -257,10 +258,10 @@ export default function AdminClientiPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               className="w-full rounded-md border bg-background px-3 py-2 pl-9 text-sm"
-              placeholder="Cerca per nome, P.IVA o email..."
+              placeholder="Cerca per nome, P.IVA, CF o email..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              aria-label="Cerca per nome, P.IVA o email"
+              aria-label="Cerca per nome, P.IVA, CF o email"
             />
           </div>
         }
@@ -331,6 +332,17 @@ export default function AdminClientiPage() {
             header: "P.IVA",
             hideOnCard: true,
             render: (c) => c.piva,
+          },
+          {
+            key: "codiceFiscale",
+            header: "Codice Fiscale",
+            hideOnCard: true,
+            render: (c) =>
+              c.codiceFiscale ? (
+                c.codiceFiscale
+              ) : (
+                <span className="text-xs text-muted-foreground">—</span>
+              ),
           },
           {
             key: "referente",

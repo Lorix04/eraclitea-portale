@@ -1,5 +1,5 @@
 ﻿import { z } from "zod";
-import { isValidCodiceFiscale, validatePIVA } from "@/lib/validators";
+import { isValidCodiceFiscale, isValidClientCodiceFiscale, validatePIVA } from "@/lib/validators";
 import { isValidItalianDate, parseItalianDate } from "@/lib/date-utils";
 
 const optionalDate = z.preprocess(
@@ -230,6 +230,12 @@ export const employeeSchema = z.object({
 export const clientSchema = z.object({
   ragioneSociale: z.string().min(2).max(200),
   piva: z.string().refine(validatePIVA, "Partita IVA non valida"),
+  codiceFiscale: z
+    .string()
+    .trim()
+    .min(1, "Codice fiscale obbligatorio")
+    .transform((v) => v.toUpperCase().replace(/\s+/g, ""))
+    .refine(isValidClientCodiceFiscale, "Codice fiscale non valido (11 cifre o 16 caratteri)"),
   indirizzo: z.string().max(300).optional().or(z.literal("")),
   referenteNome: z.string().min(2).max(100),
   referenteEmail: z.string().email(),

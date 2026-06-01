@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { validateBody } from "@/lib/api-utils";
 import { clientUpdateSchema } from "@/lib/schemas";
 import { getClientIP, logAudit } from "@/lib/audit";
@@ -40,6 +41,7 @@ export async function GET(
       id: client.id,
       ragioneSociale: client.ragioneSociale,
       piva: client.piva,
+      codiceFiscale: client.codiceFiscale,
       indirizzo: client.indirizzo,
       referenteNome: client.referenteNome,
       referenteEmail: client.referenteEmail,
@@ -93,6 +95,7 @@ export async function PUT(
       data: {
         ragioneSociale: client.ragioneSociale,
         piva: client.piva,
+        codiceFiscale: client.codiceFiscale,
         indirizzo: client.indirizzo || null,
         referenteNome: client.referenteNome,
         referenteEmail: client.referenteEmail,
@@ -151,6 +154,24 @@ export async function PUT(
   } catch (err: any) {
     if (err.message?.startsWith("Esiste già")) {
       return NextResponse.json({ error: err.message }, { status: 409 });
+    }
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const target = (err.meta?.target as string[] | undefined) ?? [];
+      if (target.includes("codiceFiscale")) {
+        return NextResponse.json(
+          { error: "Esiste già un cliente con questo codice fiscale" },
+          { status: 409 }
+        );
+      }
+      if (target.includes("piva")) {
+        return NextResponse.json(
+          { error: "Esiste già un cliente con questa partita IVA" },
+          { status: 409 }
+        );
+      }
     }
     throw err;
   }

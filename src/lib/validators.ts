@@ -104,6 +104,17 @@ export function isValidCodiceFiscale(value: string) {
 
 export const validateCF = isValidCodiceFiscale;
 
+/**
+ * Italian fiscal code for a Client entity: accepts either an 11-digit
+ * numeric code (typically same as P.IVA for companies) or a 16-char
+ * alphanumeric personal CF (for ditte individuali).
+ */
+export function isValidClientCodiceFiscale(value: string): boolean {
+  const cf = value.trim().toUpperCase().replace(/\s+/g, "");
+  if (/^\d{11}$/.test(cf)) return true;
+  return isValidCodiceFiscale(cf);
+}
+
 export function validatePIVA(piva: string): boolean {
   if (!/^\d{11}$/.test(piva)) return false;
 

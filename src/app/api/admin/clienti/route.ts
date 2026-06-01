@@ -42,6 +42,7 @@ export async function GET(request: Request) {
     where.OR = [
       { ragioneSociale: { contains: search, mode: Prisma.QueryMode.insensitive } },
       { piva: { contains: search, mode: Prisma.QueryMode.insensitive } },
+      { codiceFiscale: { contains: search, mode: Prisma.QueryMode.insensitive } },
       { referenteEmail: { contains: search, mode: Prisma.QueryMode.insensitive } },
       { users: { some: { email: { contains: search, mode: Prisma.QueryMode.insensitive } } } },
     ];
@@ -78,6 +79,7 @@ export async function GET(request: Request) {
     id: client.id,
     ragioneSociale: client.ragioneSociale,
     piva: client.piva,
+    codiceFiscale: client.codiceFiscale,
     referenteNome: client.referenteNome,
     referenteEmail: client.referenteEmail,
     telefono: client.telefono,
@@ -135,6 +137,7 @@ export async function POST(request: Request) {
       data: {
         ragioneSociale: client.ragioneSociale,
         piva: client.piva,
+        codiceFiscale: client.codiceFiscale,
         indirizzo: client.indirizzo || null,
         referenteNome: client.referenteNome,
         referenteEmail: client.referenteEmail,
@@ -184,6 +187,24 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: created.client }, { status: 201 });
   } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const target = (error.meta?.target as string[] | undefined) ?? [];
+      if (target.includes("codiceFiscale")) {
+        return NextResponse.json(
+          { error: "Esiste già un cliente con questo codice fiscale" },
+          { status: 409 }
+        );
+      }
+      if (target.includes("piva")) {
+        return NextResponse.json(
+          { error: "Esiste già un cliente con questa partita IVA" },
+          { status: 409 }
+        );
+      }
+    }
     console.error("[ADMIN_CLIENTS_POST] Error:", error);
     return NextResponse.json(
       { error: "Errore interno del server" },
