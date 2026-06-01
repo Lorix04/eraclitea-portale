@@ -60,13 +60,15 @@ export default function MobileFilterPanel({
         ) : null}
       </div>
 
-      {/* Filter panel: collapsible on all screen sizes */}
+      {/* Filter panel: collapsible on all screen sizes.
+          `overflow-hidden` only when closed so descendant popovers/dropdowns
+          (e.g. the client combobox) aren't clipped by the panel bounds. */}
       <div
         className={cn(
-          "overflow-hidden transition-all duration-200",
+          "transition-all duration-200",
           open
-            ? "max-h-[800px] opacity-100"
-            : "max-h-0 opacity-0 pointer-events-none"
+            ? "max-h-[800px] opacity-100 overflow-visible"
+            : "max-h-0 opacity-0 pointer-events-none overflow-hidden"
         )}
       >
         <div className="rounded-xl border bg-muted/30 p-3">
