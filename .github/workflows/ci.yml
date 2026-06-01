@@ -95,8 +95,13 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      # NODE_ENV=production is set at the job level (above) to mirror the
+      # production runtime for the e2e tests. By default, that makes `npm ci`
+      # skip devDependencies — which would drop ts-node (used by `prisma db
+      # seed`), @playwright/test, and the typecheck toolchain. `--include=dev`
+      # forces a full install so build, seed, and Playwright all work.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Generate Prisma client
         run: npx prisma@5 generate

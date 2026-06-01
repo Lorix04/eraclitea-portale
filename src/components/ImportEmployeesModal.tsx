@@ -75,11 +75,16 @@ export default function ImportEmployeesModal({
 }: ImportEmployeesModalProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Fetch custom fields for this client
+  // Fetch custom fields for THIS edition when available (the edition's
+  // assigned template wins over the client default). Falls back to the
+  // client-level resolver when no editionId is provided.
   const { data: cfData, isLoading: cfLoading } = useQuery({
-    queryKey: ["custom-fields-import", clientId],
+    queryKey: ["custom-fields-import", clientId, editionId ?? ""],
     queryFn: async () => {
-      const res = await fetch(`/api/custom-fields?clientId=${clientId}`);
+      const url = editionId
+        ? `/api/custom-fields?editionId=${editionId}`
+        : `/api/custom-fields?clientId=${clientId}`;
+      const res = await fetch(url);
       if (!res.ok) return { enabled: false, fields: [] };
       return res.json();
     },
@@ -220,6 +225,7 @@ export default function ImportEmployeesModal({
       const fd = new FormData();
       fd.append("file", selectedFile);
       fd.append("clientId", clientId);
+      if (editionId) fd.append("editionId", editionId);
       const res = await fetch("/api/dipendenti/import/preview", { method: "POST", body: fd });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
