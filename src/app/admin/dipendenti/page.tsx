@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Download, Eye, Search, Trash2, Upload, UserPlus } from "lucide-react";
+import { Check, ChevronDown, Download, Eye, Search, Trash2, Upload, UserPlus, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import ActionMenu from "@/components/ui/ActionMenu";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -76,6 +76,37 @@ function AdminDipendentiContent() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const clientPickerRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the client picker when clicking outside
+  useEffect(() => {
+    if (!clientPickerOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (
+        clientPickerRef.current &&
+        !clientPickerRef.current.contains(event.target as Node)
+      ) {
+        setClientPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [clientPickerOpen]);
+
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.id === clientId) ?? null,
+    [clients, clientId]
+  );
+
+  const filteredClientOptions = useMemo(() => {
+    const q = clientSearchTerm.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter((c) =>
+      c.ragioneSociale.toLowerCase().includes(q)
+    );
+  }, [clients, clientSearchTerm]);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -363,19 +394,100 @@ function AdminDipendentiContent() {
         }
       >
         <div className="grid grid-cols-1 gap-3 md:flex md:flex-wrap md:items-center">
-          <select
-            className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
-            value={clientId}
-            onChange={(event) => setClientId(event.target.value)}
-            aria-label="Filtro cliente"
+          <div
+            ref={clientPickerRef}
+            className="relative w-full md:w-64"
           >
-            <option value="">Tutti i clienti</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.ragioneSociale}
-              </option>
-            ))}
-          </select>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-left text-sm min-h-[40px]"
+              onClick={() => setClientPickerOpen((prev) => !prev)}
+              aria-label="Filtro cliente"
+              aria-haspopup="listbox"
+              aria-expanded={clientPickerOpen}
+            >
+              <span className={selectedClient ? "truncate" : "truncate text-muted-foreground"}>
+                {selectedClient ? selectedClient.ragioneSociale : "Tutti i clienti"}
+              </span>
+              <ChevronDown
+                className={`ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                  clientPickerOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {selectedClient ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setClientId("");
+                  setClientSearchTerm("");
+                }}
+                className="absolute right-8 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Rimuovi filtro cliente"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+            {clientPickerOpen ? (
+              <div className="absolute z-50 mt-1 w-full rounded-md border bg-card shadow-md">
+                <div className="border-b p-2">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={clientSearchTerm}
+                      onChange={(e) => setClientSearchTerm(e.target.value)}
+                      placeholder="Cerca cliente..."
+                      className="w-full rounded-md border bg-background py-2 pl-8 pr-3 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1" role="listbox">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientId("");
+                      setClientPickerOpen(false);
+                      setClientSearchTerm("");
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                    role="option"
+                    aria-selected={!clientId}
+                  >
+                    <span className="text-muted-foreground">Tutti i clienti</span>
+                    {!clientId ? <Check className="ml-2 h-4 w-4 text-primary" /> : null}
+                  </button>
+                  {filteredClientOptions.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      Nessun cliente trovato
+                    </p>
+                  ) : (
+                    filteredClientOptions.map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => {
+                          setClientId(client.id);
+                          setClientPickerOpen(false);
+                          setClientSearchTerm("");
+                        }}
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                        role="option"
+                        aria-selected={clientId === client.id}
+                      >
+                        <span className="truncate">{client.ragioneSociale}</span>
+                        {clientId === client.id ? (
+                          <Check className="ml-2 h-4 w-4 text-primary" />
+                        ) : null}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <select
             className="w-full md:w-auto rounded-md border bg-background px-3 py-2 text-sm"
             value={editionId}
