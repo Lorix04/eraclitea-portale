@@ -37,6 +37,8 @@ type ImportResponse = {
   success?: boolean;
   totalRows?: number;
   imported?: number;
+  created?: number;
+  updated?: number;
   skipped?: number;
   errors?: number;
   details?: {
@@ -515,7 +517,7 @@ export default function ImportEmployeesModal({
             <div className="space-y-2">
               <p className="font-medium">Note:</p>
               <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                <li>I dipendenti con codice fiscale gia esistente verranno saltati</li>
+                <li>I dipendenti con codice fiscale già esistente verranno aggiornati con i nuovi dati (i campi vuoti nel file non sovrascrivono i dati esistenti)</li>
                 <li>Le date devono essere nel formato GG/MM/AAAA</li>
                 <li>I campi non riconosciuti nel file verranno ignorati</li>
               </ul>
@@ -546,7 +548,7 @@ export default function ImportEmployeesModal({
               <p className="font-medium">Note:</p>
               <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                 <li>Il separatore deve essere il punto e virgola (;)</li>
-                <li>I dipendenti con codice fiscale gia esistente verranno saltati</li>
+                <li>I dipendenti con codice fiscale già esistente verranno aggiornati con i nuovi dati (i campi vuoti nel file non sovrascrivono i dati esistenti)</li>
                 <li>Le date devono essere nel formato GG/MM/AAAA</li>
               </ul>
             </div>
@@ -809,7 +811,7 @@ export default function ImportEmployeesModal({
             Importati: {result?.imported ?? 0} dipendenti
           </p>
           <p className="text-muted-foreground">
-            Saltati: {result?.skipped ?? 0} (codice fiscale gia esistente)
+            Creati: {result?.created ?? 0} · Aggiornati: {result?.updated ?? 0}
           </p>
           <p className="text-muted-foreground">Errori: {result?.errors ?? 0}</p>
         </div>

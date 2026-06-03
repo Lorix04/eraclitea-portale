@@ -161,6 +161,14 @@ export async function POST(request: Request) {
 
   const errors: Array<{ codiceFiscale?: string; field?: string; message: string }> = [];
 
+  // Per-client toggle: persist Employee.customData? When false, custom values
+  // typed in the spreadsheet are ignored at the Employee level.
+  const clientCfg = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { saveEmployeeCustomData: true },
+  });
+  const persistCustomData = clientCfg?.saveEmployeeCustomData === true;
+
   const results = await Promise.all(
     filtered.map(async (row) => {
       const nome = String(row.nome ?? "").trim();
@@ -243,39 +251,75 @@ export async function POST(request: Request) {
           if (val) customData[k] = val;
         }
       }
-      const customDataValue = Object.keys(customData).length > 0 ? customData : undefined;
+      const hasCustomDataInRow = Object.keys(customData).length > 0;
+
+      const telefono = String(row.telefono ?? "").trim();
+      const cellulare = String(row.cellulare ?? "").trim();
+      const indirizzo = String(row.indirizzo ?? "").trim();
+      const comuneResidenza = String(row.comuneResidenza ?? "").trim();
+      const cap = String(row.cap ?? "").trim();
+      const mansione = String(row.mansione ?? "").trim();
+      const note = String(row.note ?? "").trim();
 
       try {
-        const employee = await prisma.employee.upsert({
+        // Find existing Employee by clientId+codiceFiscale (scoped per client).
+        const existing = await prisma.employee.findUnique({
           where: {
             clientId_codiceFiscale: {
               clientId,
               codiceFiscale: row.codiceFiscale as string,
             },
           },
-          update: {
-            nome,
-            cognome,
-            sesso,
-            dataNascita: parsedDate,
-            luogoNascita: luogoNascita || null,
-            email,
-            telefono: String(row.telefono ?? "").trim() || null,
-            cellulare: String(row.cellulare ?? "").trim() || null,
-            indirizzo: String(row.indirizzo ?? "").trim() || null,
-            comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
-            cap: String(row.cap ?? "").trim() || null,
-            provincia: provincia || null,
-            regione: regione || null,
-            emailAziendale: emailAziendale || null,
-            partitaIva: partitaIva || null,
-            iban: iban || null,
-            pec: pec || null,
-            mansione: String(row.mansione ?? "").trim() || null,
-            note: String(row.note ?? "").trim() || null,
-            ...(customDataValue !== undefined ? { customData: customDataValue } : {}),
-          },
-          create: {
+          select: { id: true, customData: true },
+        });
+
+        if (existing) {
+          // Safe-merge update: include only non-empty values so existing data
+          // is never overwritten with blanks. parsedDate / sesso / email only
+          // when non-null/non-empty.
+          const upd: Record<string, unknown> = {};
+          if (nome) upd.nome = nome;
+          if (cognome) upd.cognome = cognome;
+          if (sesso) upd.sesso = sesso;
+          if (parsedDate) upd.dataNascita = parsedDate;
+          if (luogoNascita) upd.luogoNascita = luogoNascita;
+          if (email) upd.email = email;
+          if (telefono) upd.telefono = telefono;
+          if (cellulare) upd.cellulare = cellulare;
+          if (indirizzo) upd.indirizzo = indirizzo;
+          if (comuneResidenza) upd.comuneResidenza = comuneResidenza;
+          if (cap) upd.cap = cap;
+          if (provincia) upd.provincia = provincia;
+          if (regione) upd.regione = regione;
+          if (emailAziendale) upd.emailAziendale = emailAziendale;
+          if (partitaIva) upd.partitaIva = partitaIva;
+          if (iban) upd.iban = iban;
+          if (pec) upd.pec = pec;
+          if (mansione) upd.mansione = mansione;
+          if (note) upd.note = note;
+
+          if (persistCustomData && hasCustomDataInRow) {
+            const prior =
+              (existing.customData as Record<string, unknown> | null) ?? {};
+            upd.customData = { ...prior, ...customData };
+          }
+
+          if (Object.keys(upd).length === 0) {
+            // Nothing meaningful to update: return the existing record stub
+            return { id: existing.id };
+          }
+
+          const employee = await prisma.employee.update({
+            where: { id: existing.id },
+            data: upd,
+            select: { id: true },
+          });
+          return employee;
+        }
+
+        // Create path: nulls for blanks are fine here (no prior data to keep).
+        const employee = await prisma.employee.create({
+          data: {
             clientId,
             nome,
             cognome,
@@ -284,21 +328,24 @@ export async function POST(request: Request) {
             dataNascita: parsedDate,
             luogoNascita: luogoNascita || null,
             email,
-            telefono: String(row.telefono ?? "").trim() || null,
-            cellulare: String(row.cellulare ?? "").trim() || null,
-            indirizzo: String(row.indirizzo ?? "").trim() || null,
-            comuneResidenza: String(row.comuneResidenza ?? "").trim() || null,
-            cap: String(row.cap ?? "").trim() || null,
+            telefono: telefono || null,
+            cellulare: cellulare || null,
+            indirizzo: indirizzo || null,
+            comuneResidenza: comuneResidenza || null,
+            cap: cap || null,
             provincia: provincia || null,
             regione: regione || null,
             emailAziendale: emailAziendale || null,
             partitaIva: partitaIva || null,
             iban: iban || null,
             pec: pec || null,
-            mansione: String(row.mansione ?? "").trim() || null,
-            note: String(row.note ?? "").trim() || null,
-            ...(customDataValue !== undefined ? { customData: customDataValue } : {}),
+            mansione: mansione || null,
+            note: note || null,
+            ...(persistCustomData && hasCustomDataInRow
+              ? { customData }
+              : {}),
           },
+          select: { id: true },
         });
         return employee;
       } catch (_error) {

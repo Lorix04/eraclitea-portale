@@ -73,7 +73,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Utenti e Ruoli
 - `User` (ADMIN/CLIENT/TEACHER) — `name` (opzionale), `clientId` opzionale, `teacherId` opzionale, `mustChangePassword`, reset token, `failedLoginAttempts`, `lockedUntil`, `adminRoleId`, `adminInviteToken`/`adminInviteStatus`
 - `AdminRole` — `name`, `description`, `isSystem` (Super Admin non modificabile), `isDefault`, `permissions` (JSON con mappa area->azioni)
-- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `piva` (unique), `codiceFiscale` (unique, nullable in DB ma obbligatorio dal layer Zod — 11 cifre o 16 alfanumerici), `hasCustomFields`, `customFields`, `maxUsers`, `defaultNotifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `clientUsers`, `clientInvites`, `clientActivityLogs`
+- `Client` — branding (logo), utenti, dipendenti, edizioni, ticket, categorie, `piva` (unique), `codiceFiscale` (unique, nullable in DB ma obbligatorio dal layer Zod — 11 cifre o 16 alfanumerici), `hasCustomFields`, `customFields`, `saveEmployeeCustomData` (Boolean, default false; quando false i flussi import/save NON persistono `Employee.customData`), `maxUsers`, `defaultNotifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `clientUsers`, `clientInvites`, `clientActivityLogs`
 - `ClientUser` — junction table Client-User: `isOwner` (proprietario), `status` (ACTIVE/INACTIVE/PENDING), `invitedBy`; un client puo avere piu utenti, un utente proprietario gestisce inviti
 - `ClientInvite` — inviti utente client: `token` (unique), `email`, `expiresAt` (7 giorni), `status` (PENDING/ACCEPTED/EXPIRED/REVOKED)
 - `ClientActivityLog` — log attivita client: `action`, `entityType`, `entityId`, `details` (JSON), `ipAddress`
@@ -285,9 +285,11 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - **Aggiungi dipendente manuale** (`AddEmployeeModal`): se il cliente selezionato ha un template, mostra un toggle "Campi Default" / "Campi Personalizzati". Default mode = campi standard (solo Nome/Cognome/CF obbligatori); custom mode = campi del template (standard mappati su colonne Employee, custom salvati in `customData`), obbligatori secondo il template. POST `/api/dipendenti` accetta `customData`
 - **Import dipendenti** (2 step): step 0 scelta formato (standard/personalizzato) → step 1 upload → step 2 column mapping con auto-detect → import
   - `importMode=standard`: validazione solo Nome, Cognome, Codice Fiscale (gli altri opzionali, validati se presenti)
-  - `importMode=custom`: validazione solo campi con `required=true` nella config custom (nessun campo fisso obbligatorio)
+  - `importMode=custom`: validazione solo campi con `required=true` nella config custom (saltata se `Client.saveEmployeeCustomData = false`, perche i valori custom non vengono persistiti)
   - Preview API: `POST /api/dipendenti/import/preview` con auto-mapping headers
   - Column mapping UI: tabella con dropdown per ogni colonna, campi obbligatori evidenziati
+  - **Upsert con safe-merge**: per CF gia presente nello stesso client, l'import AGGIORNA l'Employee invece di saltarlo. I campi standard vengono mergiati per chiave non vuota (valori vuoti nel file non sovrascrivono valori esistenti). La registration sull'edizione viene creata in modo idempotente (skip se gia presente). Risposta: `{ created, updated, errors, totalRows, imported = created + updated }`. Vale anche per `/api/anagrafiche` (autosave SpreadsheetEditor) e `POST /api/dipendenti` (AddEmployeeModal)
+  - **`Employee.customData` condizionato a `Client.saveEmployeeCustomData`**: quando il toggle e ON, i campi custom non-vuoti dalla riga vengono mergiati chiave-per-chiave sul JSON esistente (mai replace dell'intero blob). Quando OFF (default), `customData` non viene scritto ne modificato
 - **Export dipendenti**: scelta formato file (Excel .xlsx / CSV .csv) + scelta formato dati:
   - "Formato standard": 21 colonne fisse del sistema
   - "Formato cliente": SOLO le colonne dei campi personalizzati configurati

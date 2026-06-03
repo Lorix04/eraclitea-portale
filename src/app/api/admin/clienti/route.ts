@@ -138,6 +138,7 @@ export async function POST(request: Request) {
         ragioneSociale: client.ragioneSociale,
         piva: client.piva,
         codiceFiscale: client.codiceFiscale,
+        saveEmployeeCustomData: client.saveEmployeeCustomData ?? false,
         indirizzo: client.indirizzo || null,
         referenteNome: client.referenteNome,
         referenteEmail: client.referenteEmail,

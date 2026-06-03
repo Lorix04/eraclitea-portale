@@ -260,6 +260,8 @@ export const clientSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional()
     .or(z.literal("")),
+  // When true, import/save flows persist Employee.customData; otherwise ignored.
+  saveEmployeeCustomData: z.boolean().optional(),
 });
 
 export const clientCreateSchema = z.object({

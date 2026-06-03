@@ -222,18 +222,13 @@ export async function POST(request: Request) {
   const normalizedCF = data.codiceFiscale
     ? normalizeCodiceFiscale(data.codiceFiscale as string)
     : null;
-  if (normalizedCF) {
-    const existing = await prisma.employee.findFirst({
-      where: { clientId, codiceFiscale: normalizedCF },
-      select: { id: true },
-    });
-    if (existing) {
-      return NextResponse.json(
-        { error: "Dipendente con questo codice fiscale gia presente" },
-        { status: 409 }
-      );
-    }
-  }
+
+  // Per-client toggle: persist Employee.customData?
+  const clientCfg = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { saveEmployeeCustomData: true },
+  });
+  const persistCustomData = clientCfg?.saveEmployeeCustomData === true;
 
   const parsedDataNascita =
     data.dataNascita instanceof Date
@@ -242,10 +237,91 @@ export async function POST(request: Request) {
         ? new Date(data.dataNascita)
         : null;
 
-  const customDataValue =
-    data.customData && Object.keys(data.customData).length > 0
-      ? data.customData
-      : undefined;
+  const hasCustomDataIn =
+    data.customData && Object.keys(data.customData).length > 0;
+
+  // If a row with this CF already exists for this client, treat the manual
+  // "Aggiungi dipendente" as a safe-merge update (no 409). Empty submitted
+  // fields never overwrite existing values.
+  if (normalizedCF) {
+    const existing = await prisma.employee.findFirst({
+      where: { clientId, codiceFiscale: normalizedCF },
+      select: { id: true, customData: true },
+    });
+    if (existing) {
+      const upd: Record<string, unknown> = {};
+      const nome = (data.nome as string | null | undefined) ?? "";
+      const cognome = (data.cognome as string | null | undefined) ?? "";
+      const sesso = (data.sesso as string | null | undefined) ?? "";
+      const luogoNascita = (data.luogoNascita as string | null | undefined) ?? "";
+      const email = (data.email as string | null | undefined) ?? "";
+      const telefono = (data.telefono as string | null | undefined) ?? "";
+      const cellulare = (data.cellulare as string | null | undefined) ?? "";
+      const indirizzo = (data.indirizzo as string | null | undefined) ?? "";
+      const comuneResidenza =
+        (data.comuneResidenza as string | null | undefined) ?? "";
+      const cap = (data.cap as string | null | undefined) ?? "";
+      const provincia = (data.provincia as string | null | undefined) ?? "";
+      const regione = (data.regione as string | null | undefined) ?? "";
+      const emailAziendale =
+        (data.emailAziendale as string | null | undefined) ?? "";
+      const pec = (data.pec as string | null | undefined) ?? "";
+      const partitaIva = (data.partitaIva as string | null | undefined) ?? "";
+      const iban = (data.iban as string | null | undefined) ?? "";
+      const mansione = (data.mansione as string | null | undefined) ?? "";
+      const note = (data.note as string | null | undefined) ?? "";
+
+      if (nome) upd.nome = nome;
+      if (cognome) upd.cognome = cognome;
+      if (sesso) upd.sesso = sesso;
+      if (parsedDataNascita) upd.dataNascita = parsedDataNascita;
+      if (luogoNascita) upd.luogoNascita = luogoNascita;
+      if (email) upd.email = email;
+      if (telefono) upd.telefono = telefono;
+      if (cellulare) upd.cellulare = cellulare;
+      if (indirizzo) upd.indirizzo = indirizzo;
+      if (comuneResidenza) upd.comuneResidenza = comuneResidenza;
+      if (cap) upd.cap = cap;
+      if (provincia) upd.provincia = provincia;
+      if (regione) upd.regione = regione;
+      if (emailAziendale) upd.emailAziendale = emailAziendale;
+      if (pec) upd.pec = pec;
+      if (partitaIva) upd.partitaIva = partitaIva;
+      if (iban) upd.iban = iban;
+      if (mansione) upd.mansione = mansione;
+      if (note) upd.note = note;
+
+      if (persistCustomData && hasCustomDataIn) {
+        const prior =
+          (existing.customData as Record<string, unknown> | null) ?? {};
+        upd.customData = { ...prior, ...(data.customData as Record<string, unknown>) };
+      }
+
+      const updated =
+        Object.keys(upd).length > 0
+          ? await prisma.employee.update({
+              where: { id: existing.id },
+              data: upd,
+            })
+          : await prisma.employee.findUniqueOrThrow({
+              where: { id: existing.id },
+            });
+
+      await logAudit({
+        userId: session.user.id,
+        action: "EMPLOYEE_UPDATE",
+        entityType: "Employee",
+        entityId: updated.id,
+        ipAddress: getClientIP(request),
+      });
+
+      return NextResponse.json({ data: updated, merged: true });
+    }
+  }
+
+  const customDataValue = persistCustomData && hasCustomDataIn
+    ? (data.customData as Record<string, string>)
+    : undefined;
 
   const created = await prisma.employee.create({
     data: {

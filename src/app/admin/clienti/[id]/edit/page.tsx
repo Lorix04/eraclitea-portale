@@ -23,6 +23,7 @@ export default async function AdminEditClientePage({
     ragioneSociale: client.ragioneSociale,
     piva: client.piva,
     codiceFiscale: client.codiceFiscale ?? "",
+    saveEmployeeCustomData: client.saveEmployeeCustomData,
     indirizzo: client.indirizzo ?? "",
     referenteNome: client.referenteNome,
     referenteEmail: client.referenteEmail,

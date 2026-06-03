@@ -114,6 +114,9 @@ model Client {
   faviconPath       String?
   faviconFileName   String?
   isActive          Boolean            @default(true)
+  // When false (default), import/save flows do NOT persist Employee.customData.
+  // Only the standard fields (mapped via standardField or built-in) are saved.
+  saveEmployeeCustomData Boolean       @default(false)
   createdAt         DateTime           @default(now())
   users             User[]
   employees         Employee[]

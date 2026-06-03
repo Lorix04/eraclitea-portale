@@ -362,12 +362,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Determine effective required fields
+    // Determine effective required fields + per-client persistence toggle
     const clientForReq = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { hasCustomFields: true },
+      select: { hasCustomFields: true, saveEmployeeCustomData: true },
     });
     const isCustomMode = importMode === "custom" && clientForReq?.hasCustomFields && customFieldDefs.length > 0;
+    // When the client has the toggle OFF, Employee.customData is NOT persisted.
+    // Required-custom-fields validation is also skipped (they would be discarded).
+    const persistCustomData = clientForReq?.saveEmployeeCustomData === true;
 
     let effectiveStandardRequired: Set<TemplateHeader>;
     const requiredCustomFieldNames = new Set<string>();
@@ -380,7 +383,8 @@ export async function POST(request: Request) {
         if (cf.standardField) {
           const tmpl = STANDARD_TO_TEMPLATE[cf.standardField];
           if (tmpl) reqSet.add(tmpl);
-        } else {
+        } else if (persistCustomData) {
+          // Only enforce required on pure-custom fields when they will be saved
           requiredCustomFieldNames.add(cf.name);
         }
       }
@@ -389,10 +393,10 @@ export async function POST(request: Request) {
       effectiveStandardRequired = new Set(REQUIRED_FIELDS);
     }
 
-    const skippedRows: RowIssue[] = [];
     const errorRows: RowIssue[] = [];
     let totalRows = 0;
-    let imported = 0;
+    let created = 0;
+    let updated = 0;
 
     for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
       const excelRowNumber = rowIndex + 1;
@@ -471,73 +475,96 @@ export async function POST(request: Request) {
       }
 
       const normalizedCF = row.codice_fiscale ? normalizeCodiceFiscale(row.codice_fiscale) : "";
-      // Only check for duplicates if CF is present
-      const existingEmployeeId = normalizedCF ? employeesByCodiceFiscale.get(normalizedCF) : undefined;
-      if (existingEmployeeId) {
-        if (!editionId) {
-          skippedRows.push({
-            row: excelRowNumber,
-            reason: `Codice fiscale ${normalizedCF} gia esistente`,
-          });
-          continue;
-        }
 
-        const existingRegistration = await prisma.courseRegistration.findUnique({
-          where: {
-            courseEditionId_employeeId: {
-              courseEditionId: editionId,
-              employeeId: existingEmployeeId,
-            },
-          },
-          select: { id: true },
-        });
-
-        if (existingRegistration) {
-          skippedRows.push({
-            row: excelRowNumber,
-            reason: `Codice fiscale ${normalizedCF} gia registrato all'edizione`,
-          });
-          continue;
-        }
-
-        try {
-          await prisma.courseRegistration.create({
-            data: {
-              clientId,
-              courseEditionId: editionId,
-              employeeId: existingEmployeeId,
-              status: "INSERTED",
-            },
-          });
-          imported += 1;
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
-          ) {
-            skippedRows.push({
-              row: excelRowNumber,
-              reason: `Codice fiscale ${normalizedCF} gia registrato all'edizione`,
-            });
-            continue;
-          }
-
-          console.error("[EMPLOYEES_IMPORT_REGISTER] Error:", error);
-          errorRows.push({
-            row: excelRowNumber,
-            reason: "Errore durante la registrazione all'edizione",
-          });
-        }
-        continue;
-      }
-
-      // Extract custom field values from this row
+      // Extract custom field values from this row (used in both create and update)
       const customData: Record<string, string> = {};
       for (const [fieldName, colIdx] of customColumnIndexMap.entries()) {
         const val = normalizeCell(rowValues[colIdx]);
         if (val) customData[fieldName] = val;
       }
-      const customDataValue = Object.keys(customData).length > 0 ? customData : undefined;
+      const hasCustomDataInRow = Object.keys(customData).length > 0;
+      const customDataForCreate =
+        persistCustomData && hasCustomDataInRow ? customData : undefined;
+
+      const existingEmployeeId = normalizedCF ? employeesByCodiceFiscale.get(normalizedCF) : undefined;
+
+      // Existing employee: safe-merge update + ensure registration
+      if (existingEmployeeId) {
+        // Standard fields: include only non-empty values so existing data is
+        // never overwritten with blanks.
+        const stdUpdate: Record<string, unknown> = {};
+        if (row.nome) stdUpdate.nome = row.nome;
+        if (row.cognome) stdUpdate.cognome = row.cognome;
+        if (sessoVal) stdUpdate.sesso = sessoVal;
+        if (parsedBirthDate) stdUpdate.dataNascita = parsedBirthDate;
+        if (row.comune_nascita) stdUpdate.luogoNascita = row.comune_nascita;
+        if (row.email) stdUpdate.email = row.email;
+        if (row.comune_residenza) stdUpdate.comuneResidenza = row.comune_residenza;
+        if (row.cap) stdUpdate.cap = row.cap;
+        if (row.provincia) stdUpdate.provincia = row.provincia;
+        if (row.regione) stdUpdate.regione = row.regione;
+        if (row.indirizzo) stdUpdate.indirizzo = row.indirizzo;
+        if (row.telefono) stdUpdate.telefono = row.telefono;
+        if (row.cellulare) stdUpdate.cellulare = row.cellulare;
+        if (row.mansione) stdUpdate.mansione = row.mansione;
+        if (row.email_aziendale) stdUpdate.emailAziendale = row.email_aziendale;
+        if (row.pec) stdUpdate.pec = row.pec;
+        if (row.partita_iva) stdUpdate.partitaIva = row.partita_iva;
+        if (row.iban) stdUpdate.iban = row.iban;
+        if (row.note) stdUpdate.note = row.note;
+
+        // customData merge: only when toggle ON and row has custom values.
+        // Read existing JSON, spread new keys on top — never replace the blob.
+        if (persistCustomData && hasCustomDataInRow) {
+          const existing = await prisma.employee.findUnique({
+            where: { id: existingEmployeeId },
+            select: { customData: true },
+          });
+          const prior = (existing?.customData as Record<string, unknown> | null) ?? {};
+          stdUpdate.customData = { ...prior, ...customData };
+        }
+
+        try {
+          await prisma.$transaction(async (tx) => {
+            if (Object.keys(stdUpdate).length > 0) {
+              await tx.employee.update({
+                where: { id: existingEmployeeId },
+                data: stdUpdate,
+              });
+            }
+            if (editionId) {
+              // Idempotent registration: create only if missing
+              const existingReg = await tx.courseRegistration.findUnique({
+                where: {
+                  courseEditionId_employeeId: {
+                    courseEditionId: editionId,
+                    employeeId: existingEmployeeId,
+                  },
+                },
+                select: { id: true },
+              });
+              if (!existingReg) {
+                await tx.courseRegistration.create({
+                  data: {
+                    clientId,
+                    courseEditionId: editionId,
+                    employeeId: existingEmployeeId,
+                    status: "INSERTED",
+                  },
+                });
+              }
+            }
+          });
+          updated += 1;
+        } catch (error) {
+          console.error("[EMPLOYEES_IMPORT_UPDATE] Error:", error);
+          errorRows.push({
+            row: excelRowNumber,
+            reason: "Errore durante l'aggiornamento del dipendente",
+          });
+        }
+        continue;
+      }
 
       try {
         let createdEmployeeId: string | null = null;
@@ -565,7 +592,7 @@ export async function POST(request: Request) {
               partitaIva: row.partita_iva || null,
               iban: row.iban || null,
               note: row.note || null,
-              ...(customDataValue ? { customData: customDataValue } : {}),
+              ...(customDataForCreate ? { customData: customDataForCreate } : {}),
             },
           });
           createdEmployeeId = createdEmployee.id;
@@ -585,15 +612,17 @@ export async function POST(request: Request) {
         if (createdEmployeeId) {
           employeesByCodiceFiscale.set(normalizedCF, createdEmployeeId);
         }
-        imported += 1;
+        created += 1;
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
           error.code === "P2002"
         ) {
-          skippedRows.push({
+          // Race: another concurrent import created this CF. Skip — the row
+          // will already be present; surface as info, not a hard error.
+          errorRows.push({
             row: excelRowNumber,
-            reason: `Codice fiscale ${normalizedCF} gia esistente`,
+            reason: `Codice fiscale ${normalizedCF} gia presente (conflitto durante l'import)`,
           });
           continue;
         }
@@ -617,11 +646,16 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       totalRows,
-      imported,
-      skipped: skippedRows.length,
+      // Total persisted rows = new + merged. Kept as `imported` for backward
+      // compatibility with any existing UI; `created` and `updated` are the
+      // accurate split for the new toast.
+      imported: created + updated,
+      created,
+      updated,
+      skipped: 0,
       errors: errorRows.length,
       details: {
-        skippedRows,
+        skippedRows: [] as RowIssue[],
         errorRows,
       },
     });

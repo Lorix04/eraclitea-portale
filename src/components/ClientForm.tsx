@@ -138,6 +138,7 @@ export default function ClientForm({
     ragioneSociale: initialData?.ragioneSociale ?? "",
     piva: initialData?.piva ?? "",
     codiceFiscale: initialData?.codiceFiscale ?? "",
+    saveEmployeeCustomData: initialData?.saveEmployeeCustomData ?? false,
     indirizzo: initialData?.indirizzo ?? "",
     referenteNome: initialData?.referenteNome ?? "",
     referenteEmail: initialData?.referenteEmail ?? "",
@@ -450,6 +451,7 @@ export default function ClientForm({
         ragioneSociale: parsed.data.ragioneSociale,
         piva: parsed.data.piva,
         codiceFiscale: parsed.data.codiceFiscale,
+        saveEmployeeCustomData: parsed.data.saveEmployeeCustomData ?? false,
         indirizzo: parsed.data.indirizzo,
         referenteNome: parsed.data.referenteNome,
         referenteEmail: parsed.data.referenteEmail,
@@ -615,6 +617,33 @@ export default function ClientForm({
           onChange={(event) => updateField("telefono", event.target.value)}
         />
       </label>
+
+      <div className="rounded-lg border bg-muted/20 p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4"
+            checked={Boolean(form.saveEmployeeCustomData)}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                saveEmployeeCustomData: event.target.checked,
+              }))
+            }
+          />
+          <div>
+            <p className="text-sm font-medium">
+              Salva i campi personalizzati nei dati del dipendente
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Se disattivato (predefinito), i valori dei campi personalizzati
+              inseriti nelle anagrafiche delle edizioni non vengono salvati sul
+              record del dipendente. Attivalo solo se vuoi conservare quei
+              valori a livello di dipendente.
+            </p>
+          </div>
+        </label>
+      </div>
 
       <div className="space-y-2">
         <p className="text-sm font-medium">Categorie</p>
