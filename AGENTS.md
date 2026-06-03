@@ -95,14 +95,14 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Permessi: `view-all` (vede tutte le edizioni) vs `view-own` (vede solo le sue + senza referenti)
 - Filtro "Le mie edizioni" (default in `/admin/edizioni`) + filtro dropdown per referente nella lista edizioni
 - Dashboard personalizzata per referente (solo sue edizioni)
-- Assegnazione dalla tab Info dell'edizione: sezione **"Amministratori Sapienta assegnati"** (multi-checkbox con tutti gli admin attivi). API: `GET/POST/PUT /api/corsi/[id]/edizioni/[edId]/referents` (PUT fa bulk-replace dell'intero set)
+- Assegnazione dalla tab Info dell'edizione: sezione **"Amministratori Sapienta assegnati"** (multi-checkbox con tutti gli admin attivi). API: `GET/POST/PUT /api/corsi/[id]/edizioni/[edId]/referents` (PUT fa bulk-replace dell'intero set). Le checkbox sono persistite dal bottone unico **"Salva modifiche"** della tab Info (insieme ai campi edizione e a EditionClientAssignment) — nessun bottone di salvataggio per-sezione
 - Notifiche: `notifyAllAdmins()` / `emailAllAdmins()` in `notify-client.ts` ora targetizzano SOLO i referenti dell'edizione quando `courseEditionId` e passato e l'edizione ha referenti assegnati; fallback a tutti gli admin attivi altrimenti
 - La vecchia UI "Destinatari notifiche" (radio REFERENT_ONLY/REFERENT_PLUS/ALL + `notifyExtraUserIds`) e stata rimossa — i campi `CourseEdition.notifyPolicy` e `notifyExtraUserIds` restano nello schema DB (inerti) per compatibilita storica
 
 ### Assegnazione Admin Cliente a Edizioni
 - `EditionClientAssignment` — lega User (admin del CLIENTE) a CourseEdition, unique `[courseEditionId, userId]`. SEPARATO da EditionReferent/notifyPolicy (quelli sono per referenti Sapienta)
 - Regola: se un'edizione ha assegnazioni → solo gli assegnati la vedono di default e ricevono le notifiche; se NON ha assegnazioni → tutti gli admin del cliente (retrocompatibile)
-- Assegnazione SOLO dall'admin Sapienta: dettaglio edizione → tab Info → sezione "Amministratori cliente assegnati" (multi-checkbox). API: `GET/PUT /api/corsi/[id]/edizioni/[edId]/client-assignments`
+- Assegnazione SOLO dall'admin Sapienta: dettaglio edizione → tab Info → sezione "Amministratori cliente assegnati" (multi-checkbox). API: `GET/PUT /api/corsi/[id]/edizioni/[edId]/client-assignments`. Le checkbox sono persistite dal bottone unico "Salva modifiche" della tab Info (insieme a EditionReferent e ai campi edizione)
 - Lista edizioni admin: colonna "Assegnati cliente" con "👥 N assegnati" o "👥 Tutti"
 - Lato client `/corsi`: toggle "Le mie edizioni" (default, `scope=mine`) / "Tutte le edizioni" (`scope=all`). "mie" = assegnate all'utente + senza assegnazioni
 - Notifiche: `notifyAssignedClientUsers()` / `emailAssignedClientUsers()` in `notify-client.ts` — se ci sono assegnazioni notificano solo gli assegnati, altrimenti fallback a `notifyAllClientUsers`/`emailAllClientUsers`. Tutti i trigger edizione-cliente (NEW_EDITION, EDITION_DATES_CHANGED, EDITION_CANCELLED, COURSE_COMPLETED, EDITION_INFO_CHANGED, REGISTRY_CONFIRMED/REJECTED, LESSON_CHANGED, ATTENDANCE_RECORDED, DEADLINE_*, CERTIFICATE_EXPIRED) usano questi helper

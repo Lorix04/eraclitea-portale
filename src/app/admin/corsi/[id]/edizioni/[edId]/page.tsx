@@ -169,10 +169,8 @@ export default function AdminEditionDetailPage({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clientUsers, setClientUsers] = useState<Array<{ userId: string; email: string; name: string | null; isOwner: boolean }>>([]);
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
-  const [savingAssignments, setSavingAssignments] = useState(false);
   const [sapientaAdmins, setSapientaAdmins] = useState<Array<{ id: string; email: string; name: string | null; roleName: string | null }>>([]);
   const [assignedAdminIds, setAssignedAdminIds] = useState<string[]>([]);
-  const [savingAdminAssignments, setSavingAdminAssignments] = useState(false);
   const [customFieldSetId, setCustomFieldSetId] = useState<string | null>(null);
   const [availableFieldSets, setAvailableFieldSets] = useState<Array<{ id: string; name: string; isDefault: boolean; _count: { fields: number } }>>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -430,6 +428,113 @@ export default function AdminEditionDetailPage({
     };
   }, [lessonModalOpen, modalMounted]);
 
+  // Persists the edition fields. Returns true on success.
+  // Toasts the error itself on failure.
+  const persistEdition = async (): Promise<boolean> => {
+    const presenzaMinimaPayloadValue = hasPresenzaMinima
+      ? Number(presenzaMinimaValue)
+      : null;
+    const bodyData = {
+      startDate,
+      endDate,
+      deadlineRegistry,
+      status,
+      presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
+      presenzaMinimaValue: presenzaMinimaPayloadValue,
+      notes,
+      customFieldSetId,
+    };
+    const res = await fetch(`/api/corsi/${params.id}/edizioni/${params.edId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyData),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      const message = String(json.error ?? "");
+      if (message.includes("fine")) {
+        setErrors((prev) => ({ ...prev, endDate: message }));
+      } else if (message.includes("deadline")) {
+        setErrors((prev) => ({ ...prev, deadlineRegistry: message }));
+      }
+      toast.error(json.error ?? "Errore durante il salvataggio dell'edizione");
+      return false;
+    }
+    const json = await res.json();
+    const data = json.data as EditionDetail;
+    setEdition(data);
+    setStartDate(formatItalianDate(data.startDate));
+    setEndDate(formatItalianDate(data.endDate));
+    setDeadlineRegistry(formatItalianDate(data.deadlineRegistry));
+    setStatus(data.status ?? "DRAFT");
+    setNotes(data.notes ?? "");
+    const hasMinimum =
+      (data.presenzaMinimaType === "percentage" ||
+        data.presenzaMinimaType === "days" ||
+        data.presenzaMinimaType === "hours") &&
+      typeof data.presenzaMinimaValue === "number";
+    setHasPresenzaMinima(hasMinimum);
+    setPresenzaMinimaType(
+      data.presenzaMinimaType === "days" || data.presenzaMinimaType === "hours"
+        ? data.presenzaMinimaType
+        : "percentage"
+    );
+    setPresenzaMinimaValue(
+      hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
+    );
+    return true;
+  };
+
+  // Persists EditionClientAssignment via PUT bulk-replace. Returns true on success.
+  const persistClientAssignments = async (): Promise<boolean> => {
+    const res = await fetch(
+      `/api/corsi/${params.id}/edizioni/${params.edId}/client-assignments`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: assignedUserIds }),
+      }
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      toast.error(
+        json.error ?? "Errore salvataggio amministratori cliente assegnati"
+      );
+      return false;
+    }
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json.assignedUserIds)) {
+      setAssignedUserIds(json.assignedUserIds);
+    }
+    return true;
+  };
+
+  // Persists EditionReferent via PUT bulk-replace. Returns true on success.
+  const persistAdminReferents = async (): Promise<boolean> => {
+    const res = await fetch(
+      `/api/corsi/${params.id}/edizioni/${params.edId}/referents`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: assignedAdminIds }),
+      }
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      toast.error(
+        json.error ?? "Errore salvataggio amministratori Sapienta assegnati"
+      );
+      return false;
+    }
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json.assignedUserIds)) {
+      setAssignedAdminIds(json.assignedUserIds);
+    }
+    return true;
+  };
+
+  // Unified save: edition + client assignments + Sapienta referents in sequence.
+  // Single success toast at the end; granular error if any step fails.
   const handleSave = async () => {
     if (!edition) return;
     if (edition.status === "ARCHIVED") {
@@ -460,109 +565,14 @@ export default function AdminEditionDetailPage({
     if (Object.keys(fieldErrors).length > 0) return;
 
     setSaving(true);
-    const presenzaMinimaPayloadValue = hasPresenzaMinima
-      ? Number(presenzaMinimaValue)
-      : null;
-    const bodyData = {
-      startDate,
-      endDate,
-      deadlineRegistry,
-      status,
-      presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
-      presenzaMinimaValue: presenzaMinimaPayloadValue,
-      notes,
-      customFieldSetId,
-    };
-    console.log("INVIO PUT edition body:", JSON.stringify(bodyData, null, 2));
-    const res = await fetch(`/api/corsi/${params.id}/edizioni/${params.edId}` , {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyData),
-    });
-    setSaving(false);
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      console.log("RISPOSTA ERRORE:", JSON.stringify(json, null, 2));
-      const message = String(json.error ?? "");
-      if (message.includes("fine")) {
-        setErrors((prev) => ({ ...prev, endDate: message }));
-      } else if (message.includes("deadline")) {
-        setErrors((prev) => ({ ...prev, deadlineRegistry: message }));
-      }
-      toast.error(json.error ?? "Errore durante il salvataggio");
-      return;
+    try {
+      if (!(await persistEdition())) return;
+      if (!(await persistClientAssignments())) return;
+      if (!(await persistAdminReferents())) return;
+      toast.success("Modifiche salvate");
+    } finally {
+      setSaving(false);
     }
-
-    const json = await res.json();
-    const data = json.data as EditionDetail;
-    setEdition(data);
-    setStartDate(formatItalianDate(data.startDate));
-    setEndDate(formatItalianDate(data.endDate));
-    setDeadlineRegistry(formatItalianDate(data.deadlineRegistry));
-    setStatus(data.status ?? "DRAFT");
-    setNotes(data.notes ?? "");
-    const hasMinimum =
-      (data.presenzaMinimaType === "percentage" ||
-        data.presenzaMinimaType === "days" ||
-        data.presenzaMinimaType === "hours") &&
-      typeof data.presenzaMinimaValue === "number";
-    setHasPresenzaMinima(hasMinimum);
-    setPresenzaMinimaType(
-      data.presenzaMinimaType === "days" || data.presenzaMinimaType === "hours"
-        ? data.presenzaMinimaType
-        : "percentage"
-    );
-    setPresenzaMinimaValue(
-      hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
-    );
-    toast.success("Edizione aggiornata");
-  };
-
-  const handleSaveAssignments = async () => {
-    setSavingAssignments(true);
-    const res = await fetch(
-      `/api/corsi/${params.id}/edizioni/${params.edId}/client-assignments`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userIds: assignedUserIds }),
-      }
-    );
-    setSavingAssignments(false);
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      toast.error(json.error ?? "Errore salvataggio assegnazioni");
-      return;
-    }
-    const json = await res.json().catch(() => ({}));
-    if (Array.isArray(json.assignedUserIds)) {
-      setAssignedUserIds(json.assignedUserIds);
-    }
-    toast.success("Assegnazioni salvate");
-  };
-
-  const handleSaveAdminAssignments = async () => {
-    setSavingAdminAssignments(true);
-    const res = await fetch(
-      `/api/corsi/${params.id}/edizioni/${params.edId}/referents`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userIds: assignedAdminIds }),
-      }
-    );
-    setSavingAdminAssignments(false);
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      toast.error(json.error ?? "Errore salvataggio referenti");
-      return;
-    }
-    const json = await res.json().catch(() => ({}));
-    if (Array.isArray(json.assignedUserIds)) {
-      setAssignedAdminIds(json.assignedUserIds);
-    }
-    toast.success("Amministratori assegnati");
   };
 
   const handleLessonSubmit = async (data: {
@@ -948,16 +958,6 @@ export default function AdminEditionDetailPage({
                     </label>
                   );
                 })}
-                {!isArchived ? (
-                  <button
-                    type="button"
-                    className="mt-2 inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                    onClick={handleSaveAssignments}
-                    disabled={savingAssignments}
-                  >
-                    {savingAssignments ? "Salvataggio..." : "Salva assegnazioni"}
-                  </button>
-                ) : null}
               </div>
             )}
           </div>
@@ -998,16 +998,6 @@ export default function AdminEditionDetailPage({
                     </label>
                   );
                 })}
-                {!isArchived ? (
-                  <button
-                    type="button"
-                    className="mt-2 inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
-                    onClick={handleSaveAdminAssignments}
-                    disabled={savingAdminAssignments}
-                  >
-                    {savingAdminAssignments ? "Salvataggio..." : "Salva amministratori"}
-                  </button>
-                ) : null}
               </div>
             )}
           </div>
