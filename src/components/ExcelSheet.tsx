@@ -336,41 +336,48 @@ export default function ExcelSheet({
             { data: "regione", title: "Regione", type: "autocomplete" as const, strict: false, filter: false, source: (q: string, p: (c: string[]) => void) => p(filterRegioni(String(q ?? "")).slice(0, 50)) },
           ] as any[]
       ),
-      {
-        data: "_altro",
-        title: "Altro",
-        readOnly: true,
-        width: 90,
-        renderer: (
-          instance: any,
-          td: HTMLTableCellElement,
-          rowIndex: number
-        ) => {
-          const rowData = normalizeRow(instance.getSourceDataAtRow(rowIndex) ?? {});
-          const extraStatus = getExtraStatus(rowData);
+      // "Altro" column: shown only in standard-fields mode. When the edition
+      // uses a custom-fields template (hasCustom), the template already defines
+      // ALL the visible columns and "Altro" would be redundant/inconsistent.
+      ...(hasCustom
+        ? []
+        : [
+            {
+              data: "_altro",
+              title: "Altro",
+              readOnly: true,
+              width: 90,
+              renderer: (
+                instance: any,
+                td: HTMLTableCellElement,
+                rowIndex: number
+              ) => {
+                const rowData = normalizeRow(instance.getSourceDataAtRow(rowIndex) ?? {});
+                const extraStatus = getExtraStatus(rowData);
 
-          td.innerHTML = "";
-          td.style.textAlign = "center";
-          td.style.verticalAlign = "middle";
-          td.style.cursor = readOnly ? "default" : "pointer";
+                td.innerHTML = "";
+                td.style.textAlign = "center";
+                td.style.verticalAlign = "middle";
+                td.style.cursor = readOnly ? "default" : "pointer";
 
-          const btn = document.createElement("span");
-          btn.className = "altro-btn";
-          let styleSuffix = "background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;";
-          let textContent = "Altro";
-          if (extraStatus === "complete") {
-            styleSuffix = "background:#dcfce7;color:#166534;border:1px solid #bbf7d0;";
-            textContent = "Altro ✓";
-          }
+                const btn = document.createElement("span");
+                btn.className = "altro-btn";
+                let styleSuffix = "background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;";
+                let textContent = "Altro";
+                if (extraStatus === "complete") {
+                  styleSuffix = "background:#dcfce7;color:#166534;border:1px solid #bbf7d0;";
+                  textContent = "Altro ✓";
+                }
 
-          btn.style.cssText =
-            "display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:12px;cursor:pointer;" +
-            styleSuffix;
-          btn.textContent = textContent;
-          td.appendChild(btn);
-          return td;
-        },
-      },
+                btn.style.cssText =
+                  "display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:12px;cursor:pointer;" +
+                  styleSuffix;
+                btn.textContent = textContent;
+                td.appendChild(btn);
+                return td;
+              },
+            },
+          ]),
     ],
     [filterProvince, filterRegioni, readOnly, selectedRows, customFields, hasCustom]
   );
