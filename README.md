@@ -23,18 +23,23 @@ Portale B2B per enti di formazione: area admin per gestione clienti/corsi/docent
 Gestione completa: clienti, corsi, edizioni, lezioni, docenti, dipendenti, attestati, presenze, ticket, export, audit, SMTP, status, ruoli e permessi (RBAC), integrazioni AI, server monitor, amministratori.
 - Template campi personalizzati multi-set per client (editor con drag & drop, upload file, duplica)
 - Preferenze notifiche admin (11 tipi admin-specifici)
-- Policy notifiche per edizione (REFERENT_ONLY / REFERENT_PLUS / ALL)
+- Amministratori Sapienta assegnati per edizione (EditionReferent, multi-checkbox in tab Info)
+- Assegnazione amministratori cliente per edizione (EditionClientAssignment, controlla visibilita e notifiche client)
+- Filtro "Le mie edizioni" (default) / "Tutte le edizioni" in `/admin/edizioni`
 - Riepilogo giornaliero email (panoramica operativa ore 7:00)
 - Azioni su amministratori client (impersona, reset password, trasferisci proprieta)
 - Esporta anagrafiche filtrate per edizione con colonne dal template
 - Rifiuto anagrafiche con motivo e notifica al client
+- Campo Codice Fiscale obbligatorio su Client (11 cifre o 16 char, unique)
 
 ### Portale Cliente (`/(dashboard)/*`)
 Area cliente: dashboard, corsi, dipendenti (con SpreadsheetEditor e template personalizzati), attestati, storico, notifiche, supporto (ticket), profilo, amministratori.
 - Preferenze notifiche (toggle in-app/email per 28+ tipi)
 - Gestione amministratori (inviti, revoca, reinvio, trasferimento proprieta)
+- Toggle "Le mie edizioni" (default) / "Tutte le edizioni" nella lista corsi
 - Esporta anagrafiche per edizione
 - Riepilogo settimanale email (lunedi 8:00)
+- Codice Fiscale azienda visibile in profilo (read-only)
 
 ### Portale Docente (`/docente/*`)
 Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profilo (con CV strutturato a 8 sezioni), CV DPR 445, notifiche, supporto (ticket).
@@ -46,9 +51,14 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - **RBAC Admin**: 19 aree permessi, 4 template ruoli predefiniti, enforcement API + UI
 - **Impersonazione**: admin puo operare come client o docente ("Accedi come")
 - **Template anagrafiche multi-set**: ogni client puo avere multipli template di campi personalizzati (standard + custom in ordine misto). Ogni edizione punta a un template specifico. Editor con drag & drop, upload CSV/Excel per auto-rilevamento colonne, duplica template, anteprima colonne
+- **Campi obbligatori minimi**: nei campi standard di default solo Nome, Cognome, Codice Fiscale sono obbligatori (gli altri opzionali, validati solo se valorizzati). Vale per SpreadsheetEditor, modale aggiungi dipendente, import e invio anagrafiche
 - **Sistema notifiche completo**: 42+ tipi di notifica (in-app + email) per Client, Admin e Docente. Preferenze per utente con toggle separati in-app/email. Notifiche sicurezza non disattivabili
-- **Policy notifiche per edizione**: REFERENT_ONLY / REFERENT_PLUS / ALL — controlla chi riceve le notifiche relative a un'edizione. Default configurabile a livello client
+- **Assegnazioni mirate per edizione**:
+  - `EditionReferent` — admin Sapienta assegnati: solo loro ricevono notifiche admin per quell'edizione e (con permesso `view-own`) la vedono in "Le mie edizioni". Se nessuno assegnato → tutti
+  - `EditionClientAssignment` — admin cliente assegnati: solo loro vedono l'edizione e ricevono le notifiche cliente. Se nessuno assegnato → tutti gli admin del client (retrocompatibile)
 - **Multi-utente client**: piu amministratori per client con invito via email, password temporanea auto-generata, mustChangePassword, trasferimento proprieta, reset password
+- **Autocomplete Codice Fiscale**: nel modale aggiungi/modifica dipendente e nel SpreadsheetEditor, alla digitazione del CF (16 caratteri) auto-fill di Data Nascita / Sesso / Comune di Nascita (decode matematico) + lookup dipendente esistente con toast "Compila automaticamente" che riempie tutti i campi
+- **Autocomplete Comune**: componente `ComuneAutocomplete` con datalist su 7904 comuni italiani; alla selezione di un Comune di Residenza auto-fill di CAP, Provincia (nome completo) e Regione. Usato in AddEmployeeModal, EmployeeForm, EmployeeCardForm
 - **Presenze**: matrice presenze con ore parziali, calcolo su ore (percentage/days/hours), export PDF
 - **Materiale didattico**: libreria corso + materiali edizione, upload/approvazione, anteprima, download ZIP
 - **CV Docente**: 8 sezioni strutturate, import AI da PDF (OpenRouter), download CV Europass
@@ -143,9 +153,13 @@ Tutti protetti con `CRON_API_KEY` e timing-safe comparison.
 - Employee.nome/cognome/codiceFiscale sono nullable (per custom fields mode)
 - Impersonazione teacher: usare `getEffectiveTeacherContext()` in tutte le API teacher
 - Impersonazione client: usare `getEffectiveClientContext()` in tutte le API client
-- Notifiche edizione: usare `notifyEditionUsers()` (rispetta la policy) non `notifyAllClientUsers()`
+- Notifiche client su edizione: usare `notifyAssignedClientUsers()` / `emailAssignedClientUsers()` (rispetta EditionClientAssignment, fallback a tutti); `notifyEditionUsers()` / `emailEditionUsers()` (basate su notifyPolicy) restano nel codice ma sono inerti
+- Notifiche admin su edizione: `notifyAllAdmins()` / `emailAllAdmins()` con `courseEditionId` settato targettano automaticamente i referenti EditionReferent se presenti, altrimenti tutti gli admin
 - Template custom fields: usare `getCustomFieldsForEdition()` non query diretta `ClientCustomField`
 - `ClientCustomField.customFieldSetId` e obbligatorio — campi orfani non permessi
+- `adminRoleId`, `customFieldSetId`, `clientUserId` possono essere UUID o stringhe custom — usare `z.string().min(1)` nelle validazioni Zod, MAI `.cuid()`
+- `Client.codiceFiscale` e nullable nel DB (per migrazione safe) ma obbligatorio al livello Zod — i record legacy si popolano alla prossima modifica via UI admin
+- Campi `CourseEdition.notifyPolicy` e `notifyExtraUserIds` restano nello schema ma sono inerti — sostituiti da EditionClientAssignment
 
 ## Test
 

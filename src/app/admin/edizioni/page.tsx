@@ -523,6 +523,11 @@ function AdminEdizioniContent() {
                 : "-",
           },
           {
+            key: "luogo",
+            header: "Luogo",
+            render: (e) => getLuoghiDisplay(e),
+          },
+          {
             key: "status",
             header: "Stato",
             isBadge: true,
@@ -584,11 +589,6 @@ function AdminEdizioniContent() {
             header: "Presenza min.",
             hideOnCard: true,
             render: (e) => getPresenzaMinimaDisplay(e),
-          },
-          {
-            key: "luogo",
-            header: "Luogo",
-            render: (e) => getLuoghiDisplay(e),
           },
         ] satisfies Column<EditionRow>[]}
         data={editions}
