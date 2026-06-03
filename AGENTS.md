@@ -91,10 +91,13 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `CourseRegistration` lega `Employee` a `CourseEdition`
 
 ### Referenti Edizione
-- `EditionReferent` — lega User (admin) a CourseEdition, con `assignedAt`, `notes`
+- `EditionReferent` — lega User (admin Sapienta) a CourseEdition, unique `[courseEditionId, userId]`, con `assignedAt`, `notes`
 - Permessi: `view-all` (vede tutte le edizioni) vs `view-own` (vede solo le sue + senza referenti)
-- Filtro "Le mie edizioni" + filtro dropdown per referente nella lista edizioni
+- Filtro "Le mie edizioni" (default in `/admin/edizioni`) + filtro dropdown per referente nella lista edizioni
 - Dashboard personalizzata per referente (solo sue edizioni)
+- Assegnazione dalla tab Info dell'edizione: sezione **"Amministratori Sapienta assegnati"** (multi-checkbox con tutti gli admin attivi). API: `GET/POST/PUT /api/corsi/[id]/edizioni/[edId]/referents` (PUT fa bulk-replace dell'intero set)
+- Notifiche: `notifyAllAdmins()` / `emailAllAdmins()` in `notify-client.ts` ora targetizzano SOLO i referenti dell'edizione quando `courseEditionId` e passato e l'edizione ha referenti assegnati; fallback a tutti gli admin attivi altrimenti
+- La vecchia UI "Destinatari notifiche" (radio REFERENT_ONLY/REFERENT_PLUS/ALL + `notifyExtraUserIds`) e stata rimossa — i campi `CourseEdition.notifyPolicy` e `notifyExtraUserIds` restano nello schema DB (inerti) per compatibilita storica
 
 ### Assegnazione Admin Cliente a Edizioni
 - `EditionClientAssignment` — lega User (admin del CLIENTE) a CourseEdition, unique `[courseEditionId, userId]`. SEPARATO da EditionReferent/notifyPolicy (quelli sono per referenti Sapienta)

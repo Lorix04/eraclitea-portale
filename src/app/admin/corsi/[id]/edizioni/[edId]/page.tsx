@@ -37,7 +37,6 @@ import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { Skeleton } from "@/components/ui/Skeleton";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
-import EditionReferentsSection from "@/components/admin/EditionReferentsSection";
 import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
@@ -74,8 +73,6 @@ type EditionDetail = {
   presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   notes?: string | null;
-  notifyPolicy?: "REFERENT_ONLY" | "REFERENT_PLUS" | "ALL";
-  notifyExtraUserIds?: string[];
   customFieldSetId?: string | null;
   registrySentAt?: string | null;
   course: { id: string; title: string; durationHours?: number | null };
@@ -170,11 +167,12 @@ export default function AdminEditionDetailPage({
   const [lessonSaving, setLessonSaving] = useState(false);
   const [lessonDeleting, setLessonDeleting] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [notifyPolicy, setNotifyPolicy] = useState<"REFERENT_ONLY" | "REFERENT_PLUS" | "ALL">("ALL");
-  const [notifyExtraUserIds, setNotifyExtraUserIds] = useState<string[]>([]);
   const [clientUsers, setClientUsers] = useState<Array<{ userId: string; email: string; name: string | null; isOwner: boolean }>>([]);
   const [assignedUserIds, setAssignedUserIds] = useState<string[]>([]);
   const [savingAssignments, setSavingAssignments] = useState(false);
+  const [sapientaAdmins, setSapientaAdmins] = useState<Array<{ id: string; email: string; name: string | null; roleName: string | null }>>([]);
+  const [assignedAdminIds, setAssignedAdminIds] = useState<string[]>([]);
+  const [savingAdminAssignments, setSavingAdminAssignments] = useState(false);
   const [customFieldSetId, setCustomFieldSetId] = useState<string | null>(null);
   const [availableFieldSets, setAvailableFieldSets] = useState<Array<{ id: string; name: string; isDefault: boolean; _count: { fields: number } }>>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -266,8 +264,6 @@ export default function AdminEditionDetailPage({
     setPresenzaMinimaValue(
       hasMinimum ? String(data.presenzaMinimaValue ?? "") : ""
     );
-    setNotifyPolicy(data.notifyPolicy ?? "ALL");
-    setNotifyExtraUserIds(data.notifyExtraUserIds ?? []);
     setCustomFieldSetId(data.customFieldSetId ?? null);
     // Load client users for the multi-select
     const edClientId = data.clientId ?? data.client?.id;
@@ -314,6 +310,34 @@ export default function AdminEditionDetailPage({
         }
       })
       .catch(() => {});
+
+    // Load the full list of active Sapienta admins (for the checkbox UI)
+    fetch(`/api/admin/users/admins`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json && Array.isArray(json.admins)) {
+          setSapientaAdmins(
+            json.admins.map((a: any) => ({
+              id: a.id,
+              email: a.email,
+              name: a.name ?? null,
+              roleName: a.roleName ?? null,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+
+    // Load existing Sapienta referents for this edition (pre-check the boxes)
+    fetch(`/api/corsi/${params.id}/edizioni/${params.edId}/referents`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json && Array.isArray(json.referents)) {
+          setAssignedAdminIds(json.referents.map((r: any) => r.userId));
+        }
+      })
+      .catch(() => {});
+
     setLoading(false);
   }, [params.id, params.edId]);
 
@@ -447,8 +471,6 @@ export default function AdminEditionDetailPage({
       presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
       presenzaMinimaValue: presenzaMinimaPayloadValue,
       notes,
-      notifyPolicy,
-      notifyExtraUserIds: notifyPolicy === "REFERENT_PLUS" ? notifyExtraUserIds : [],
       customFieldSetId,
     };
     console.log("INVIO PUT edition body:", JSON.stringify(bodyData, null, 2));
@@ -518,6 +540,29 @@ export default function AdminEditionDetailPage({
       setAssignedUserIds(json.assignedUserIds);
     }
     toast.success("Assegnazioni salvate");
+  };
+
+  const handleSaveAdminAssignments = async () => {
+    setSavingAdminAssignments(true);
+    const res = await fetch(
+      `/api/corsi/${params.id}/edizioni/${params.edId}/referents`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: assignedAdminIds }),
+      }
+    );
+    setSavingAdminAssignments(false);
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      toast.error(json.error ?? "Errore salvataggio referenti");
+      return;
+    }
+    const json = await res.json().catch(() => ({}));
+    if (Array.isArray(json.assignedUserIds)) {
+      setAssignedAdminIds(json.assignedUserIds);
+    }
+    toast.success("Amministratori assegnati");
   };
 
   const handleLessonSubmit = async (data: {
@@ -917,64 +962,54 @@ export default function AdminEditionDetailPage({
             )}
           </div>
 
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">Destinatari notifiche</h3>
-            <div className="space-y-2">
-              {(["REFERENT_ONLY", "REFERENT_PLUS", "ALL"] as const).map((policy) => {
-                const labels: Record<string, { title: string; desc: string }> = {
-                  REFERENT_ONLY: { title: "Solo referente", desc: "Le notifiche vanno solo al referente dell'edizione" },
-                  REFERENT_PLUS: { title: "Referente + selezionati", desc: "Aggiungi altri destinatari" },
-                  ALL: { title: "Tutti", desc: "Tutti gli amministratori del cliente ricevono le notifiche" },
-                };
-                return (
-                  <label key={policy} className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/30">
-                    <input
-                      type="radio"
-                      name="notifyPolicy"
-                      value={policy}
-                      checked={notifyPolicy === policy}
-                      onChange={() => setNotifyPolicy(policy)}
-                      disabled={isArchived}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{labels[policy].title}</p>
-                      <p className="text-xs text-muted-foreground">{labels[policy].desc}</p>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-            {notifyPolicy === "REFERENT_PLUS" && clientUsers.length > 0 ? (
-              <div className="ml-7 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Destinatari aggiuntivi:</p>
-                {clientUsers.map((cu) => {
-                  const isReferent = edition?.referents?.some((r: any) => r.userId === cu.userId);
-                  const checked = isReferent || notifyExtraUserIds.includes(cu.userId);
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+            <h3 className="text-sm font-semibold">👥 Amministratori Sapienta assegnati</h3>
+            <p className="text-xs text-muted-foreground">
+              Seleziona gli amministratori Sapienta che gestiranno questa edizione.
+              Se nessuno e selezionato, <strong>tutti</strong> gli amministratori vedranno l&apos;edizione e riceveranno le notifiche.
+            </p>
+            {sapientaAdmins.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nessun amministratore attivo disponibile.</p>
+            ) : (
+              <div className="space-y-2">
+                {sapientaAdmins.map((admin) => {
+                  const checked = assignedAdminIds.includes(admin.id);
                   return (
-                    <label key={cu.userId} className="flex items-center gap-2 text-sm">
+                    <label key={admin.id} className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
                         checked={checked}
-                        disabled={isArchived || isReferent}
+                        disabled={isArchived}
                         onChange={(e) => {
-                          if (isReferent) return;
-                          setNotifyExtraUserIds((prev) =>
+                          setAssignedAdminIds((prev) =>
                             e.target.checked
-                              ? [...prev, cu.userId]
-                              : prev.filter((id) => id !== cu.userId)
+                              ? [...prev, admin.id]
+                              : prev.filter((id) => id !== admin.id)
                           );
                         }}
                       />
-                      <span>{cu.name || cu.email}</span>
-                      <span className="text-xs text-muted-foreground">({cu.email})</span>
-                      {cu.isOwner ? <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">Proprietario</span> : null}
-                      {isReferent ? <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">Referente</span> : null}
+                      <span>{admin.name || admin.email}</span>
+                      <span className="text-xs text-muted-foreground">({admin.email})</span>
+                      {admin.roleName ? (
+                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700">
+                          {admin.roleName}
+                        </span>
+                      ) : null}
                     </label>
                   );
                 })}
+                {!isArchived ? (
+                  <button
+                    type="button"
+                    className="mt-2 inline-flex items-center rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+                    onClick={handleSaveAdminAssignments}
+                    disabled={savingAdminAssignments}
+                  >
+                    {savingAdminAssignments ? "Salvataggio..." : "Salva amministratori"}
+                  </button>
+                ) : null}
               </div>
-            ) : null}
+            )}
           </div>
 
           {!isArchived ? (
@@ -989,13 +1024,6 @@ export default function AdminEditionDetailPage({
               </button>
             </div>
           ) : null}
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <EditionReferentsSection
-            courseId={params.id}
-            editionId={params.edId}
-            canEdit={!isArchived}
-          />
         </div>
         </>
       ) : null}

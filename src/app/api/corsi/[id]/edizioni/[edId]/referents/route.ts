@@ -118,3 +118,66 @@ export async function POST(
 
   return NextResponse.json({ success: true, created });
 }
+
+// PUT — bulk-replace the full set of Sapienta referents for this edition.
+// Body: { userIds: string[] }. Filters to active ADMIN users only.
+// Used by the inline "Amministratori Sapienta assegnati" checkbox UI.
+export async function PUT(
+  request: Request,
+  context: { params: { id: string; edId: string } }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!checkApiPermission(session, "edizioni", "edit")) {
+    return NextResponse.json({ error: "Permesso negato" }, { status: 403 });
+  }
+
+  const edition = await prisma.courseEdition.findUnique({
+    where: { id: context.params.edId },
+    select: { id: true, courseId: true },
+  });
+  if (!edition || edition.courseId !== context.params.id) {
+    return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
+  }
+
+  let body: { userIds?: string[] } = {};
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+  }
+
+  const requestedIds = Array.isArray(body.userIds)
+    ? Array.from(new Set(body.userIds.filter((id) => typeof id === "string")))
+    : [];
+
+  // Keep only active ADMIN users
+  let validIds: string[] = [];
+  if (requestedIds.length > 0) {
+    const adminUsers = await prisma.user.findMany({
+      where: { id: { in: requestedIds }, role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+    validIds = adminUsers.map((u) => u.id);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.editionReferent.deleteMany({
+      where: { courseEditionId: context.params.edId },
+    });
+    if (validIds.length > 0) {
+      await tx.editionReferent.createMany({
+        data: validIds.map((userId) => ({
+          courseEditionId: context.params.edId,
+          userId,
+          assignedById: session.user.id,
+        })),
+        skipDuplicates: true,
+      });
+    }
+  });
+
+  return NextResponse.json({ success: true, assignedUserIds: validIds });
+}

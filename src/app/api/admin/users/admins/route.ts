@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     select: {
       id: true,
       email: true,
+      name: true,
       adminRole: { select: { name: true } },
     },
     orderBy: { email: "asc" },
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
     admins: admins.map((a) => ({
       id: a.id,
       email: a.email,
+      name: a.name,
       roleName: a.adminRole?.name ?? null,
     })),
   });

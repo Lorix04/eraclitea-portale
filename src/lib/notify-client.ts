@@ -134,7 +134,11 @@ export async function notifyClientOwner(params: {
 // ─── Admin notification helpers ───
 
 /**
- * Send in-app notification to ALL active admins, respecting preferences.
+ * Send in-app notification to admins, respecting preferences.
+ *
+ * When `courseEditionId` is provided AND the edition has Sapienta referents
+ * assigned (EditionReferent), notifies ONLY those referents (intersected with
+ * active admins). Otherwise notifies all active admins (backward-compatible).
  */
 export async function notifyAllAdmins(params: {
   type: NotificationType;
@@ -143,15 +147,32 @@ export async function notifyAllAdmins(params: {
   courseEditionId?: string;
   excludeUserId?: string;
 }) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN", isActive: true },
-    select: { id: true },
-  });
+  let candidateIds: string[] = [];
 
-  const allIds = admins
-    .map((a) => a.id)
-    .filter((id) => id !== params.excludeUserId);
+  if (params.courseEditionId) {
+    const referents = await prisma.editionReferent.findMany({
+      where: { courseEditionId: params.courseEditionId },
+      select: { userId: true },
+    });
+    if (referents.length > 0) {
+      const refIds = referents.map((r) => r.userId);
+      const activeRefAdmins = await prisma.user.findMany({
+        where: { id: { in: refIds }, role: "ADMIN", isActive: true },
+        select: { id: true },
+      });
+      candidateIds = activeRefAdmins.map((a) => a.id);
+    }
+  }
 
+  if (candidateIds.length === 0) {
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN", isActive: true },
+      select: { id: true },
+    });
+    candidateIds = admins.map((a) => a.id);
+  }
+
+  const allIds = candidateIds.filter((id) => id !== params.excludeUserId);
   const filteredIds = await filterUsersForInApp(allIds, params.type);
 
   if (filteredIds.length > 0) {
@@ -171,7 +192,11 @@ export async function notifyAllAdmins(params: {
 }
 
 /**
- * Send email to ALL active admins, respecting preferences.
+ * Send email to admins, respecting preferences.
+ *
+ * When `courseEditionId` is provided AND the edition has Sapienta referents
+ * assigned (EditionReferent), emails ONLY those referents (intersected with
+ * active admins). Otherwise emails all active admins (backward-compatible).
  */
 export async function emailAllAdmins(params: {
   emailType: string;
@@ -183,10 +208,28 @@ export async function emailAllAdmins(params: {
   courseEditionId?: string;
   excludeUserId?: string;
 }) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN", isActive: true },
-    select: { id: true, email: true, name: true },
-  });
+  let admins: Array<{ id: string; email: string; name: string | null }> = [];
+
+  if (params.courseEditionId) {
+    const referents = await prisma.editionReferent.findMany({
+      where: { courseEditionId: params.courseEditionId },
+      select: { userId: true },
+    });
+    if (referents.length > 0) {
+      const refIds = referents.map((r) => r.userId);
+      admins = await prisma.user.findMany({
+        where: { id: { in: refIds }, role: "ADMIN", isActive: true },
+        select: { id: true, email: true, name: true },
+      });
+    }
+  }
+
+  if (admins.length === 0) {
+    admins = await prisma.user.findMany({
+      where: { role: "ADMIN", isActive: true },
+      select: { id: true, email: true, name: true },
+    });
+  }
 
   const allIds = admins
     .filter((a) => a.id !== params.excludeUserId)

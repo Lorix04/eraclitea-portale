@@ -142,7 +142,10 @@ function AdminEdizioniContent() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const hasViewAll = can("edizioni", "view-all");
   const hasViewOwn = can("edizioni", "view-own");
-  const [myEditions, setMyEditions] = useState(!hasViewAll && hasViewOwn);
+  // Default to "Le mie edizioni": shows editions where the user is a referent
+  // PLUS editions with no referents (visible to all). Users can switch to
+  // "Tutte le edizioni" to see everything they have permission to view.
+  const [myEditions, setMyEditions] = useState(true);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -443,21 +446,8 @@ function AdminEdizioniContent() {
         </div>
       </MobileFilterPanel>
 
-      {(hasViewAll && hasViewOwn) || hasViewOwn ? (
-        <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
-          {hasViewAll ? (
-            <button
-              type="button"
-              className={`rounded-md px-3 py-1.5 text-sm transition ${
-                !myEditions
-                  ? "bg-white shadow font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setMyEditions(false)}
-            >
-              Tutte le edizioni
-            </button>
-          ) : null}
+      {hasViewAll || hasViewOwn ? (
+        <div className="inline-flex gap-1 rounded-lg bg-muted/50 p-1">
           <button
             type="button"
             className={`rounded-md px-3 py-1.5 text-sm transition ${
@@ -468,6 +458,17 @@ function AdminEdizioniContent() {
             onClick={() => setMyEditions(true)}
           >
             Le mie edizioni
+          </button>
+          <button
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-sm transition ${
+              !myEditions
+                ? "bg-white shadow font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setMyEditions(false)}
+          >
+            Tutte le edizioni
           </button>
         </div>
       ) : null}
