@@ -13,6 +13,13 @@ import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
+
+// Customizable column registry for /admin/clienti. Keys are opaque + stable
+// (persisted per-user). "Azioni" is NOT here — it stays fixed/last via the
+// ResponsiveTable `actions` prop. `label` drives the customizer display.
+type ClientColumn = Column<ClientRow> & { label: string };
 
 type ClientRow = {
   id: string;
@@ -225,6 +232,116 @@ export default function AdminClientiPage() {
     setCategoryFilter("");
   };
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const clientColumns = useMemo<ClientColumn[]>(
+    () => [
+      {
+        key: "ragioneSociale",
+        label: "Ragione Sociale",
+        header: "Ragione Sociale",
+        isPrimary: true,
+        render: (c) => c.ragioneSociale,
+      },
+      {
+        key: "partitaIva",
+        label: "P.IVA",
+        header: "P.IVA",
+        hideOnCard: true,
+        render: (c) => c.piva,
+      },
+      {
+        key: "codiceFiscale",
+        label: "Codice Fiscale",
+        header: "Codice Fiscale",
+        hideOnCard: true,
+        render: (c) =>
+          c.codiceFiscale ? (
+            c.codiceFiscale
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        key: "referente",
+        label: "Referente",
+        header: "Referente",
+        hideOnCard: true,
+        render: (c) => c.referenteNome,
+      },
+      {
+        key: "email",
+        label: "Email",
+        header: "Email",
+        isSecondary: true,
+        render: (c) => c.user?.email ?? c.referenteEmail,
+      },
+      {
+        key: "telefono",
+        label: "Telefono",
+        header: "Telefono",
+        render: (c) => c.telefono || "-",
+      },
+      {
+        key: "edizioni",
+        label: "Edizioni",
+        header: "Edizioni",
+        render: (c) => c.editionsCount ?? 0,
+      },
+      {
+        key: "categorie",
+        label: "Categorie",
+        header: "Categorie",
+        isBadge: true,
+        render: (c) =>
+          c.categories && c.categories.length > 0 ? (
+            <span className="inline-flex flex-wrap gap-1">
+              {c.categories.map((cat) => (
+                <span
+                  key={cat.id}
+                  className="rounded-full px-2 py-1 text-xs text-white"
+                  style={{ backgroundColor: cat.color ?? "#6B7280" }}
+                >
+                  {cat.name}
+                </span>
+              ))}
+            </span>
+          ) : (
+            "-"
+          ),
+      },
+      {
+        key: "stato",
+        label: "Stato",
+        header: "Stato",
+        isBadge: true,
+        render: (c) => (
+          <span
+            className={`rounded-full px-2 py-1 text-xs ${
+              c.isActive
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {c.isActive ? "Attivo" : "Disattivo"}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<ClientColumn>({
+    tableKey: "admin.clienti",
+    columns: clientColumns,
+  });
+
   if (!canAccess("clienti")) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -272,6 +389,15 @@ export default function AdminClientiPage() {
         }
         onReset={resetFilters}
         resultCount={`${clients.length} clienti`}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -320,90 +446,7 @@ export default function AdminClientiPage() {
       {error ? <ErrorMessage message={error} onRetry={() => void loadClients()} /> : null}
 
       <ResponsiveTable<ClientRow>
-        columns={[
-          {
-            key: "ragioneSociale",
-            header: "Ragione Sociale",
-            isPrimary: true,
-            render: (c) => c.ragioneSociale,
-          },
-          {
-            key: "piva",
-            header: "P.IVA",
-            hideOnCard: true,
-            render: (c) => c.piva,
-          },
-          {
-            key: "codiceFiscale",
-            header: "Codice Fiscale",
-            hideOnCard: true,
-            render: (c) =>
-              c.codiceFiscale ? (
-                c.codiceFiscale
-              ) : (
-                <span className="text-xs text-muted-foreground">—</span>
-              ),
-          },
-          {
-            key: "referente",
-            header: "Referente",
-            hideOnCard: true,
-            render: (c) => c.referenteNome,
-          },
-          {
-            key: "email",
-            header: "Email",
-            isSecondary: true,
-            render: (c) => c.user?.email ?? c.referenteEmail,
-          },
-          {
-            key: "telefono",
-            header: "Telefono",
-            render: (c) => c.telefono || "-",
-          },
-          {
-            key: "edizioni",
-            header: "Edizioni",
-            render: (c) => c.editionsCount ?? 0,
-          },
-          {
-            key: "categorie",
-            header: "Categorie",
-            isBadge: true,
-            render: (c) =>
-              c.categories && c.categories.length > 0 ? (
-                <span className="inline-flex flex-wrap gap-1">
-                  {c.categories.map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="rounded-full px-2 py-1 text-xs text-white"
-                      style={{ backgroundColor: cat.color ?? "#6B7280" }}
-                    >
-                      {cat.name}
-                    </span>
-                  ))}
-                </span>
-              ) : (
-                "-"
-              ),
-          },
-          {
-            key: "stato",
-            header: "Stato",
-            isBadge: true,
-            render: (c) => (
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  c.isActive
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {c.isActive ? "Attivo" : "Disattivo"}
-              </span>
-            ),
-          },
-        ] satisfies Column<ClientRow>[]}
+        columns={orderedVisibleColumns}
         data={clients}
         keyExtractor={(c) => c.id}
         loading={loading}

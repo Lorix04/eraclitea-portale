@@ -220,6 +220,16 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 ### Altro
 - `AuditLog` — log azioni admin (login, impersonazione, CRUD, USER_CREATE, USER_DELETE, USER_UNLOCK, USER_FORCE_PASSWORD_CHANGE, ADMIN_SUSPEND, ADMIN_REACTIVATE, ADMIN_RESET_PASSWORD, ADMIN_EDIT, TEACHER_INTEGRITY_FIX, TEACHER_AUTO_FIX)
 - `Category` — aree corsi, relazione many-to-many con Teacher e Course
+- `UserTablePreference` — personalizzazione colonne tabelle per-utente: `userId`, `tableKey` (es. "admin.clienti"), `config` JSON `{ order: string[], hidden: string[] }`, unique `[userId, tableKey]`. Le key sono opache (validate solo lato client contro il registro colonne, mai contro un allow-list server). Colonne "Azioni"/selezione mai persistite qui
+
+## Personalizzazione colonne tabelle (per-utente)
+- Ogni utente autenticato (admin/client/docente) puo scegliere visibilita e ordine delle colonne per ogni tabella; preferenza per-utente + per-tabella, persistita su DB (`UserTablePreference`)
+- **Regola ferrea**: la colonna "Azioni" (e qualunque colonna di selezione/checkbox di riga) NON e personalizzabile — posizione fissa (ultima), sempre visibile, esclusa dal registro e dal customizer. Le tabelle personalizzabili passano SOLO le colonne dati al registro; "Azioni" resta nel prop `actions` di `ResponsiveTable`
+- Registro colonne lato client: array di colonne con `key` (opaca, stabile) + `label`; le colonne nuove aggiunte in futuro appaiono di default
+- API: `GET/PUT/DELETE /api/table-preferences` (`userId` SEMPRE dalla sessione, mai dal body; nessun RBAC oltre alla sessione — ognuno gestisce solo le proprie)
+- Hook: `src/hooks/useTablePreferences.ts` — `useTablePreferences({ tableKey, columns })` ritorna `orderedVisibleColumns`, `allColumns`, `isHidden`, `setVisibility`, `reorder`, `reset`. Risoluzione: `config.order` (filtrato al registro) + coda colonne mancanti, poi rimuove `config.hidden`. Salvataggio PUT con debounce ~400ms, reset via DELETE
+- Componente: `src/components/TableColumnCustomizer.tsx` — popover (trigger icona `Columns3`) con checkbox visibilita + drag&drop nativo HTML5 (stesso pattern di `FieldSetEditorModal`) per riordinare, + "Ripristina predefiniti". Posizionato via `trailingControl` di `MobileFilterPanel` (accanto a "Filtra")
+- Applicato finora a: `/admin/clienti` (`tableKey = "admin.clienti"`). Le altre tabelle in fasi successive
 
 ## Autenticazione & Ruoli
 - Login via NextAuth Credentials (`src/lib/auth.ts`), password hash `bcryptjs` (salt 12)
@@ -411,7 +421,8 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/components/ui/ConfirmDialog.tsx` — dialog custom confirm/alert/prompt (sostituisce nativi browser)
 - `src/components/ui/InlineConfirm.tsx` — barra conferma inline con auto-dismiss
 - `src/components/ui/ResponsiveTable.tsx` — tabella desktop (con colonna Azioni sticky) + card view mobile
-- `src/components/ui/MobileFilterPanel.tsx` — filtri collassabili su mobile
+- `src/components/ui/MobileFilterPanel.tsx` — filtri collassabili su mobile (prop `trailingControl` per controlli accanto a "Filtra", es. customizer colonne)
+- `src/components/TableColumnCustomizer.tsx` — popover personalizzazione colonne (visibilita + drag&drop ordine + ripristina)
 - `src/components/ui/ClientLogo.tsx` — logo aziendale con aspect ratio detection
 - `src/components/ui/TableSkeleton.tsx` — skeleton loading per tabelle
 - `src/components/ui/ErrorMessage.tsx` — messaggio errore con pulsante retry
@@ -445,6 +456,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 
 ### Hook
 - `src/hooks/usePermissions.ts` — can(area, action), canAccess(area), isSuperAdmin, roleName
+- `src/hooks/useTablePreferences.ts` — personalizzazione colonne tabelle per-utente (visibilita/ordine, persistenza DB via `/api/table-preferences`)
 - `src/hooks/useEmployee.ts` — fetch dettaglio dipendente con customData
 - `src/hooks/useSwipeActions.ts` — swipe touch per azioni mobile
 - `src/hooks/useActionShortcuts.ts` — shortcut tastiera quando dropdown aperto

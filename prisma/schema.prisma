@@ -41,6 +41,7 @@ model User {
   clientUsers        ClientUser[]
   clientActivityLogs ClientActivityLog[]
   notifPrefs         UserNotificationPreference[] @relation("userNotifPrefs")
+  tablePreferences   UserTablePreference[]
 
   // Admin invite fields
   adminInviteToken       String?   @unique
@@ -49,6 +50,24 @@ model User {
   adminInviteStatus      String?   // "pending", "completed"
 
   @@index([adminRoleId])
+}
+
+// Per-user, per-table column customization (visibility + order).
+// config = { order: string[], hidden: string[] } — opaque keys, validated
+// against the client-side registry, never against a server allow-list.
+// Fixed columns (azioni, selezione) are never stored here.
+model UserTablePreference {
+  id        String   @id @default(cuid())
+  userId    String
+  tableKey  String
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tableKey])
+  @@index([userId])
 }
 
 model AdminRole {

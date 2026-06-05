@@ -11,6 +11,8 @@ interface MobileFilterPanelProps {
   onReset?: () => void;
   resultCount?: ReactNode;
   actions?: ReactNode;
+  /** Extra control rendered in row 1, next to the "Filtra" button (e.g. column customizer). */
+  trailingControl?: ReactNode;
 }
 
 export default function MobileFilterPanel({
@@ -20,6 +22,7 @@ export default function MobileFilterPanel({
   onReset,
   resultCount,
   actions,
+  trailingControl,
 }: MobileFilterPanelProps) {
   const [open, setOpen] = useState(false);
 
@@ -58,6 +61,7 @@ export default function MobileFilterPanel({
             <span className="hidden sm:inline">Resetta</span>
           </button>
         ) : null}
+        {trailingControl}
       </div>
 
       {/* Filter panel: collapsible on all screen sizes.
