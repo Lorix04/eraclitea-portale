@@ -228,8 +228,20 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Registro colonne lato client: array di colonne con `key` (opaca, stabile) + `label`; le colonne nuove aggiunte in futuro appaiono di default
 - API: `GET/PUT/DELETE /api/table-preferences` (`userId` SEMPRE dalla sessione, mai dal body; nessun RBAC oltre alla sessione — ognuno gestisce solo le proprie)
 - Hook: `src/hooks/useTablePreferences.ts` — `useTablePreferences({ tableKey, columns })` ritorna `orderedVisibleColumns`, `allColumns`, `isHidden`, `setVisibility`, `reorder`, `reset`. Risoluzione: `config.order` (filtrato al registro) + coda colonne mancanti, poi rimuove `config.hidden`. Salvataggio PUT con debounce ~400ms, reset via DELETE
-- Componente: `src/components/TableColumnCustomizer.tsx` — popover (trigger icona `Columns3`) con checkbox visibilita + drag&drop nativo HTML5 (stesso pattern di `FieldSetEditorModal`) per riordinare, + "Ripristina predefiniti". Posizionato via `trailingControl` di `MobileFilterPanel` (accanto a "Filtra")
-- Applicato finora a: `/admin/clienti` (`tableKey = "admin.clienti"`). Le altre tabelle in fasi successive
+- Componente: `src/components/TableColumnCustomizer.tsx` — popover (trigger icona `Columns3`) con checkbox visibilita + drag&drop nativo HTML5 (stesso pattern di `FieldSetEditorModal`) per riordinare, + "Ripristina predefiniti". Posizionato via `trailingControl` di `MobileFilterPanel` (accanto a "Filtra"); nelle pagine senza `MobileFilterPanel` (es. `/attestati` cliente) e posizionato tra i controlli in alto a destra
+- **tableKey attivi** (12 tabelle):
+  - `admin.clienti` (`/admin/clienti`)
+  - `admin.dipendenti` (`/admin/dipendenti`)
+  - `admin.corsi` (`/admin/corsi`)
+  - `admin.edizioni` (`/admin/edizioni`)
+  - `admin.area-corsi` (`/admin/area-corsi`)
+  - `admin.attestati` (`/admin/attestati`)
+  - `admin.docenti` (`/admin/docenti`)
+  - `admin.ticket` (`/admin/ticket`)
+  - `admin.audit` (`/admin/audit`, sola lettura: nessuna colonna fissa, tutte personalizzabili)
+  - `client.dipendenti` (`/(dashboard)/dipendenti`)
+  - `client.attestati` (`/(dashboard)/attestati`)
+- Tabelle hand-written column-driven (non `ResponsiveTable`): `EmployeeTable` (`/admin/dipendenti` + `/(dashboard)/dipendenti`) e `CertificateTable` (`/(dashboard)/attestati`) iterano su `orderedVisibleColumns` per generare `<th>`/`<td>` e card mobile, tenendo "Azioni" (e in `CertificateTable` anche la colonna checkbox di selezione) FISSE ed escluse dal registro/customizer. `CertificateTable` espone `CERTIFICATE_COLUMNS` (registro di default) usato anche dal dettaglio edizione admin senza customizer
 
 ## Autenticazione & Ruoli
 - Login via NextAuth Credentials (`src/lib/auth.ts`), password hash `bcryptjs` (salt 12)

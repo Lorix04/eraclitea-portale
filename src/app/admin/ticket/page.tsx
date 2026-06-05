@@ -16,6 +16,8 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 
 type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 type TicketCategory =
@@ -57,6 +59,10 @@ type ClientOption = {
     id: string;
   } | null;
 };
+
+// Customizable column registry for /admin/ticket. "Azioni" excluded — fixed/last
+// via the ResponsiveTable `actions` prop. `label` drives the customizer display.
+type TicketColumn = Column<TicketListItem> & { label: string };
 
 function parseItems(payload: unknown): TicketListItem[] {
   if (Array.isArray(payload)) {
@@ -222,6 +228,107 @@ export default function AdminTicketPage() {
     );
   }, [statsTickets]);
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const ticketColumns = useMemo<TicketColumn[]>(
+    () => [
+      {
+        key: "status",
+        label: "Stato",
+        header: "Stato",
+        isBadge: true,
+        render: (t) => (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(t.status)}`}
+          >
+            {TICKET_STATUS_LABELS[t.status]}
+          </span>
+        ),
+      },
+      {
+        key: "priority",
+        label: "Priorita",
+        header: "Priorita",
+        isBadge: true,
+        render: (t) => (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${getPriorityBadgeClass(t.priority)}`}
+          >
+            {TICKET_PRIORITY_LABELS[t.priority]}
+          </span>
+        ),
+      },
+      {
+        key: "subject",
+        label: "Oggetto",
+        header: "Oggetto",
+        isPrimary: true,
+        render: (t) => (
+          <p className="max-w-[300px] truncate" title={t.subject}>
+            {t.subject}
+          </p>
+        ),
+      },
+      {
+        key: "category",
+        label: "Categoria",
+        header: "Categoria",
+        hideOnCard: true,
+        render: (t) => TICKET_CATEGORY_LABELS[t.category],
+      },
+      {
+        key: "client",
+        label: "Mittente",
+        header: "Mittente",
+        isSecondary: true,
+        render: (t) => (
+          <span className="flex items-center gap-1.5">
+            {t.senderType === "teacher" ? (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Doc</span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Cli</span>
+            )}
+            {t.teacher?.name ?? t.client?.name ?? "—"}
+          </span>
+        ),
+      },
+      {
+        key: "messages",
+        label: "Messaggi",
+        header: "Messaggi",
+        render: (t) => t.messagesCount,
+      },
+      {
+        key: "updatedAt",
+        label: "Ultimo aggiornamento",
+        header: "Ultimo aggiornamento",
+        render: (t) => (
+          <span title={new Date(t.updatedAt).toLocaleString("it-IT")}>
+            {formatRelativeDate(t.updatedAt)}
+          </span>
+        ),
+      },
+      {
+        key: "assignedTo",
+        label: "Assegnato a",
+        header: "Assegnato a",
+        render: (t) => t.assignedTo?.name ?? "-",
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<TicketColumn>({
+    tableKey: "admin.ticket",
+    columns: ticketColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -261,6 +368,15 @@ export default function AdminTicketPage() {
         }
         activeFiltersCount={
           [status !== "all", category !== "all", priority !== "all", clientId !== "", senderType !== "all"].filter(Boolean).length
+        }
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
         }
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
@@ -337,82 +453,7 @@ export default function AdminTicketPage() {
       ) : null}
 
       <ResponsiveTable<TicketListItem>
-        columns={[
-          {
-            key: "status",
-            header: "Stato",
-            isBadge: true,
-            render: (t) => (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(t.status)}`}
-              >
-                {TICKET_STATUS_LABELS[t.status]}
-              </span>
-            ),
-          },
-          {
-            key: "priority",
-            header: "Priorita",
-            isBadge: true,
-            render: (t) => (
-              <span
-                className={`rounded-full px-2 py-0.5 text-xs font-medium ${getPriorityBadgeClass(t.priority)}`}
-              >
-                {TICKET_PRIORITY_LABELS[t.priority]}
-              </span>
-            ),
-          },
-          {
-            key: "subject",
-            header: "Oggetto",
-            isPrimary: true,
-            render: (t) => (
-              <p className="max-w-[300px] truncate" title={t.subject}>
-                {t.subject}
-              </p>
-            ),
-          },
-          {
-            key: "category",
-            header: "Categoria",
-            hideOnCard: true,
-            render: (t) => TICKET_CATEGORY_LABELS[t.category],
-          },
-          {
-            key: "client",
-            header: "Mittente",
-            isSecondary: true,
-            render: (t) => (
-              <span className="flex items-center gap-1.5">
-                {t.senderType === "teacher" ? (
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Doc</span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">Cli</span>
-                )}
-                {t.teacher?.name ?? t.client?.name ?? "—"}
-              </span>
-            ),
-          },
-          {
-            key: "messages",
-            header: "Messaggi",
-            render: (t) => t.messagesCount,
-          },
-          {
-            key: "updatedAt",
-            header: "Ultimo aggiornamento",
-            render: (t) => (
-              <span title={new Date(t.updatedAt).toLocaleString("it-IT")}>
-                {formatRelativeDate(t.updatedAt)}
-              </span>
-            ),
-          },
-          {
-            key: "assignedTo",
-            header: "Assegnato a",
-            render: (t) => t.assignedTo?.name ?? "-",
-          },
-        ] satisfies Column<TicketListItem>[]}
+        columns={orderedVisibleColumns}
         data={tickets}
         keyExtractor={(t) => t.id}
         loading={isLoading}

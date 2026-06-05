@@ -11,6 +11,8 @@ import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { getArrayData } from "@/lib/api-response";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 
 type CategoryRow = {
   id: string;
@@ -19,6 +21,10 @@ type CategoryRow = {
   color?: string | null;
   _count?: { courses: number; clients: number };
 };
+
+// Customizable column registry for /admin/area-corsi. "Azioni" excluded —
+// fixed/last via the ResponsiveTable `actions` prop. `label` drives the customizer.
+type CategoryColumn = Column<CategoryRow> & { label: string };
 
 export default function AdminAreaCorsiPage() {
   const { can } = usePermissions();
@@ -60,6 +66,59 @@ export default function AdminAreaCorsiPage() {
     await refetch();
   };
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const categoryColumns = useMemo<CategoryColumn[]>(
+    () => [
+      {
+        key: "name",
+        label: "Nome",
+        header: "Nome",
+        isPrimary: true,
+        render: (c) => (
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ backgroundColor: c.color ?? "#6B7280" }}
+            />
+            {c.name}
+          </span>
+        ),
+      },
+      {
+        key: "description",
+        label: "Descrizione",
+        header: "Descrizione",
+        isSecondary: true,
+        render: (c) => c.description || "-",
+      },
+      {
+        key: "courses",
+        label: "Corsi",
+        header: "Corsi",
+        render: (c) => c._count?.courses ?? 0,
+      },
+      {
+        key: "clients",
+        label: "Clienti",
+        header: "Clienti",
+        render: (c) => c._count?.clients ?? 0,
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<CategoryColumn>({
+    tableKey: "admin.area-corsi",
+    columns: categoryColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -97,6 +156,15 @@ export default function AdminAreaCorsiPage() {
         }
         onReset={resetFilters}
         resultCount={`${categories.length} aree`}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -122,38 +190,7 @@ export default function AdminAreaCorsiPage() {
       {error ? <ErrorMessage message={error} onRetry={() => void refetch()} /> : null}
 
       <ResponsiveTable<CategoryRow>
-        columns={[
-          {
-            key: "name",
-            header: "Nome",
-            isPrimary: true,
-            render: (c) => (
-              <span className="inline-flex items-center gap-2">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: c.color ?? "#6B7280" }}
-                />
-                {c.name}
-              </span>
-            ),
-          },
-          {
-            key: "description",
-            header: "Descrizione",
-            isSecondary: true,
-            render: (c) => c.description || "-",
-          },
-          {
-            key: "courses",
-            header: "Corsi",
-            render: (c) => c._count?.courses ?? 0,
-          },
-          {
-            key: "clients",
-            header: "Clienti",
-            render: (c) => c._count?.clients ?? 0,
-          },
-        ] satisfies Column<CategoryRow>[]}
+        columns={orderedVisibleColumns}
         data={categories}
         keyExtractor={(c) => c.id}
         loading={loading || retrying}

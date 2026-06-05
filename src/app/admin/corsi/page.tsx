@@ -11,7 +11,13 @@ import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import ActionMenu from "@/components/ui/ActionMenu";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { usePermissions } from "@/hooks/usePermissions";
+
+// Customizable column registry for /admin/corsi. "Azioni" excluded — fixed/last
+// via the ResponsiveTable `actions` prop. `label` drives the customizer display.
+type CourseColumn = Column<Course> & { label: string };
 
 type Course = {
   id: string;
@@ -136,6 +142,91 @@ export default function AdminCorsiPage() {
     setSortOrder("desc");
   };
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const courseColumns = useMemo<CourseColumn[]>(
+    () => [
+      {
+        key: "title",
+        label: "Titolo",
+        header: "Titolo",
+        isPrimary: true,
+        render: (c) => c.title,
+      },
+      {
+        key: "area",
+        label: "Area",
+        header: "Area",
+        isBadge: true,
+        render: (c) =>
+          c.categories && c.categories.length > 0 ? (
+            <span className="inline-flex flex-wrap gap-1">
+              {c.categories.map((entry) => {
+                const cat = entry.category ?? entry;
+                return (
+                  <span
+                    key={cat.id ?? `${c.id}-${cat.name}`}
+                    className="rounded-full px-2 py-1 text-xs text-white"
+                    style={{ backgroundColor: cat.color ?? "#6B7280" }}
+                  >
+                    {cat.name ?? "-"}
+                  </span>
+                );
+              })}
+            </span>
+          ) : (
+            "-"
+          ),
+      },
+      {
+        key: "hours",
+        label: "Ore",
+        header: "Ore",
+        render: (c) => c.durationHours ?? "-",
+      },
+      {
+        key: "visibility",
+        label: "Visibilita",
+        header: "Visibilita",
+        isBadge: true,
+        render: (c) => (
+          <span
+            className={`rounded-full px-2 py-1 text-xs ${
+              VISIBILITY_BADGE[c.visibilityType ?? ""] ??
+              "bg-muted text-muted-foreground"
+            }`}
+          >
+            {VISIBILITY_LABELS[c.visibilityType ?? ""] ?? "-"}
+          </span>
+        ),
+      },
+      {
+        key: "activeEditions",
+        label: "Edizioni attive",
+        header: "Edizioni attive",
+        render: (c) => c.activeEditions ?? 0,
+      },
+      {
+        key: "totalEditions",
+        label: "Totale edizioni",
+        header: "Totale edizioni",
+        render: (c) => c._count?.editions ?? 0,
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<CourseColumn>({
+    tableKey: "admin.corsi",
+    columns: courseColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -175,6 +266,15 @@ export default function AdminCorsiPage() {
         }
         onReset={resetFilters}
         resultCount={`${courses.length} corsi`}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -222,68 +322,7 @@ export default function AdminCorsiPage() {
       {error ? <ErrorMessage message={error} onRetry={() => void loadCourses()} /> : null}
 
       <ResponsiveTable<Course>
-        columns={[
-          {
-            key: "title",
-            header: "Titolo",
-            isPrimary: true,
-            render: (c) => c.title,
-          },
-          {
-            key: "area",
-            header: "Area",
-            isBadge: true,
-            render: (c) =>
-              c.categories && c.categories.length > 0 ? (
-                <span className="inline-flex flex-wrap gap-1">
-                  {c.categories.map((entry) => {
-                    const cat = entry.category ?? entry;
-                    return (
-                      <span
-                        key={cat.id ?? `${c.id}-${cat.name}`}
-                        className="rounded-full px-2 py-1 text-xs text-white"
-                        style={{ backgroundColor: cat.color ?? "#6B7280" }}
-                      >
-                        {cat.name ?? "-"}
-                      </span>
-                    );
-                  })}
-                </span>
-              ) : (
-                "-"
-              ),
-          },
-          {
-            key: "hours",
-            header: "Ore",
-            render: (c) => c.durationHours ?? "-",
-          },
-          {
-            key: "visibility",
-            header: "Visibilita",
-            isBadge: true,
-            render: (c) => (
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  VISIBILITY_BADGE[c.visibilityType ?? ""] ??
-                  "bg-muted text-muted-foreground"
-                }`}
-              >
-                {VISIBILITY_LABELS[c.visibilityType ?? ""] ?? "-"}
-              </span>
-            ),
-          },
-          {
-            key: "activeEditions",
-            header: "Edizioni attive",
-            render: (c) => c.activeEditions ?? 0,
-          },
-          {
-            key: "totalEditions",
-            header: "Totale edizioni",
-            render: (c) => c._count?.editions ?? 0,
-          },
-        ] satisfies Column<Course>[]}
+        columns={orderedVisibleColumns}
         data={courses}
         keyExtractor={(c) => c.id}
         loading={loading}

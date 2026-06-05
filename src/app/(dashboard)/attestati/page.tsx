@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CertificateFilters from "@/components/CertificateFilters";
-import CertificateTable from "@/components/CertificateTable";
+import CertificateTable, {
+  CERTIFICATE_COLUMNS,
+  type CertificateColumn,
+} from "@/components/CertificateTable";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useDebounce } from "@/hooks/useDebounce";
 
 type Filters = {
@@ -104,6 +109,18 @@ export default function ClientAttestatiPage() {
   const totalPages =
     data?.totalPages ?? Math.max(1, Math.ceil((data?.total ?? 0) / (data?.limit || 20)));
 
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<CertificateColumn>({
+    tableKey: "client.attestati",
+    columns: CERTIFICATE_COLUMNS,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -113,11 +130,20 @@ export default function ClientAttestatiPage() {
             Consulta e scarica gli attestati.
           </p>
         </div>
-        {data?.expiringCount ? (
-          <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-800">
-            {data.expiringCount} attestati in scadenza
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {data?.expiringCount ? (
+            <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-800">
+              {data.expiringCount} attestati in scadenza
+            </div>
+          ) : null}
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        </div>
       </div>
 
       <CertificateFilters
@@ -131,6 +157,7 @@ export default function ClientAttestatiPage() {
 
       <CertificateTable
         certificates={isError ? [] : data?.data ?? []}
+        columns={orderedVisibleColumns}
         isLoading={isLoading}
         isFetching={isFetching}
         pagination={{

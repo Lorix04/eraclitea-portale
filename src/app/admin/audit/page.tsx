@@ -7,6 +7,8 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 
 const ACTIONS = [
   "LOGIN",
@@ -62,6 +64,10 @@ type AuditLogRow = {
   user: { email: string; role: string };
 };
 
+// Customizable column registry for /admin/audit. Read-only table (no "Azioni").
+// `label` drives the customizer display.
+type AuditColumn = Column<AuditLogRow> & { label: string };
+
 export default function AdminAuditPage() {
   const [rows, setRows] = useState<AuditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +120,72 @@ export default function AdminAuditPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
+  // Customizable column registry (default order). Read-only table — no fixed col.
+  const auditColumns = useMemo<AuditColumn[]>(
+    () => [
+      {
+        key: "action",
+        label: "Azione",
+        header: "Azione",
+        isBadge: true,
+        render: (row) => (
+          <span
+            className={`rounded-full px-2 py-1 text-xs ${
+              ACTION_BADGES[row.action] ?? "bg-muted text-muted-foreground"
+            }`}
+          >
+            {row.action}
+          </span>
+        ),
+      },
+      {
+        key: "user",
+        label: "Utente",
+        header: "Utente",
+        isPrimary: true,
+        render: (row) => row.user.email,
+      },
+      {
+        key: "createdAt",
+        label: "Data/Ora",
+        header: "Data/Ora",
+        isSecondary: true,
+        render: (row) => formatItalianDateTime(row.createdAt),
+      },
+      {
+        key: "entityType",
+        label: "Entita",
+        header: "Entita",
+        render: (row) => row.entityType ?? "-",
+      },
+      {
+        key: "entityId",
+        label: "ID",
+        header: "ID",
+        render: (row) => row.entityId ?? "-",
+      },
+      {
+        key: "ip",
+        label: "IP",
+        header: "IP",
+        render: (row) => row.ipAddress ?? "-",
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<AuditColumn>({
+    tableKey: "admin.audit",
+    columns: auditColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -140,6 +212,15 @@ export default function AdminAuditPage() {
           (entityType !== "" ? 1 : 0) +
           (dateFrom !== "" ? 1 : 0) +
           (dateTo !== "" ? 1 : 0)
+        }
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
         }
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -182,49 +263,7 @@ export default function AdminAuditPage() {
       {error ? <ErrorMessage message={error} onRetry={() => void loadAudit()} /> : null}
 
       <ResponsiveTable<AuditLogRow>
-        columns={[
-          {
-            key: "action",
-            header: "Azione",
-            isBadge: true,
-            render: (row) => (
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${
-                  ACTION_BADGES[row.action] ?? "bg-muted text-muted-foreground"
-                }`}
-              >
-                {row.action}
-              </span>
-            ),
-          },
-          {
-            key: "user",
-            header: "Utente",
-            isPrimary: true,
-            render: (row) => row.user.email,
-          },
-          {
-            key: "createdAt",
-            header: "Data/Ora",
-            isSecondary: true,
-            render: (row) => formatItalianDateTime(row.createdAt),
-          },
-          {
-            key: "entityType",
-            header: "Entita",
-            render: (row) => row.entityType ?? "-",
-          },
-          {
-            key: "entityId",
-            header: "ID",
-            render: (row) => row.entityId ?? "-",
-          },
-          {
-            key: "ip",
-            header: "IP",
-            render: (row) => row.ipAddress ?? "-",
-          },
-        ] satisfies Column<AuditLogRow>[]}
+        columns={orderedVisibleColumns}
         data={rows}
         keyExtractor={(row) => row.id}
         loading={loading}

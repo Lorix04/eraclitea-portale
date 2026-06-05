@@ -10,6 +10,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import CreateEditionModal from "@/components/admin/CreateEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
@@ -92,6 +94,43 @@ const SORT_COLUMNS: Array<{
   { key: "status", label: "Stato" },
   { key: "participants", label: "Partecipanti" },
 ];
+
+const getLuoghiDisplay = (edition: EditionRow) => {
+  const luoghiUnici = Array.from(
+    new Set(
+      (edition.lessons ?? [])
+        .map((lesson) => lesson.luogo?.trim())
+        .filter((luogo): luogo is string => Boolean(luogo))
+    )
+  );
+  return luoghiUnici.length > 0 ? luoghiUnici.join(", ") : "-";
+};
+
+const getPresenzaMinimaDisplay = (edition: EditionRow) => {
+  if (
+    edition.presenzaMinimaType === "percentage" &&
+    typeof edition.presenzaMinimaValue === "number"
+  ) {
+    return `${edition.presenzaMinimaValue}%`;
+  }
+  if (
+    edition.presenzaMinimaType === "days" &&
+    typeof edition.presenzaMinimaValue === "number"
+  ) {
+    return `${edition.presenzaMinimaValue} lezioni`;
+  }
+  if (
+    edition.presenzaMinimaType === "hours" &&
+    typeof edition.presenzaMinimaValue === "number"
+  ) {
+    return `${edition.presenzaMinimaValue}h`;
+  }
+  return "-";
+};
+
+// Customizable column registry for /admin/edizioni. "Azioni" excluded — fixed/last
+// via the ResponsiveTable `actions` prop. `label` drives the customizer display.
+type EditionColumn = Column<EditionRow> & { label: string };
 
 function AdminEdizioniContent() {
   const { can } = usePermissions();
@@ -275,44 +314,151 @@ function AdminEdizioniContent() {
     setSortOrder("desc");
   };
 
-  const getLuoghiDisplay = (edition: EditionRow) => {
-    const luoghiUnici = Array.from(
-      new Set(
-        (edition.lessons ?? [])
-          .map((lesson) => lesson.luogo?.trim())
-          .filter((luogo): luogo is string => Boolean(luogo))
-      )
-    );
-    return luoghiUnici.length > 0 ? luoghiUnici.join(", ") : "-";
-  };
-
-  const getPresenzaMinimaDisplay = (edition: EditionRow) => {
-    if (
-      edition.presenzaMinimaType === "percentage" &&
-      typeof edition.presenzaMinimaValue === "number"
-    ) {
-      return `${edition.presenzaMinimaValue}%`;
-    }
-    if (
-      edition.presenzaMinimaType === "days" &&
-      typeof edition.presenzaMinimaValue === "number"
-    ) {
-      return `${edition.presenzaMinimaValue} lezioni`;
-    }
-    if (
-      edition.presenzaMinimaType === "hours" &&
-      typeof edition.presenzaMinimaValue === "number"
-    ) {
-      return `${edition.presenzaMinimaValue}h`;
-    }
-    return "-";
-  };
-
   const getTeacherAssignmentsCount = (edition: EditionRow) =>
     (edition.lessons ?? []).reduce(
       (count, lesson) => count + (lesson._count?.teacherAssignments ?? 0),
       0
     );
+
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const editionColumns = useMemo<EditionColumn[]>(
+    () => [
+      {
+        key: "course",
+        label: "Corso",
+        header: "Corso",
+        isPrimary: true,
+        sortable: true,
+        render: (e) => e.course?.title ?? "-",
+      },
+      {
+        key: "client",
+        label: "Cliente",
+        header: "Cliente",
+        isSecondary: true,
+        sortable: true,
+        render: (e) => e.client?.ragioneSociale ?? "-",
+      },
+      {
+        key: "editionNumber",
+        label: "Edizione",
+        header: "Edizione",
+        sortable: true,
+        hideOnCard: true,
+        render: (e) => `#${e.editionNumber}`,
+      },
+      {
+        key: "startDate",
+        label: "Inizio",
+        header: "Inizio",
+        sortable: true,
+        render: (e) => (e.startDate ? formatItalianDate(e.startDate) : "-"),
+      },
+      {
+        key: "endDate",
+        label: "Fine",
+        header: "Fine",
+        sortable: true,
+        render: (e) => (e.endDate ? formatItalianDate(e.endDate) : "-"),
+      },
+      {
+        key: "deadlineRegistry",
+        label: "Deadline",
+        header: "Deadline",
+        sortable: true,
+        hideOnCard: true,
+        render: (e) =>
+          e.deadlineRegistry ? formatItalianDate(e.deadlineRegistry) : "-",
+      },
+      {
+        key: "luogo",
+        label: "Luogo",
+        header: "Luogo",
+        render: (e) => getLuoghiDisplay(e),
+      },
+      {
+        key: "status",
+        label: "Stato",
+        header: "Stato",
+        isBadge: true,
+        sortable: true,
+        render: (e) => (
+          <span
+            className={`rounded-full px-2 py-1 text-xs ${STATUS_BADGE[e.status]}`}
+          >
+            {STATUS_LABELS[e.status]}
+          </span>
+        ),
+      },
+      {
+        key: "referents",
+        label: "Referenti",
+        header: "Referenti",
+        hideOnCard: true,
+        render: (e) => {
+          const refs = e.referents ?? [];
+          if (refs.length === 0) return <span className="text-muted-foreground">—</span>;
+          const display = refs.slice(0, 2).map((r) => r.user.email.split("@")[0]);
+          const extra = refs.length > 2 ? ` +${refs.length - 2}` : "";
+          return (
+            <span className="flex flex-wrap gap-1">
+              {display.map((name, i) => (
+                <span key={i} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                  {name}
+                </span>
+              ))}
+              {extra ? <span className="text-xs text-muted-foreground">{extra}</span> : null}
+            </span>
+          );
+        },
+      },
+      {
+        key: "clientAssignments",
+        label: "Assegnati cliente",
+        header: "Assegnati cliente",
+        hideOnCard: true,
+        render: (e) => {
+          const count = e._count?.clientAssignments ?? 0;
+          return count > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">
+              👥 {count} assegnati
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+              👥 Tutti
+            </span>
+          );
+        },
+      },
+      {
+        key: "participants",
+        label: "Partecipanti",
+        header: "Partecipanti",
+        sortable: true,
+        render: (e) => e._count?.registrations ?? 0,
+      },
+      {
+        key: "presenzaMinima",
+        label: "Presenza min.",
+        header: "Presenza min.",
+        hideOnCard: true,
+        render: (e) => getPresenzaMinimaDisplay(e),
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<EditionColumn>({
+    tableKey: "admin.edizioni",
+    columns: editionColumns,
+  });
 
   return (
     <div className="space-y-6">
@@ -358,6 +504,15 @@ function AdminEdizioniContent() {
         }
         onReset={resetFilters}
         resultCount={`${editions.length} edizioni trovate`}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -476,121 +631,7 @@ function AdminEdizioniContent() {
       {error ? <ErrorMessage message={error} onRetry={() => void fetchEditions()} /> : null}
 
       <ResponsiveTable<EditionRow>
-        columns={[
-          {
-            key: "course",
-            header: "Corso",
-            isPrimary: true,
-            sortable: true,
-            render: (e) => e.course?.title ?? "-",
-          },
-          {
-            key: "client",
-            header: "Cliente",
-            isSecondary: true,
-            sortable: true,
-            render: (e) => e.client?.ragioneSociale ?? "-",
-          },
-          {
-            key: "editionNumber",
-            header: "Edizione",
-            sortable: true,
-            hideOnCard: true,
-            render: (e) => `#${e.editionNumber}`,
-          },
-          {
-            key: "startDate",
-            header: "Inizio",
-            sortable: true,
-            render: (e) =>
-              e.startDate ? formatItalianDate(e.startDate) : "-",
-          },
-          {
-            key: "endDate",
-            header: "Fine",
-            sortable: true,
-            render: (e) =>
-              e.endDate ? formatItalianDate(e.endDate) : "-",
-          },
-          {
-            key: "deadlineRegistry",
-            header: "Deadline",
-            sortable: true,
-            hideOnCard: true,
-            render: (e) =>
-              e.deadlineRegistry
-                ? formatItalianDate(e.deadlineRegistry)
-                : "-",
-          },
-          {
-            key: "luogo",
-            header: "Luogo",
-            render: (e) => getLuoghiDisplay(e),
-          },
-          {
-            key: "status",
-            header: "Stato",
-            isBadge: true,
-            sortable: true,
-            render: (e) => (
-              <span
-                className={`rounded-full px-2 py-1 text-xs ${STATUS_BADGE[e.status]}`}
-              >
-                {STATUS_LABELS[e.status]}
-              </span>
-            ),
-          },
-          {
-            key: "referents",
-            header: "Referenti",
-            hideOnCard: true,
-            render: (e) => {
-              const refs = e.referents ?? [];
-              if (refs.length === 0) return <span className="text-muted-foreground">—</span>;
-              const display = refs.slice(0, 2).map((r) => r.user.email.split("@")[0]);
-              const extra = refs.length > 2 ? ` +${refs.length - 2}` : "";
-              return (
-                <span className="flex flex-wrap gap-1">
-                  {display.map((name, i) => (
-                    <span key={i} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                      {name}
-                    </span>
-                  ))}
-                  {extra ? <span className="text-xs text-muted-foreground">{extra}</span> : null}
-                </span>
-              );
-            },
-          },
-          {
-            key: "clientAssignments",
-            header: "Assegnati cliente",
-            hideOnCard: true,
-            render: (e) => {
-              const count = e._count?.clientAssignments ?? 0;
-              return count > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">
-                  👥 {count} assegnati
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                  👥 Tutti
-                </span>
-              );
-            },
-          },
-          {
-            key: "participants",
-            header: "Partecipanti",
-            sortable: true,
-            render: (e) => e._count?.registrations ?? 0,
-          },
-          {
-            key: "presenzaMinima",
-            header: "Presenza min.",
-            hideOnCard: true,
-            render: (e) => getPresenzaMinimaDisplay(e),
-          },
-        ] satisfies Column<EditionRow>[]}
+        columns={orderedVisibleColumns}
         data={editions}
         keyExtractor={(e) => e.id}
         loading={loading}

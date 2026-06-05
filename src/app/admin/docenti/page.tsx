@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ClipboardCheck,
@@ -26,12 +26,18 @@ import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 import BulkCvDpr445Modal from "@/components/admin/BulkCvDpr445Modal";
 import RequestCvDpr445Modal from "@/components/admin/RequestCvDpr445Modal";
 
 type TeacherRow = TeacherFormValue & {
   _count?: { assignments?: number };
 };
+
+// Customizable column registry for /admin/docenti. "Azioni" excluded — fixed/last
+// via the ResponsiveTable `actions` prop. `label` drives the customizer display.
+type TeacherColumn = Column<TeacherRow> & { label: string };
 
 type CategoryOption = {
   id: string;
@@ -287,12 +293,15 @@ export default function AdminDocentiPage() {
     }
   };
 
-  const formatProvince = (value?: string | null) => {
-    if (!value) return "-";
-    const sigla = value.toUpperCase();
-    const name = provinceLabelBySigla.get(sigla);
-    return name ? `${sigla} - ${name}` : sigla;
-  };
+  const formatProvince = useCallback(
+    (value?: string | null) => {
+      if (!value) return "-";
+      const sigla = value.toUpperCase();
+      const name = provinceLabelBySigla.get(sigla);
+      return name ? `${sigla} - ${name}` : sigla;
+    },
+    [provinceLabelBySigla]
+  );
 
   const handleStatusAction = async (teacherId: string, endpoint: string, successMsg: string) => {
     try {
@@ -333,6 +342,160 @@ export default function AdminDocentiPage() {
     });
     return c;
   }, [teachers]);
+
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const teacherColumns = useMemo<TeacherColumn[]>(
+    () => [
+      {
+        key: "name",
+        label: "Nome completo",
+        header: "Nome completo",
+        isPrimary: true,
+        render: (t) => {
+          const s = (t as any).status as string;
+          const sub =
+            s === "PENDING"
+              ? "Invito inviato"
+              : s === "ONBOARDING"
+                ? "Registrazione in corso"
+                : null;
+          return (
+            <span>
+              {t.firstName} {t.lastName}
+              {sub && (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  ({sub})
+                </span>
+              )}
+            </span>
+          );
+        },
+      },
+      {
+        key: "email",
+        label: "Email",
+        header: "Email",
+        isSecondary: true,
+        render: (t) => t.email || "-",
+      },
+      {
+        key: "phone",
+        label: "Telefono",
+        header: "Telefono",
+        render: (t) => t.phone || "-",
+      },
+      {
+        key: "specialization",
+        label: "Specializzazione",
+        header: "Specializzazione",
+        render: (t) => t.specialization || "-",
+      },
+      {
+        key: "province",
+        label: "Provincia",
+        header: "Provincia",
+        render: (t) => formatProvince(t.province),
+      },
+      {
+        key: "categories",
+        label: "Aree",
+        header: "Aree",
+        isBadge: true,
+        render: (t) =>
+          t.categories && t.categories.length > 0 ? (
+            <span className="inline-flex flex-wrap items-center gap-1">
+              {t.categories.slice(0, 2).map((cat) => (
+                <span
+                  key={cat.id}
+                  className="rounded-full px-2 py-0.5 text-[11px] text-white"
+                  style={{ backgroundColor: cat.color ?? "#6B7280" }}
+                >
+                  {cat.name}
+                </span>
+              ))}
+              {t.categories.length > 2 ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  +{t.categories.length - 2}
+                </span>
+              ) : null}
+            </span>
+          ) : (
+            "-"
+          ),
+      },
+      {
+        key: "assignments",
+        label: "Lezioni assegnate",
+        header: "Lezioni assegnate",
+        render: (t) => t._count?.assignments ?? 0,
+      },
+      {
+        key: "cvDpr445",
+        label: "CV 445",
+        header: "CV 445",
+        isBadge: true,
+        render: (t) => {
+          const cvStatus = (t as any).cvDpr445?.status as string | undefined;
+          const cvCfg: Record<string, { cls: string; label: string }> = {
+            NOT_REQUESTED: { cls: "bg-gray-100 text-gray-500", label: "—" },
+            REQUESTED: { cls: "bg-amber-100 text-amber-700", label: "Richiesto" },
+            SUBMITTED: { cls: "bg-blue-100 text-blue-700", label: "Inviato" },
+            APPROVED: { cls: "bg-emerald-100 text-emerald-700", label: "Approvato" },
+            REJECTED: { cls: "bg-red-100 text-red-700", label: "Rifiutato" },
+          };
+          const { cls, label } = cvCfg[cvStatus ?? ""] ?? cvCfg.NOT_REQUESTED;
+          return (
+            <span className={`rounded-full px-2 py-0.5 text-xs ${cls}`}>
+              {label}
+            </span>
+          );
+        },
+      },
+      {
+        key: "status",
+        label: "Stato",
+        header: "Stato",
+        isBadge: true,
+        render: (t) => {
+          const s = (t as any).status as string | undefined;
+          const hasIssue = (t as any).hasIntegrityIssue;
+          const cfg: Record<string, { cls: string; label: string }> = {
+            ACTIVE: { cls: "bg-emerald-100 text-emerald-700", label: "Attivo" },
+            PENDING: { cls: "bg-amber-100 text-amber-700", label: "In attesa" },
+            ONBOARDING: { cls: "bg-blue-100 text-blue-700", label: "In corso" },
+            INACTIVE: { cls: "bg-gray-100 text-gray-700", label: "Non attivo" },
+            SUSPENDED: { cls: "bg-red-100 text-red-700", label: "Sospeso" },
+          };
+          const { cls, label } = cfg[s ?? ""] ?? (t.active ? cfg.ACTIVE : cfg.INACTIVE);
+          if (hasIssue) {
+            return (
+              <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700" title="Attivo ma senza account utente">
+                {label} ⚠
+              </span>
+            );
+          }
+          return (
+            <span className={`rounded-full px-2 py-1 text-xs ${cls}`}>
+              {label}
+            </span>
+          );
+        },
+      },
+    ],
+    [formatProvince]
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<TeacherColumn>({
+    tableKey: "admin.docenti",
+    columns: teacherColumns,
+  });
 
   return (
     <div className="space-y-6">
@@ -400,6 +563,15 @@ export default function AdminDocentiPage() {
         }
         onReset={resetFilters}
         resultCount={<>{teachers.length} docenti</>}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="space-y-3 md:space-y-0 md:flex md:flex-wrap md:items-end md:gap-3">
           <select
@@ -521,134 +693,7 @@ export default function AdminDocentiPage() {
       ) : null}
 
       <ResponsiveTable<TeacherRow>
-        columns={[
-          {
-            key: "name",
-            header: "Nome completo",
-            isPrimary: true,
-            render: (t) => {
-              const s = (t as any).status as string;
-              const sub =
-                s === "PENDING"
-                  ? "Invito inviato"
-                  : s === "ONBOARDING"
-                    ? "Registrazione in corso"
-                    : null;
-              return (
-                <span>
-                  {t.firstName} {t.lastName}
-                  {sub && (
-                    <span className="ml-1.5 text-xs text-muted-foreground">
-                      ({sub})
-                    </span>
-                  )}
-                </span>
-              );
-            },
-          },
-          {
-            key: "email",
-            header: "Email",
-            isSecondary: true,
-            render: (t) => t.email || "-",
-          },
-          {
-            key: "phone",
-            header: "Telefono",
-            render: (t) => t.phone || "-",
-          },
-          {
-            key: "specialization",
-            header: "Specializzazione",
-            render: (t) => t.specialization || "-",
-          },
-          {
-            key: "province",
-            header: "Provincia",
-            render: (t) => formatProvince(t.province),
-          },
-          {
-            key: "categories",
-            header: "Aree",
-            isBadge: true,
-            render: (t) =>
-              t.categories && t.categories.length > 0 ? (
-                <span className="inline-flex flex-wrap items-center gap-1">
-                  {t.categories.slice(0, 2).map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                      style={{ backgroundColor: cat.color ?? "#6B7280" }}
-                    >
-                      {cat.name}
-                    </span>
-                  ))}
-                  {t.categories.length > 2 ? (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                      +{t.categories.length - 2}
-                    </span>
-                  ) : null}
-                </span>
-              ) : (
-                "-"
-              ),
-          },
-          {
-            key: "assignments",
-            header: "Lezioni assegnate",
-            render: (t) => t._count?.assignments ?? 0,
-          },
-          {
-            key: "cvDpr445",
-            header: "CV 445",
-            isBadge: true,
-            render: (t) => {
-              const cvStatus = (t as any).cvDpr445?.status as string | undefined;
-              const cvCfg: Record<string, { cls: string; label: string }> = {
-                NOT_REQUESTED: { cls: "bg-gray-100 text-gray-500", label: "\u2014" },
-                REQUESTED: { cls: "bg-amber-100 text-amber-700", label: "Richiesto" },
-                SUBMITTED: { cls: "bg-blue-100 text-blue-700", label: "Inviato" },
-                APPROVED: { cls: "bg-emerald-100 text-emerald-700", label: "Approvato" },
-                REJECTED: { cls: "bg-red-100 text-red-700", label: "Rifiutato" },
-              };
-              const { cls, label } = cvCfg[cvStatus ?? ""] ?? cvCfg.NOT_REQUESTED;
-              return (
-                <span className={`rounded-full px-2 py-0.5 text-xs ${cls}`}>
-                  {label}
-                </span>
-              );
-            },
-          },
-          {
-            key: "status",
-            header: "Stato",
-            isBadge: true,
-            render: (t) => {
-              const s = (t as any).status as string | undefined;
-              const hasIssue = (t as any).hasIntegrityIssue;
-              const cfg: Record<string, { cls: string; label: string }> = {
-                ACTIVE: { cls: "bg-emerald-100 text-emerald-700", label: "Attivo" },
-                PENDING: { cls: "bg-amber-100 text-amber-700", label: "In attesa" },
-                ONBOARDING: { cls: "bg-blue-100 text-blue-700", label: "In corso" },
-                INACTIVE: { cls: "bg-gray-100 text-gray-700", label: "Non attivo" },
-                SUSPENDED: { cls: "bg-red-100 text-red-700", label: "Sospeso" },
-              };
-              const { cls, label } = cfg[s ?? ""] ?? (t.active ? cfg.ACTIVE : cfg.INACTIVE);
-              if (hasIssue) {
-                return (
-                  <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700" title="Attivo ma senza account utente">
-                    {label} ⚠
-                  </span>
-                );
-              }
-              return (
-                <span className={`rounded-full px-2 py-1 text-xs ${cls}`}>
-                  {label}
-                </span>
-              );
-            },
-          },
-        ] satisfies Column<TeacherRow>[]}
+        columns={orderedVisibleColumns}
         data={teachers}
         keyExtractor={(t) => t.id!}
         loading={teachersQuery.isLoading}

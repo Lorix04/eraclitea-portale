@@ -6,7 +6,9 @@ import { useSession } from "next-auth/react";
 import { ChevronDown, Download, Eye, Plus, Search, Trash2, Upload } from "lucide-react";
 import ActionMenu from "@/components/ui/ActionMenu";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
-import EmployeeTable from "@/components/EmployeeTable";
+import EmployeeTable, { type EmployeeColumn } from "@/components/EmployeeTable";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BrandedButton } from "@/components/BrandedButton";
@@ -192,6 +194,67 @@ function ClientDipendentiContent() {
     setPage(1);
   };
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const employeeColumns = useMemo<EmployeeColumn<EmployeeRow>[]>(
+    () => [
+      {
+        key: "nome",
+        label: "Nome",
+        header: "Nome",
+        isPrimary: true,
+        className: "px-4 py-3 font-medium",
+        render: (e) => e.nome,
+      },
+      {
+        key: "cognome",
+        label: "Cognome",
+        header: "Cognome",
+        isSecondary: true,
+        render: (e) => e.cognome,
+      },
+      {
+        key: "codiceFiscale",
+        label: "Codice Fiscale",
+        header: "Codice Fiscale",
+        className: "max-w-[180px] truncate px-4 py-3",
+        render: (e) => e.codiceFiscale,
+      },
+      {
+        key: "email",
+        label: "Email",
+        header: "Email",
+        className: "max-w-[220px] truncate px-4 py-3",
+        render: (e) => e.email || "-",
+      },
+      {
+        key: "telefono",
+        label: "Telefono",
+        header: "Telefono",
+        className: "max-w-[160px] truncate px-4 py-3",
+        render: (e) => e.telefono || "-",
+      },
+      {
+        key: "corsi",
+        label: "Corsi",
+        header: "Corsi",
+        render: (e) => e._count?.registrations ?? 0,
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<EmployeeColumn<EmployeeRow>>({
+    tableKey: "client.dipendenti",
+    columns: employeeColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -275,6 +338,15 @@ function ClientDipendentiContent() {
         }
         onReset={resetFilters}
         resultCount={`${totalCount} dipendenti trovati`}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -318,8 +390,9 @@ function ClientDipendentiContent() {
         </div>
       ) : null}
 
-      <EmployeeTable
+      <EmployeeTable<EmployeeRow>
         employees={pagedEmployees}
+        columns={orderedVisibleColumns}
         basePath="/dipendenti"
         isLoading={isLoading}
         useBranding

@@ -4,48 +4,69 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
-import { formatItalianDate } from "@/lib/date-utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-type EmployeeRow = {
-  id: string;
-  nome: string;
-  cognome: string;
-  codiceFiscale: string;
-  email?: string | null;
-  telefono?: string | null;
-  dataNascita?: string | Date | null;
-  client?: { id: string; ragioneSociale: string };
-  _count?: { registrations?: number; certificates?: number };
-  coursesCompleted?: number;
+// Column descriptor for the employee tables. Keys are opaque + stable (persisted
+// per-user via useTablePreferences). "Azioni" is NOT a column here — it stays
+// fixed/last, rendered via `renderActions`. `label` drives the customizer display.
+export type EmployeeColumn<T> = {
+  key: string;
+  label: string;
+  header: string;
+  render: (item: T) => React.ReactNode;
+  isPrimary?: boolean;
+  isSecondary?: boolean;
+  hideOnCard?: boolean;
+  className?: string;
 };
 
-type EmployeeTableProps = {
-  employees: EmployeeRow[];
-  showClient?: boolean;
+type EmployeeTableProps<T extends { id: string }> = {
+  employees: T[];
+  /** Customizable data columns, already ordered + filtered (orderedVisibleColumns). */
+  columns: EmployeeColumn<T>[];
   basePath: string;
   isLoading?: boolean;
   useBranding?: boolean;
-  onDelete?: (employee: EmployeeRow) => void;
-  renderActions?: (employee: EmployeeRow) => React.ReactNode;
+  onDelete?: (employee: T) => void;
+  renderActions?: (employee: T) => React.ReactNode;
 };
 
-function formatDate(value?: string | Date | null) {
-  return formatItalianDate(value) || "-";
-}
-
-export default function EmployeeTable({
+export default function EmployeeTable<T extends { id: string }>({
   employees,
-  showClient = false,
+  columns,
   basePath,
   isLoading,
   useBranding = false,
   onDelete,
   renderActions,
-}: EmployeeTableProps) {
+}: EmployeeTableProps<T>) {
   const router = useRouter();
   const linkClass = useBranding ? "link-brand" : "text-primary";
   const hasDelete = Boolean(onDelete);
+
+  const primaryCols = columns.filter((c) => c.isPrimary);
+  const secondaryCols = columns.filter((c) => c.isSecondary);
+  const detailCols = columns.filter(
+    (c) => !c.isPrimary && !c.isSecondary && !c.hideOnCard
+  );
+
+  const renderFallbackActions = (employee: T) => (
+    <div className="flex items-center gap-2">
+      <Link href={`${basePath}/${employee.id}`} className={linkClass}>
+        Dettaglio
+      </Link>
+      {hasDelete ? (
+        <button
+          type="button"
+          className="inline-flex min-h-[44px] items-center text-destructive"
+          onClick={() => onDelete?.(employee)}
+          title="Elimina"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -55,13 +76,11 @@ export default function EmployeeTable({
             <table className="w-full min-w-[920px] text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Cognome</th>
-                <th className="px-4 py-3">Codice Fiscale</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Telefono</th>
-                {showClient ? <th className="px-4 py-3">Cliente</th> : null}
-                <th className="px-4 py-3">Corsi</th>
+                {columns.map((col) => (
+                  <th key={col.key} className="px-4 py-3">
+                    {col.header}
+                  </th>
+                ))}
                 <th className="px-4 py-3">Azioni</th>
               </tr>
             </thead>
@@ -69,29 +88,11 @@ export default function EmployeeTable({
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, row) => (
                   <tr key={`emp-skel-${row}`} className="border-t">
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-28" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-32" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-40" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
-                    {showClient ? (
-                      <td className="px-4 py-3">
-                        <Skeleton className="h-4 w-32" />
+                    {columns.map((col) => (
+                      <td key={col.key} className="px-4 py-3">
+                        <Skeleton className="h-4 w-24" />
                       </td>
-                    ) : null}
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-10" />
-                    </td>
+                    ))}
                     <td className="px-4 py-3">
                       <Skeleton className="h-6 w-16" />
                     </td>
@@ -100,7 +101,7 @@ export default function EmployeeTable({
               ) : employees.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showClient ? 8 : 7}
+                    colSpan={columns.length + 1}
                     className="px-4 py-6 text-center text-muted-foreground"
                   >
                     Nessun dipendente trovato.
@@ -113,48 +114,15 @@ export default function EmployeeTable({
                     className="border-t cursor-pointer hover:bg-muted/30"
                     onClick={() => router.push(`${basePath}/${employee.id}`)}
                   >
-                    <td className="px-4 py-3 font-medium">{employee.nome}</td>
-                    <td className="px-4 py-3">{employee.cognome}</td>
-                    <td className="max-w-[180px] truncate px-4 py-3" title={employee.codiceFiscale}>
-                      {employee.codiceFiscale}
-                    </td>
-                    <td className="max-w-[220px] truncate px-4 py-3" title={employee.email ?? "-"}>
-                      {employee.email || "-"}
-                    </td>
-                    <td className="max-w-[160px] truncate px-4 py-3" title={employee.telefono ?? "-"}>
-                      {employee.telefono || "-"}
-                    </td>
-                    {showClient ? (
-                      <td className="px-4 py-3">
-                        {employee.client?.ragioneSociale || "-"}
+                    {columns.map((col) => (
+                      <td key={col.key} className={col.className ?? "px-4 py-3"}>
+                        {col.render(employee)}
                       </td>
-                    ) : null}
-                    <td className="px-4 py-3">
-                      {employee._count?.registrations ?? 0}
-                    </td>
+                    ))}
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {renderActions ? (
-                        renderActions(employee)
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`${basePath}/${employee.id}`}
-                            className={linkClass}
-                          >
-                            Dettaglio
-                          </Link>
-                          {hasDelete ? (
-                            <button
-                              type="button"
-                              className="inline-flex min-h-[44px] items-center text-destructive"
-                              onClick={() => onDelete?.(employee)}
-                              title="Elimina"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ) : null}
-                        </div>
-                      )}
+                      {renderActions
+                        ? renderActions(employee)
+                        : renderFallbackActions(employee)}
                     </td>
                   </tr>
                 ))
@@ -191,56 +159,35 @@ export default function EmployeeTable({
           employees.map((employee) => (
             <article
               key={employee.id}
-              className="space-y-2 rounded-lg border bg-card p-4"
+              className="space-y-2 rounded-lg border bg-card p-4 cursor-pointer active:bg-muted/50"
+              onClick={() => router.push(`${basePath}/${employee.id}`)}
             >
-              <div>
-                <p className="text-sm font-semibold">
-                  {employee.cognome} {employee.nome}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  CF: {employee.codiceFiscale}
-                </p>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Email: {employee.email || "-"}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Telefono: {employee.telefono || "-"}
-              </div>
-              {showClient ? (
-                <div className="text-xs text-muted-foreground">
-                  Cliente: {employee.client?.ragioneSociale || "-"}
+              {primaryCols.length > 0 || secondaryCols.length > 0 ? (
+                <div>
+                  {primaryCols.map((col) => (
+                    <p key={col.key} className="text-sm font-semibold">
+                      {col.render(employee)}
+                    </p>
+                  ))}
+                  {secondaryCols.map((col) => (
+                    <p key={col.key} className="text-xs text-muted-foreground">
+                      {col.render(employee)}
+                    </p>
+                  ))}
                 </div>
               ) : null}
-              <div className="text-xs text-muted-foreground">
-                Data nascita: {formatDate(employee.dataNascita)}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="rounded-full bg-muted px-2 py-1">
-                  Corsi: {employee._count?.registrations ?? 0}
-                </span>
-                {renderActions ? (
-                  renderActions(employee)
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`${basePath}/${employee.id}`}
-                      className={linkClass}
-                    >
-                      Dettaglio
-                    </Link>
-                    {hasDelete ? (
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center text-destructive"
-                        onClick={() => onDelete?.(employee)}
-                        title="Elimina"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-                )}
+              {detailCols.map((col) => (
+                <div key={col.key} className="text-xs text-muted-foreground">
+                  {col.header}: {col.render(employee)}
+                </div>
+              ))}
+              <div
+                className="flex items-center justify-end pt-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {renderActions
+                  ? renderActions(employee)
+                  : renderFallbackActions(employee)}
               </div>
             </article>
           ))

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
@@ -25,6 +25,22 @@ type CertificateRow = {
   uploadedByEmail?: string | null;
 };
 
+// Column descriptor for the certificate table. Keys are opaque + stable
+// (persisted per-user via useTablePreferences). The row-selection checkbox
+// (first) and "Azioni" (last) are NOT columns here — they stay fixed and are
+// excluded from the customizer. `label` drives the customizer display.
+export type CertificateColumn = {
+  key: string;
+  label: string;
+  header: string;
+  render: (cert: CertificateRow) => React.ReactNode;
+  isPrimary?: boolean;
+  isSecondary?: boolean;
+  isBadge?: boolean;
+  hideOnCard?: boolean;
+  className?: string;
+};
+
 type PaginationProps = {
   page: number;
   totalPages: number;
@@ -33,6 +49,11 @@ type PaginationProps = {
 
 type CertificateTableProps = {
   certificates: CertificateRow[];
+  /**
+   * Customizable data columns, already ordered + filtered (orderedVisibleColumns).
+   * Defaults to the full registry when omitted (consumers without a customizer).
+   */
+  columns?: CertificateColumn[];
   isLoading?: boolean;
   isFetching?: boolean;
   pagination?: PaginationProps;
@@ -64,8 +85,64 @@ function getCourseLabel(cert: CertificateRow) {
   return edition ? `${title} (Ed. #${edition})` : title;
 }
 
+// Default customizable column registry (default order). The selection checkbox
+// and "Azioni" are fixed and handled separately by the table.
+export const CERTIFICATE_COLUMNS: CertificateColumn[] = [
+  {
+    key: "employee",
+    label: "Dipendente",
+    header: "Dipendente",
+    isPrimary: true,
+    render: (cert) => `${cert.employee.cognome} ${cert.employee.nome}`,
+  },
+  {
+    key: "course",
+    label: "Corso",
+    header: "Corso",
+    isSecondary: true,
+    className: "max-w-[260px] truncate px-4 py-3",
+    render: (cert) => (
+      <span title={getCourseLabel(cert)}>{getCourseLabel(cert)}</span>
+    ),
+  },
+  {
+    key: "achievedAt",
+    label: "Data",
+    header: "Data",
+    render: (cert) => formatDate(cert.achievedAt),
+  },
+  {
+    key: "expiresAt",
+    label: "Scadenza",
+    header: "Scadenza",
+    render: (cert) => formatDate(cert.expiresAt),
+  },
+  {
+    key: "status",
+    label: "Stato",
+    header: "Stato",
+    isBadge: true,
+    render: (cert) => {
+      const badge = getExpiryBadge(cert.expiresAt);
+      return (
+        <span className={`rounded-full px-2 py-1 text-xs ${badge.className}`}>
+          {badge.label}
+        </span>
+      );
+    },
+  },
+  {
+    key: "uploadedAt",
+    label: "Caricato",
+    header: "Caricato",
+    className: "px-4 py-3 text-xs text-muted-foreground",
+    render: (cert) => (cert.uploadedAt ? formatDate(cert.uploadedAt) : "-"),
+  },
+];
+
 export default function CertificateTable({
   certificates,
+  columns = CERTIFICATE_COLUMNS,
   isLoading,
   isFetching,
   pagination,
@@ -133,6 +210,12 @@ export default function CertificateTable({
     },
   });
 
+  const cardPrimary = columns.filter((c) => c.isPrimary);
+  const cardSecondary = columns.filter((c) => c.isSecondary);
+  const cardRest = columns.filter(
+    (c) => !c.isPrimary && !c.isSecondary && !c.hideOnCard
+  );
+
   return (
     <div className="space-y-4">
       {selectedIds.size > 0 ? (
@@ -188,24 +271,11 @@ export default function CertificateTable({
                     aria-label="Seleziona tutti"
                   />
                 </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Dipendente
-                </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Corso
-                </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Data
-                </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Scadenza
-                </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Stato
-                </th>
-                <th className="px-4 py-3" role="columnheader" scope="col">
-                  Caricato
-                </th>
+                {columns.map((col) => (
+                  <th key={col.key} className="px-4 py-3" role="columnheader" scope="col">
+                    {col.header}
+                  </th>
+                ))}
                 <th className="px-4 py-3" role="columnheader" scope="col">
                   Azioni
                 </th>
@@ -218,24 +288,11 @@ export default function CertificateTable({
                     <td className="px-4 py-3">
                       <Skeleton className="h-4 w-4" />
                     </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-32" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-40" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-20" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-20" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
+                    {columns.map((col) => (
+                      <td key={col.key} className="px-4 py-3">
+                        <Skeleton className="h-4 w-24" />
+                      </td>
+                    ))}
                     <td className="px-4 py-3">
                       <Skeleton className="h-6 w-8" />
                     </td>
@@ -244,7 +301,7 @@ export default function CertificateTable({
               ) : certificates.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={columns.length + 2}
                     className="px-4 py-6 text-center text-muted-foreground"
                   >
                     Nessun attestato trovato.
@@ -252,7 +309,6 @@ export default function CertificateTable({
                 </tr>
               ) : (
                 certificates.map((cert, index) => {
-                  const badge = getExpiryBadge(cert.expiresAt);
                   const selected = selectedIds.has(cert.id);
                   const uploadedInfo = cert.uploadedAt
                     ? `Caricato il ${formatDate(cert.uploadedAt)}`
@@ -271,6 +327,7 @@ export default function CertificateTable({
                         focusedIndex === index ? "outline outline-1" : ""
                       }`}
                       style={rowStyle}
+                      title={`${uploadedInfo}${uploaderInfo}`}
                     >
                       <td className="px-4 py-3">
                         <input
@@ -280,32 +337,11 @@ export default function CertificateTable({
                           aria-label={`Seleziona attestato ${cert.employee.cognome}`}
                         />
                       </td>
-                      <td className="px-4 py-3">
-                        {cert.employee.cognome} {cert.employee.nome}
-                      </td>
-                      <td
-                        className="max-w-[260px] truncate px-4 py-3"
-                        title={getCourseLabel(cert)}
-                      >
-                        {getCourseLabel(cert)}
-                      </td>
-                      <td
-                        className="px-4 py-3"
-                        title={`${uploadedInfo}${uploaderInfo}`}
-                      >
-                        {formatDate(cert.achievedAt)}
-                      </td>
-                      <td className="px-4 py-3">{formatDate(cert.expiresAt)}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {cert.uploadedAt ? formatDate(cert.uploadedAt) : "-"}
-                      </td>
+                      {columns.map((col) => (
+                        <td key={col.key} className={col.className ?? "px-4 py-3"}>
+                          {col.render(cert)}
+                        </td>
+                      ))}
                       <td className="px-4 py-3">
                         <a
                           href={`/api/attestati/${cert.id}/download`}
@@ -364,7 +400,6 @@ export default function CertificateTable({
           </div>
         ) : (
           certificates.map((cert) => {
-            const badge = getExpiryBadge(cert.expiresAt);
             const selected = selectedIds.has(cert.id);
             return (
               <article
@@ -378,12 +413,16 @@ export default function CertificateTable({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">
-                      {cert.employee.cognome} {cert.employee.nome}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {getCourseLabel(cert)}
-                    </p>
+                    {cardPrimary.map((col) => (
+                      <p key={col.key} className="text-sm font-semibold">
+                        {col.render(cert)}
+                      </p>
+                    ))}
+                    {cardSecondary.map((col) => (
+                      <p key={col.key} className="text-xs text-muted-foreground">
+                        {col.render(cert)}
+                      </p>
+                    ))}
                   </div>
                   <input
                     type="checkbox"
@@ -393,22 +432,21 @@ export default function CertificateTable({
                   />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full px-2 py-1 ${badge.className}`}>
-                    {badge.label}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-1">
-                    Data: {formatDate(cert.achievedAt)}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-1">
-                    Scadenza: {formatDate(cert.expiresAt)}
-                  </span>
-                </div>
+                {cardRest.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {cardRest.map((col) =>
+                      col.isBadge ? (
+                        <span key={col.key}>{col.render(cert)}</span>
+                      ) : (
+                        <span key={col.key} className="rounded-full bg-muted px-2 py-1">
+                          {col.header}: {col.render(cert)}
+                        </span>
+                      )
+                    )}
+                  </div>
+                ) : null}
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    Caricato: {cert.uploadedAt ? formatDate(cert.uploadedAt) : "-"}
-                  </span>
+                <div className="flex items-center justify-end text-xs text-muted-foreground">
                   <a
                     href={`/api/attestati/${cert.id}/download`}
                     className="btn-brand-outline inline-flex min-h-[44px] items-center gap-2 rounded-md px-2 py-1 text-xs"

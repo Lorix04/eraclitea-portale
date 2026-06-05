@@ -14,6 +14,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import TableColumnCustomizer from "@/components/TableColumnCustomizer";
+import { useTablePreferences } from "@/hooks/useTablePreferences";
 
 type CertificateRow = {
   id: string;
@@ -122,6 +124,10 @@ function getExpiryBadge(expiresAt?: string | null) {
     </span>
   );
 }
+
+// Customizable column registry for /admin/attestati. "Azioni" excluded — fixed/last
+// via the ResponsiveTable `actions` prop. `label` drives the customizer display.
+type CertificateColumn = Column<CertificateRow> & { label: string };
 
 export default function AdminAttestatiPage() {
   const { can } = usePermissions();
@@ -321,6 +327,102 @@ export default function AdminAttestatiPage() {
     setPage(1);
   };
 
+  // Customizable column registry (default order). "Azioni" excluded — fixed/last.
+  const certificateColumns = useMemo<CertificateColumn[]>(
+    () => [
+      {
+        key: "employee",
+        label: "Dipendente",
+        header: "Dipendente",
+        isPrimary: true,
+        render: (cert) => (
+          <Link
+            href={`/admin/dipendenti/${cert.employeeId}`}
+            className="text-primary hover:underline"
+          >
+            {cert.employee?.nome} {cert.employee?.cognome}
+          </Link>
+        ),
+      },
+      {
+        key: "fileName",
+        label: "Nome File",
+        header: "Nome File",
+        isSecondary: true,
+        render: (cert) => {
+          const name = cert.filePath ? getFileName(cert.filePath) : "Attestato";
+          return (
+            <span className="max-w-[280px] truncate" title={name}>
+              {name}
+            </span>
+          );
+        },
+      },
+      {
+        key: "client",
+        label: "Cliente",
+        header: "Cliente",
+        hideOnCard: true,
+        render: (cert) => cert.client?.ragioneSociale || "-",
+      },
+      {
+        key: "course",
+        label: "Corso",
+        header: "Corso",
+        render: (cert) =>
+          cert.courseEdition ? (
+            <span>{getEditionLabel(cert.courseEdition, true)}</span>
+          ) : (
+            <span className="italic text-muted-foreground">Esterno</span>
+          ),
+      },
+      {
+        key: "achievedAt",
+        label: "Data Rilascio",
+        header: "Data Rilascio",
+        render: (cert) =>
+          cert.achievedAt ? formatItalianDate(cert.achievedAt) : "-",
+      },
+      {
+        key: "expiresAt",
+        label: "Data Scadenza",
+        header: "Data Scadenza",
+        render: (cert) =>
+          cert.expiresAt ? formatItalianDate(cert.expiresAt) : "-",
+      },
+      {
+        key: "status",
+        label: "Stato",
+        header: "Stato",
+        isBadge: true,
+        render: (cert) => getExpiryBadge(cert.expiresAt),
+      },
+      {
+        key: "uploadedAt",
+        label: "Caricato",
+        header: "Caricato",
+        hideOnCard: true,
+        render: (cert) => {
+          const uploaded = cert.uploadedAt || cert.createdAt || null;
+          return uploaded ? formatItalianDate(uploaded) : "-";
+        },
+      },
+    ],
+    []
+  );
+
+  const {
+    orderedVisibleColumns,
+    allColumns,
+    isHidden,
+    setVisibility,
+    reorder,
+    reset: resetColumns,
+  } = useTablePreferences<CertificateColumn>({
+    tableKey: "admin.attestati",
+    columns: certificateColumns,
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -383,6 +485,15 @@ export default function AdminAttestatiPage() {
         }
         onReset={resetFilters}
         resultCount={resultLabel}
+        trailingControl={
+          <TableColumnCustomizer
+            columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
+            isHidden={isHidden}
+            setVisibility={setVisibility}
+            reorder={reorder}
+            reset={resetColumns}
+          />
+        }
       >
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-4">
           <select
@@ -543,77 +654,7 @@ export default function AdminAttestatiPage() {
       </MobileFilterPanel>
 
       <ResponsiveTable<CertificateRow>
-        columns={[
-          {
-            key: "employee",
-            header: "Dipendente",
-            isPrimary: true,
-            render: (cert) => (
-              <Link
-                href={`/admin/dipendenti/${cert.employeeId}`}
-                className="text-primary hover:underline"
-              >
-                {cert.employee?.nome} {cert.employee?.cognome}
-              </Link>
-            ),
-          },
-          {
-            key: "fileName",
-            header: "Nome File",
-            isSecondary: true,
-            render: (cert) => {
-              const name = cert.filePath ? getFileName(cert.filePath) : "Attestato";
-              return (
-                <span className="max-w-[280px] truncate" title={name}>
-                  {name}
-                </span>
-              );
-            },
-          },
-          {
-            key: "client",
-            header: "Cliente",
-            hideOnCard: true,
-            render: (cert) => cert.client?.ragioneSociale || "-",
-          },
-          {
-            key: "course",
-            header: "Corso",
-            render: (cert) =>
-              cert.courseEdition ? (
-                <span>{getEditionLabel(cert.courseEdition, true)}</span>
-              ) : (
-                <span className="italic text-muted-foreground">Esterno</span>
-              ),
-          },
-          {
-            key: "achievedAt",
-            header: "Data Rilascio",
-            render: (cert) =>
-              cert.achievedAt ? formatItalianDate(cert.achievedAt) : "-",
-          },
-          {
-            key: "expiresAt",
-            header: "Data Scadenza",
-            render: (cert) =>
-              cert.expiresAt ? formatItalianDate(cert.expiresAt) : "-",
-          },
-          {
-            key: "status",
-            header: "Stato",
-            isBadge: true,
-            render: (cert) => getExpiryBadge(cert.expiresAt),
-          },
-          {
-            key: "uploadedAt",
-            header: "Caricato",
-            hideOnCard: true,
-            render: (cert) => {
-              const uploaded = cert.uploadedAt || cert.createdAt || null;
-              return uploaded ? formatItalianDate(uploaded) : "-";
-            },
-          },
-        ] satisfies Column<CertificateRow>[]}
+        columns={orderedVisibleColumns}
         data={certificates}
         keyExtractor={(cert) => cert.id}
         loading={loading}
