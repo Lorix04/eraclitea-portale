@@ -15,6 +15,9 @@ import { timeSlotLabel } from "@/lib/time-slot";
 
 type Tab = "tutti" | "disponibili" | "in_progress" | "completati";
 
+// Sentinel for the "Senza sede" option in the Sede filter.
+const NO_SEDE = "__no_sede__";
+
 const TABS: Array<{ value: Tab; label: string }> = [
   { value: "tutti", label: "Tutti" },
   { value: "disponibili", label: "Disponibili" },
@@ -77,6 +80,7 @@ function ClientCorsiContent() {
   const [timeSlotFilter, setTimeSlotFilter] = useState(
     searchParams.get("timeSlot") ?? "all"
   );
+  const [sedeFilter, setSedeFilter] = useState(searchParams.get("sede") ?? "all");
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
   >([]);
@@ -130,11 +134,12 @@ function ClientCorsiContent() {
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (yearFilter) params.set("year", yearFilter);
     if (timeSlotFilter !== "all") params.set("timeSlot", timeSlotFilter);
+    if (sedeFilter !== "all") params.set("sede", sedeFilter);
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
     });
-  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, timeSlotFilter, router, pathname]);
+  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, router, pathname]);
 
   const courses = useMemo(() => data?.data ?? [], [data]);
   const yearOptions = useMemo(() => {
@@ -149,6 +154,31 @@ function ClientCorsiContent() {
     });
     return Array.from(years).sort((a, b) => Number(b) - Number(a));
   }, [courses]);
+
+  const sedeOptions = useMemo(() => {
+    const set = new Set<string>();
+    courses.forEach((course) => {
+      course.editions.forEach((edition) => {
+        (edition.luoghi ?? []).forEach((luogo) => {
+          const v = luogo?.trim();
+          if (v) set.add(v);
+        });
+      });
+    });
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, "it", { sensitivity: "base" })
+    );
+  }, [courses]);
+
+  const hasEditionsWithoutSede = useMemo(
+    () =>
+      courses.some((course) =>
+        course.editions.some(
+          (edition) => !(edition.luoghi && edition.luoghi.length > 0)
+        )
+      ),
+    [courses]
+  );
 
   const filteredCourses = useMemo(() => {
     const term = debouncedSearch.trim().toLowerCase();
@@ -173,11 +203,23 @@ function ClientCorsiContent() {
           );
         }
 
+        if (sedeFilter !== "all") {
+          editions = editions.filter((edition) =>
+            sedeFilter === NO_SEDE
+              ? !(edition.luoghi && edition.luoghi.length > 0)
+              : (edition.luoghi ?? []).includes(sedeFilter)
+          );
+        }
+
         if (term) {
           const courseMatch = course.title.toLowerCase().includes(term);
           if (!courseMatch) {
-            editions = editions.filter((edition) =>
-              String(edition.editionNumber ?? "").includes(term)
+            editions = editions.filter(
+              (edition) =>
+                String(edition.editionNumber ?? "").includes(term) ||
+                (edition.luoghi ?? []).some((luogo) =>
+                  luogo.toLowerCase().includes(term)
+                )
             );
           }
         }
@@ -185,7 +227,7 @@ function ClientCorsiContent() {
         return { ...course, editions };
       })
       .filter((course) => course.editions.length > 0);
-  }, [courses, debouncedSearch, yearFilter, timeSlotFilter]);
+  }, [courses, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter]);
   const now = useMemo(() => new Date(), []);
 
   return (
@@ -250,11 +292,11 @@ function ClientCorsiContent() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            placeholder="Cerca corso o edizione..."
+            placeholder="Cerca corso, edizione o sede..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full sm:w-[240px] rounded-full border bg-background py-2 pl-9 pr-3 text-sm"
-            aria-label="Cerca corso o edizione"
+            aria-label="Cerca corso, edizione o sede"
           />
         </div>
         <select
@@ -279,6 +321,22 @@ function ClientCorsiContent() {
           <option value="AM">Mattina</option>
           <option value="PM">Pomeriggio</option>
           <option value="none">Non impostata</option>
+        </select>
+        <select
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
+          value={sedeFilter}
+          onChange={(event) => setSedeFilter(event.target.value)}
+          aria-label="Filtro sede"
+        >
+          <option value="all">Tutte le sedi</option>
+          {sedeOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+          {hasEditionsWithoutSede ? (
+            <option value={NO_SEDE}>Senza sede</option>
+          ) : null}
         </select>
       </div>
 

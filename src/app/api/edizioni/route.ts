@@ -96,6 +96,16 @@ export async function GET(request: Request) {
             },
           },
         },
+        {
+          lessons: {
+            some: {
+              luogo: {
+                contains: search,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          },
+        },
       ],
     });
   }

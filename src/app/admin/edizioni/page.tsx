@@ -97,6 +97,19 @@ const SORT_COLUMNS: Array<{
   { key: "participants", label: "Partecipanti" },
 ];
 
+// Sentinel value for the "Senza sede" option in the Sede filter (an edition
+// has no sede when none of its lessons has a non-empty luogo).
+const NO_SEDE = "__no_sede__";
+
+const getEditionSedi = (edition: EditionRow): string[] =>
+  Array.from(
+    new Set(
+      (edition.lessons ?? [])
+        .map((lesson) => lesson.luogo?.trim())
+        .filter((luogo): luogo is string => Boolean(luogo))
+    )
+  );
+
 const getLuoghiDisplay = (edition: EditionRow) => {
   const luoghiUnici = Array.from(
     new Set(
@@ -167,6 +180,7 @@ function AdminEdizioniContent() {
   );
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") ?? "");
   const [timeSlot, setTimeSlot] = useState(searchParams.get("timeSlot") ?? "all");
+  const [sede, setSede] = useState(searchParams.get("sede") ?? "all");
   const [sortBy, setSortBy] = useState(initialSortBy);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialSortOrder);
 
@@ -201,6 +215,7 @@ function AdminEdizioniContent() {
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     if (timeSlot && timeSlot !== "all") params.set("timeSlot", timeSlot);
+    if (sede && sede !== "all") params.set("sede", sede);
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder) params.set("sortOrder", sortOrder);
     const query = params.toString();
@@ -216,6 +231,7 @@ function AdminEdizioniContent() {
     dateFrom,
     dateTo,
     timeSlot,
+    sede,
     sortBy,
     sortOrder,
     router,
@@ -318,6 +334,7 @@ function AdminEdizioniContent() {
     setDateFrom("");
     setDateTo("");
     setTimeSlot("all");
+    setSede("all");
     setSortBy("startDate");
     setSortOrder("desc");
   };
@@ -482,6 +499,30 @@ function AdminEdizioniContent() {
     columns: editionColumns,
   });
 
+  // Sede (client-side): options are the distinct non-empty lesson venues across
+  // the currently-loaded (server-filtered, visibility-aware) editions. Computed
+  // before applying the Sede selection so the dropdown doesn't shrink when used.
+  const sedeOptions = useMemo(() => {
+    const set = new Set<string>();
+    editions.forEach((e) => getEditionSedi(e).forEach((s) => set.add(s)));
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, "it", { sensitivity: "base" })
+    );
+  }, [editions]);
+
+  const hasEditionsWithoutSede = useMemo(
+    () => editions.some((e) => getEditionSedi(e).length === 0),
+    [editions]
+  );
+
+  const displayedEditions = useMemo(() => {
+    if (sede === "all") return editions;
+    if (sede === NO_SEDE) {
+      return editions.filter((e) => getEditionSedi(e).length === 0);
+    }
+    return editions.filter((e) => getEditionSedi(e).includes(sede));
+  }, [editions, sede]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -508,11 +549,11 @@ function AdminEdizioniContent() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              placeholder="Cerca per corso o cliente..."
+              placeholder="Cerca per corso, cliente o sede..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm md:w-[240px]"
-              aria-label="Cerca per corso o cliente"
+              aria-label="Cerca per corso, cliente o sede"
             />
           </div>
         }
@@ -523,10 +564,11 @@ function AdminEdizioniContent() {
           (referentId ? 1 : 0) +
           (dateFrom ? 1 : 0) +
           (dateTo ? 1 : 0) +
-          (timeSlot !== "all" ? 1 : 0)
+          (timeSlot !== "all" ? 1 : 0) +
+          (sede !== "all" ? 1 : 0)
         }
         onReset={resetFilters}
-        resultCount={`${editions.length} edizioni trovate`}
+        resultCount={`${displayedEditions.length} edizioni trovate`}
         trailingControl={
           <TableColumnCustomizer
             columns={allColumns.map((c) => ({ key: c.key, label: c.label }))}
@@ -613,6 +655,23 @@ function AdminEdizioniContent() {
             <option value="none">Non impostata</option>
           </select>
 
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[200px]"
+            value={sede}
+            onChange={(event) => setSede(event.target.value)}
+            aria-label="Filtro sede"
+          >
+            <option value="all">Tutte le sedi</option>
+            {sedeOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+            {hasEditionsWithoutSede ? (
+              <option value={NO_SEDE}>Senza sede</option>
+            ) : null}
+          </select>
+
           <div className="flex w-full items-center gap-2 md:w-auto">
             <span className="text-sm text-muted-foreground">Da:</span>
             <input
@@ -667,7 +726,7 @@ function AdminEdizioniContent() {
 
       <ResponsiveTable<EditionRow>
         columns={orderedVisibleColumns}
-        data={editions}
+        data={displayedEditions}
         keyExtractor={(e) => e.id}
         loading={loading}
         skeletonCount={6}
