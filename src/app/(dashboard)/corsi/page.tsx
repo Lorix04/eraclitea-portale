@@ -81,6 +81,17 @@ function ClientCorsiContent() {
     searchParams.get("timeSlot") ?? "all"
   );
   const [sedeFilter, setSedeFilter] = useState(searchParams.get("sede") ?? "all");
+  const sortByParam = searchParams.get("sortBy");
+  const [sortBy, setSortBy] = useState<
+    "startDate" | "endDate" | "deadlineRegistry"
+  >(
+    sortByParam === "endDate" || sortByParam === "deadlineRegistry"
+      ? sortByParam
+      : "startDate"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    searchParams.get("sortOrder") === "asc" ? "asc" : "desc"
+  );
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
   >([]);
@@ -135,11 +146,13 @@ function ClientCorsiContent() {
     if (yearFilter) params.set("year", yearFilter);
     if (timeSlotFilter !== "all") params.set("timeSlot", timeSlotFilter);
     if (sedeFilter !== "all") params.set("sede", sedeFilter);
+    if (sortBy !== "startDate") params.set("sortBy", sortBy);
+    if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
     });
-  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, router, pathname]);
+  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, sortBy, sortOrder, router, pathname]);
 
   const courses = useMemo(() => data?.data ?? [], [data]);
   const yearOptions = useMemo(() => {
@@ -224,10 +237,19 @@ function ClientCorsiContent() {
           }
         }
 
-        return { ...course, editions };
+        const sorted = [...editions].sort((a, b) => {
+          const av = a[sortBy] ? new Date(a[sortBy] as string).getTime() : null;
+          const bv = b[sortBy] ? new Date(b[sortBy] as string).getTime() : null;
+          if (av === null && bv === null) return 0;
+          if (av === null) return 1; // edizioni senza data in fondo
+          if (bv === null) return -1;
+          return sortOrder === "asc" ? av - bv : bv - av;
+        });
+
+        return { ...course, editions: sorted };
       })
       .filter((course) => course.editions.length > 0);
-  }, [courses, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter]);
+  }, [courses, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, sortBy, sortOrder]);
   const now = useMemo(() => new Date(), []);
 
   return (
@@ -337,6 +359,31 @@ function ClientCorsiContent() {
           {hasEditionsWithoutSede ? (
             <option value={NO_SEDE}>Senza sede</option>
           ) : null}
+        </select>
+        <select
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
+          value={sortBy}
+          onChange={(event) =>
+            setSortBy(
+              event.target.value as "startDate" | "endDate" | "deadlineRegistry"
+            )
+          }
+          aria-label="Ordina per"
+        >
+          <option value="startDate">Ordina per: Data inizio</option>
+          <option value="endDate">Ordina per: Data fine</option>
+          <option value="deadlineRegistry">Ordina per: Deadline</option>
+        </select>
+        <select
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
+          value={sortOrder}
+          onChange={(event) =>
+            setSortOrder(event.target.value as "asc" | "desc")
+          }
+          aria-label="Direzione ordinamento"
+        >
+          <option value="desc">Decrescente</option>
+          <option value="asc">Crescente</option>
         </select>
       </div>
 

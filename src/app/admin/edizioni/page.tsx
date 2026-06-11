@@ -692,6 +692,42 @@ function AdminEdizioniContent() {
               aria-label="Data a"
             />
           </div>
+
+          {/* "Ordina per" + direzione: pilotano lo STESSO stato sortBy/sortOrder
+              dell'ordinamento per colonna (sincronia bidirezionale). */}
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <span className="text-sm text-muted-foreground">Ordina per:</span>
+            <select
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[150px]"
+              value={sortBy}
+              onChange={(event) =>
+                setSortBy(
+                  event.target.value as (typeof SORT_COLUMNS)[number]["key"]
+                )
+              }
+              aria-label="Ordina edizioni per"
+            >
+              {!["startDate", "endDate", "deadlineRegistry"].includes(sortBy) ? (
+                <option value={sortBy}>
+                  {SORT_COLUMNS.find((c) => c.key === sortBy)?.label ?? sortBy}
+                </option>
+              ) : null}
+              <option value="startDate">Data inizio</option>
+              <option value="endDate">Data fine</option>
+              <option value="deadlineRegistry">Deadline</option>
+            </select>
+            <select
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[140px]"
+              value={sortOrder}
+              onChange={(event) =>
+                setSortOrder(event.target.value as "asc" | "desc")
+              }
+              aria-label="Direzione ordinamento"
+            >
+              <option value="asc">Crescente</option>
+              <option value="desc">Decrescente</option>
+            </select>
+          </div>
         </div>
       </MobileFilterPanel>
 
