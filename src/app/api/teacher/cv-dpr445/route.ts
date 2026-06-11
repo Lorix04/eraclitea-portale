@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveTeacherContext } from "@/lib/impersonate";
 import { notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { adminTeacherUrl } from "@/lib/portal-links";
 import fs from "fs/promises";
 import path from "path";
 
@@ -230,7 +231,7 @@ export async function PUT(request: Request) {
         ${emailInfoBox(`<p style="margin:0; font-size:14px;">Il documento e in attesa di approvazione.</p>`)}
       `,
       ctaText: "Vedi Docente",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/docenti`,
+      ctaUrl: adminTeacherUrl(ctx.teacherId),
     });
   } catch { /* ignore */ }
 

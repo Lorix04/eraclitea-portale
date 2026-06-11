@@ -33,6 +33,7 @@ export const paths = {
     `/admin/corsi/${courseId}/edizioni/${editionId}${tab ? `?tab=${tab}` : ""}`,
   adminEditions: () => `/admin/edizioni`,
   adminAttestati: () => `/admin/attestati`,
+  adminTeacher: (teacherId: string) => `/admin/docenti/${teacherId}`,
   // Client (route keyed by editionId)
   clientEdition: (editionId: string) => `/corsi/${editionId}`,
   clientAnagrafiche: (editionId: string) => `/corsi/${editionId}`,
@@ -64,6 +65,10 @@ export function adminEditionMaterialiUrl(courseId: string, editionId: string): s
 }
 export function adminEditionsUrl(): string {
   return absolutePortalUrl(paths.adminEditions());
+}
+/** Admin teacher detail (the /admin/docenti/[id] page is keyed by Teacher.id). */
+export function adminTeacherUrl(teacherId: string): string {
+  return absolutePortalUrl(paths.adminTeacher(teacherId));
 }
 
 /** Client edition detail (the page that also hosts the anagrafiche tab). */
