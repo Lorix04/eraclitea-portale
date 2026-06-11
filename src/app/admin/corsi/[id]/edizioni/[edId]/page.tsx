@@ -142,6 +142,15 @@ export default function AdminEditionDetailPage({
   const router = useRouter();
   const { confirm: confirmDialog } = useConfirmDialog();
   const [tab, setTab] = useState("info");
+
+  // Allow deep-linking to a specific tab via ?tab= (e.g. from emails/notifications).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested && TABS.some((t) => t.id === requested)) {
+      setTab(requested);
+    }
+  }, []);
   const [edition, setEdition] = useState<EditionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

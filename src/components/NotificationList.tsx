@@ -25,6 +25,7 @@ export type NotificationItem = {
   title: string;
   message?: string;
   courseEditionId?: string;
+  courseId?: string;
   ticketId?: string;
   courseTitle?: string;
   editionNumber?: number;

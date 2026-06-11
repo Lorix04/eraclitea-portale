@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/date-utils";
 import { sendEditionCancelledEmail } from "@/lib/email-notifications";
 import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
 import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { clientEditionUrl, clientAttestatiUrl } from "@/lib/portal-links";
 
 export const dynamic = "force-dynamic";
 
@@ -275,7 +276,7 @@ export async function PUT(
         ${emailParagraph("Accedi al portale per compilare le anagrafiche dei partecipanti.")}
       `,
       ctaText: "Vai al Corso",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
+      ctaUrl: clientEditionUrl(updated.id),
       courseEditionId: updated.id,
     });
   }
@@ -305,7 +306,7 @@ export async function PUT(
         `)}
       `,
       ctaText: "Vedi Dettagli",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
+      ctaUrl: clientEditionUrl(updated.id),
       courseEditionId: updated.id,
     });
   }
@@ -334,7 +335,7 @@ export async function PUT(
         ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
       `,
       ctaText: "Vai al Portale",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi`,
+      ctaUrl: clientEditionUrl(updated.id),
       courseEditionId: updated.id,
     });
 
@@ -359,7 +360,7 @@ export async function PUT(
         ${emailParagraph("Gli attestati saranno disponibili a breve nella sezione dedicata del portale.")}
       `,
       ctaText: "Vai agli Attestati",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/attestati`,
+      ctaUrl: clientAttestatiUrl(),
       courseEditionId: updated.id,
     });
   }
@@ -388,7 +389,7 @@ export async function PUT(
           ${emailParagraph("Accedi al portale per i dettagli aggiornati.")}
         `,
         ctaText: "Vedi Dettagli",
-        ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${updated.id}`,
+        ctaUrl: clientEditionUrl(updated.id),
         courseEditionId: updated.id,
       });
     }

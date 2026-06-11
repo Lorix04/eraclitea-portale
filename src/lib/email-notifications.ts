@@ -1,5 +1,12 @@
 import { buildEmailHtml, emailInfoBox, emailParagraph } from "@/lib/email-templates";
 import { sendAutoEmail } from "@/lib/email-service";
+import {
+  clientEditionUrl,
+  clientCoursesUrl,
+  clientAttestatiUrl,
+  adminEditionUrl,
+  adminEditionAnagraficheUrl,
+} from "@/lib/portal-links";
 
 const PORTAL_URL = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
@@ -86,7 +93,7 @@ export async function sendNewEditionEmail(params: {
       ${emailParagraph("Accedi al portale per inserire le anagrafiche dei dipendenti partecipanti entro la deadline indicata.")}
     `,
     ctaText: "Gestisci Anagrafiche",
-    ctaUrl: `${PORTAL_URL}/corsi`,
+    ctaUrl: clientEditionUrl(params.courseEditionId),
   });
 
   return sendAutoEmail({
@@ -129,7 +136,7 @@ export async function sendDeadlineReminderEmail(params: {
       ${emailParagraph("Accedi al portale per completare o verificare le anagrafiche inserite.")}
     `,
     ctaText: "Vai alle Anagrafiche",
-    ctaUrl: `${PORTAL_URL}/corsi`,
+    ctaUrl: clientEditionUrl(params.courseEditionId),
   });
 
   return sendAutoEmail({
@@ -165,7 +172,7 @@ export async function sendCertificatesAvailableEmail(params: {
       ${emailParagraph("Accedi al portale per scaricare gli attestati.")}
     `,
     ctaText: "Scarica Attestati",
-    ctaUrl: `${PORTAL_URL}/attestati`,
+    ctaUrl: clientAttestatiUrl(),
   });
 
   return sendAutoEmail({
@@ -209,7 +216,7 @@ export async function sendCertificateExpiringEmail(params: {
       ${emailParagraph("Ti consigliamo di programmare il rinnovo per tempo.")}
     `,
     ctaText: "Vai agli Attestati",
-    ctaUrl: `${PORTAL_URL}/attestati`,
+    ctaUrl: clientAttestatiUrl(),
   });
 
   return sendAutoEmail({
@@ -247,7 +254,7 @@ export async function sendRegistryIssueEmail(params: {
       ${emailParagraph("Accedi al portale per correggere e re-inviare le anagrafiche.")}
     `,
     ctaText: "Correggi Anagrafiche",
-    ctaUrl: `${PORTAL_URL}/corsi`,
+    ctaUrl: clientEditionUrl(params.courseEditionId),
   });
 
   return sendAutoEmail({
@@ -335,7 +342,7 @@ export async function sendEditionDatesChangedEmail(params: {
       ${emailParagraph("Ti invitiamo a prendere nota delle nuove date.")}
     `,
     ctaText: "Vedi Dettagli",
-    ctaUrl: `${PORTAL_URL}/corsi`,
+    ctaUrl: clientEditionUrl(params.courseEditionId),
   });
 
   return sendAutoEmail({
@@ -371,7 +378,7 @@ export async function sendEditionCancelledEmail(params: {
       ${emailParagraph("Per ulteriori informazioni, contatta il tuo referente.")}
     `,
     ctaText: "Vai al Portale",
-    ctaUrl: `${PORTAL_URL}/corsi`,
+    ctaUrl: clientCoursesUrl(),
   });
 
   return sendAutoEmail({
@@ -394,6 +401,7 @@ export async function sendAdminRegistrySubmittedEmail(params: {
   editionNumber: number;
   employeeCount: number;
   courseEditionId: string;
+  courseId: string;
 }) {
   const adminName = safeName(params.adminName, params.adminEmail);
   const html = buildEmailHtml({
@@ -408,7 +416,7 @@ export async function sendAdminRegistrySubmittedEmail(params: {
       ${emailParagraph("Accedi al portale per verificare le anagrafiche.")}
     `,
     ctaText: "Verifica Anagrafiche",
-    ctaUrl: `${PORTAL_URL}/admin/corsi`,
+    ctaUrl: adminEditionAnagraficheUrl(params.courseId, params.courseEditionId),
   });
 
   return sendAutoEmail({
@@ -432,6 +440,7 @@ export async function sendAdminDeadlineExpiredEmail(params: {
   deadlineDate: string;
   registeredCount: number;
   courseEditionId: string;
+  courseId: string;
 }) {
   const adminName = safeName(params.adminName, params.adminEmail);
   const html = buildEmailHtml({
@@ -447,7 +456,7 @@ export async function sendAdminDeadlineExpiredEmail(params: {
       ${emailParagraph("Puoi contattare il cliente per sollecitare l'invio.")}
     `,
     ctaText: "Vedi Dettagli Edizione",
-    ctaUrl: `${PORTAL_URL}/admin/corsi`,
+    ctaUrl: adminEditionUrl(params.courseId, params.courseEditionId),
   });
 
   return sendAutoEmail({

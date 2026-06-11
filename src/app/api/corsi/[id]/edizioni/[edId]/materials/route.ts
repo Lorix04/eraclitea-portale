@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
 import { notifyAssignedClientUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
+import { adminEditionMaterialiUrl } from "@/lib/portal-links";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import {
@@ -337,7 +338,7 @@ export async function POST(
             ${emailInfoBox(`<p style="margin:0; font-size:14px;"><strong>Titolo:</strong> ${title!.trim()}</p>`)}
           `,
           ctaText: "Vedi Materiale",
-          ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/corsi`,
+          ctaUrl: adminEditionMaterialiUrl(context.params.id, edition.id),
           courseEditionId: edition.id,
         });
       }

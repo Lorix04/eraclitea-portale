@@ -90,7 +90,11 @@ export default function NotificationBell() {
         return;
       }
       if (item.courseEditionId) {
-        router.push("/admin/edizioni");
+        router.push(
+          item.courseId
+            ? `/admin/corsi/${item.courseId}/edizioni/${item.courseEditionId}`
+            : "/admin/edizioni"
+        );
         return;
       }
       router.push("/admin");

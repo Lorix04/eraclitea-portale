@@ -324,6 +324,13 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - Client API: `GET /api/custom-fields?clientId=` (supporta admin con param, client con sessione)
 - `src/lib/standard-fields.ts`: STANDARD_EMPLOYEE_FIELDS con mapping per campo standard → label
 
+## Deep link nelle email/notifiche (convenzione)
+- **Ogni email o notifica che riguarda una risorsa specifica DEVE linkare a QUELLA risorsa (deep link), non a una pagina generica/lista**, e il link deve essere **role-aware** (admin → `/admin/...`, client → `/...`, docente → `/docente/...`). Un evento con destinatari di ruolo diverso (es. "anagrafiche inviate" → admin + client) deve usare un link diverso per ciascun ruolo
+- Helper centralizzato: `src/lib/portal-links.ts` — costruisce URL **assoluti** per le email (`adminEditionUrl`, `adminEditionAnagraficheUrl`, `adminEditionMaterialiUrl`, `clientEditionUrl`, `clientCoursesUrl`, `clientAttestatiUrl`, `teacherLessonUrl`, `ticketUrl(role,id)`) e path **relativi** (`paths.*`) per `router.push` in-app. Base URL = `process.env.NEXTAUTH_URL || "https://sapienta.it"` (la stessa già usata ovunque — NON introdurne altre)
+- **Semantica route** (verificata): admin edizione = `/admin/corsi/{courseId}/edizioni/{editionId}` (tab via `?tab=anagrafiche|materiali|...`, letto dalla pagina); client edizione = `/corsi/{editionId}` (la route client è keyed per **editionId**, non courseId; `/corsi/{id}/anagrafiche` fa redirect qui); attestati client = `/attestati` (lista risorse, nessuna pagina per-attestato); ticket = `/admin/ticket/{id}` · `/supporto/{id}` · `/docente/supporto/{id}`
+- Eccezioni: email **account** (benvenuto, reset/cambio password, inviti) → restano su `/login` o sul link d'invito; risorsa eliminata (es. edizione cancellata via DELETE) → si linka alla lista (`clientCoursesUrl`) perché la pagina di dettaglio non esiste più
+- Le notifiche in-app NON hanno un campo `link`: la destinazione è derivata da `courseEditionId`/`ticketId` (e `courseId`, esposto da `/api/notifiche`) in `NotificationBell.tsx` e nelle pagine notifiche, con la stessa logica role-aware
+
 ## Sistema Email
 - Servizio: `src/lib/email-service.ts` (sendAutoEmail)
 - Classificazione: sensibili (WELCOME, PASSWORD_RESET) vs non sensibili (notifiche, reminder)
@@ -427,6 +434,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - `src/lib/standard-fields.ts` — STANDARD_EMPLOYEE_FIELDS, mapping campo standard → label
 - `src/lib/cv-schemas.ts` — schemi Zod per validazione sezioni CV
 - `src/lib/logout.ts` — handleLogout con pulizia cookie impersonazione
+- `src/lib/portal-links.ts` — deep link role-aware per email/notifiche (URL assoluti per email + `paths.*` relativi per router.push); base = NEXTAUTH_URL
 
 ### Componenti UI Chiave
 - `src/components/ui/ActionMenu.tsx` — azione primaria + dropdown + inline confirm + shortcuts

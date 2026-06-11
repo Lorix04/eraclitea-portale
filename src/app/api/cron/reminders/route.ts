@@ -276,7 +276,7 @@ async function processAdminExpiredDeadline() {
           referenteEmail: true,
         },
       },
-      course: { select: { title: true } },
+      course: { select: { id: true, title: true } },
       registrations: { select: { id: true } },
     },
   });
@@ -310,6 +310,7 @@ async function processAdminExpiredDeadline() {
         deadlineDate: formatDate(edition.deadlineRegistry),
         registeredCount: edition.registrations.length,
         courseEditionId: edition.id,
+        courseId: edition.course.id,
       });
 
       if (success) sentCount += 1;

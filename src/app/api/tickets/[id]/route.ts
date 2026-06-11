@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isTicketPriority, isTicketStatus } from "@/lib/tickets";
 import { sendAutoEmail } from "@/lib/email-service";
 import { buildEmailHtml, emailInfoBox, emailParagraph } from "@/lib/email-templates";
+import { ticketUrl } from "@/lib/portal-links";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -261,10 +262,9 @@ export async function PUT(
       try {
         const ticketUser = await prisma.user.findUnique({
           where: { id: notifyUserId },
-          select: { email: true, name: true },
+          select: { email: true, name: true, role: true },
         });
         if (ticketUser) {
-          const portalUrl = process.env.NEXTAUTH_URL || "https://sapienta.it";
           const html = buildEmailHtml({
             title: "Ticket Chiuso",
             greeting: `Gentile ${ticketUser.name || ticketUser.email},`,
@@ -273,8 +273,8 @@ export async function PUT(
               ${emailInfoBox(`<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Oggetto:</strong> ${ticket.subject}</p>`)}
               ${emailParagraph("Se hai bisogno di ulteriore assistenza, puoi aprire un nuovo ticket dal portale.")}
             `,
-            ctaText: "Vai al Supporto",
-            ctaUrl: `${portalUrl}/supporto`,
+            ctaText: "Vai al Ticket",
+            ctaUrl: ticketUrl(ticketUser.role, ticket.id),
           });
           void sendAutoEmail({
             emailType: "TICKET_CLOSED",
@@ -295,10 +295,9 @@ export async function PUT(
       try {
         const ticketUser = await prisma.user.findUnique({
           where: { id: notifyUserId },
-          select: { email: true, name: true },
+          select: { email: true, name: true, role: true },
         });
         if (ticketUser) {
-          const portalUrl = process.env.NEXTAUTH_URL || "https://sapienta.it";
           const html = buildEmailHtml({
             title: "Ticket Riaperto",
             greeting: `Gentile ${ticketUser.name || ticketUser.email},`,
@@ -308,7 +307,7 @@ export async function PUT(
               ${emailParagraph("Puoi continuare la conversazione dal portale.")}
             `,
             ctaText: "Vai al Ticket",
-            ctaUrl: `${portalUrl}/supporto/${ticket.id}`,
+            ctaUrl: ticketUrl(ticketUser.role, ticket.id),
           });
           void sendAutoEmail({
             emailType: "TICKET_REOPENED",

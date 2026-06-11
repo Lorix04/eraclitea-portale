@@ -16,6 +16,7 @@ type NotificationItem = {
   isRead: boolean;
   createdAt: string;
   courseEditionId?: string | null;
+  courseId?: string | null;
   ticketId?: string | null;
 };
 
@@ -66,7 +67,11 @@ export default function AdminNotifichePage() {
     if (item.ticketId) {
       router.push(`/admin/ticket/${item.ticketId}`);
     } else if (item.courseEditionId) {
-      router.push(`/admin/corsi`);
+      router.push(
+        item.courseId
+          ? `/admin/corsi/${item.courseId}/edizioni/${item.courseEditionId}`
+          : `/admin/edizioni`
+      );
     }
   };
 

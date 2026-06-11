@@ -7,6 +7,7 @@ import {
   sendRegistryReceivedEmail,
 } from "@/lib/email-notifications";
 import { notifyAssignedClientUsers, emailAssignedClientUsers, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { clientEditionUrl, adminEditionAnagraficheUrl } from "@/lib/portal-links";
 
 export async function POST(
   request: Request,
@@ -25,7 +26,7 @@ export async function POST(
       status: true,
       deadlineRegistry: true,
       editionNumber: true,
-      course: { select: { title: true } },
+      course: { select: { id: true, title: true } },
     },
   });
 
@@ -183,7 +184,7 @@ export async function POST(
         ${emailParagraph("Le anagrafiche saranno verificate dall'ente di formazione.")}
       `,
       ctaText: "Vedi Dettagli",
-      ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/corsi/${edition.id}`,
+      ctaUrl: clientEditionUrl(edition.id),
       courseEditionId: edition.id,
       excludeUserId: effectiveClient.userId,
     });
@@ -214,6 +215,7 @@ export async function POST(
         editionNumber: edition.editionNumber,
         employeeCount: registrations.length,
         courseEditionId: edition.id,
+        courseId: edition.course.id,
       })
     )
   );
@@ -240,7 +242,7 @@ export async function POST(
           ${emailParagraph("Puoi procedere con la verifica.")}
         `,
         ctaText: "Vedi Edizione",
-        ctaUrl: `${process.env.NEXTAUTH_URL || "https://sapienta.it"}/admin/corsi`,
+        ctaUrl: adminEditionAnagraficheUrl(edition.course.id, edition.id),
         courseEditionId: edition.id,
       });
     }

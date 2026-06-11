@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkApiPermission } from "@/lib/permissions";
 import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
+import { clientEditionUrl } from "@/lib/portal-links";
 
 export async function POST(
   request: Request,
@@ -57,7 +58,6 @@ export async function POST(
   }
 
   const motivo = body.motivo?.trim() || "";
-  const portalUrl = process.env.NEXTAUTH_URL || "https://sapienta.it";
 
   // Notify all client users
   if (edition.clientId) {
@@ -82,7 +82,7 @@ export async function POST(
         ${emailParagraph("Accedi al portale per correggere e re-inviare le anagrafiche.")}
       `,
       ctaText: "Correggi Anagrafiche",
-      ctaUrl: `${portalUrl}/corsi/${edition.id}`,
+      ctaUrl: clientEditionUrl(edition.id),
       courseEditionId: edition.id,
     });
   }
