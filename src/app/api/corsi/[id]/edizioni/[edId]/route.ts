@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { TimeSlot } from "@prisma/client";
 import { validateBody } from "@/lib/api-utils";
 import { courseEditionUpdateSchema } from "@/lib/schemas";
 import { deleteCertificateFile } from "@/lib/certificate-storage";
@@ -197,7 +198,7 @@ export async function PUT(
       endDate: data.endDate ?? undefined,
       deadlineRegistry: data.deadlineRegistry ?? undefined,
       status: data.status ?? undefined,
-      ...(data.timeSlot !== undefined ? { timeSlot: data.timeSlot } : {}),
+      ...(data.timeSlot !== undefined ? { timeSlot: data.timeSlot as TimeSlot | null } : {}),
       presenzaMinimaType,
       presenzaMinimaValue,
       notes: data.notes ?? undefined,

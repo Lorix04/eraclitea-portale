@@ -1,4 +1,5 @@
 ﻿import { z } from "zod";
+import { TimeSlot } from "@prisma/client";
 import { isValidCodiceFiscale, isValidClientCodiceFiscale, validatePIVA } from "@/lib/validators";
 import { isValidItalianDate, parseItalianDate } from "@/lib/date-utils";
 
@@ -72,10 +73,11 @@ const courseEditionBaseSchema = z.object({
   endDate: optionalDate,
   deadlineRegistry: optionalDate,
   status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
-  timeSlot: z.preprocess(
-    (value) => (value === "" ? null : value),
-    z.enum(["AM", "PM"]).nullable().optional()
-  ),
+  timeSlot: z
+    .union([z.nativeEnum(TimeSlot), z.literal("")])
+    .nullable()
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   presenzaMinimaType: z
     .preprocess(
       (value) => (value === "" ? null : value),

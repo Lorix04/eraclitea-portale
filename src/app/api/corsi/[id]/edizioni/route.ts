@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { TimeSlot } from "@prisma/client";
 import { validateBody, validateQuery } from "@/lib/api-utils";
 import { courseEditionSchema } from "@/lib/schemas";
 import { z } from "zod";
@@ -178,7 +179,7 @@ export async function POST(
         endDate: (data.endDate as Date | null | undefined) ?? null,
         deadlineRegistry: (data.deadlineRegistry as Date | null | undefined) ?? null,
         status: data.status ?? "DRAFT",
-        timeSlot: data.timeSlot ?? null,
+        timeSlot: (data.timeSlot as TimeSlot | null | undefined) ?? null,
         presenzaMinimaType,
         presenzaMinimaValue,
         notes: data.notes ?? null,
