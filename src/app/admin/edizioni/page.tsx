@@ -6,6 +6,7 @@ import { Copy, ExternalLink, Plus, Search, Trash2 } from "lucide-react";
 import MobileFilterPanel from "@/components/ui/MobileFilterPanel";
 import { formatItalianDate } from "@/lib/date-utils";
 import { getArrayData } from "@/lib/api-response";
+import { timeSlotLabel } from "@/lib/time-slot";
 import { useDebounce } from "@/hooks/useDebounce";
 import { fetchWithRetry } from "@/lib/fetch-with-retry";
 import ResponsiveTable, { type Column } from "@/components/ui/ResponsiveTable";
@@ -27,6 +28,7 @@ type EditionRow = {
   presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+  timeSlot?: "AM" | "PM" | null;
   course?: { id: string; title: string } | null;
   client?: { id: string; ragioneSociale: string } | null;
   lessons?: Array<{
@@ -164,6 +166,7 @@ function AdminEdizioniContent() {
     searchParams.get("dateFrom") ?? ""
   );
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") ?? "");
+  const [timeSlot, setTimeSlot] = useState(searchParams.get("timeSlot") ?? "all");
   const [sortBy, setSortBy] = useState(initialSortBy);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialSortOrder);
 
@@ -197,6 +200,7 @@ function AdminEdizioniContent() {
     if (referentId) params.set("referentId", referentId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
+    if (timeSlot && timeSlot !== "all") params.set("timeSlot", timeSlot);
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder) params.set("sortOrder", sortOrder);
     const query = params.toString();
@@ -211,6 +215,7 @@ function AdminEdizioniContent() {
     referentId,
     dateFrom,
     dateTo,
+    timeSlot,
     sortBy,
     sortOrder,
     router,
@@ -229,6 +234,7 @@ function AdminEdizioniContent() {
     if (referentId) params.set("referentId", referentId);
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
+    if (timeSlot && timeSlot !== "all") params.set("timeSlot", timeSlot);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
     if (myEditions) params.set("myEditions", "true");
@@ -262,6 +268,7 @@ function AdminEdizioniContent() {
     referentId,
     dateFrom,
     dateTo,
+    timeSlot,
     sortBy,
     sortOrder,
     myEditions,
@@ -310,6 +317,7 @@ function AdminEdizioniContent() {
     setReferentId("");
     setDateFrom("");
     setDateTo("");
+    setTimeSlot("all");
     setSortBy("startDate");
     setSortOrder("desc");
   };
@@ -389,6 +397,20 @@ function AdminEdizioniContent() {
             {STATUS_LABELS[e.status]}
           </span>
         ),
+      },
+      {
+        key: "timeSlot",
+        label: "Fascia oraria",
+        header: "Fascia oraria",
+        isBadge: true,
+        render: (e) =>
+          e.timeSlot ? (
+            <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
+              {timeSlotLabel(e.timeSlot)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         key: "referents",
@@ -500,7 +522,8 @@ function AdminEdizioniContent() {
           (categoryId ? 1 : 0) +
           (referentId ? 1 : 0) +
           (dateFrom ? 1 : 0) +
-          (dateTo ? 1 : 0)
+          (dateTo ? 1 : 0) +
+          (timeSlot !== "all" ? 1 : 0)
         }
         onReset={resetFilters}
         resultCount={`${editions.length} edizioni trovate`}
@@ -576,6 +599,18 @@ function AdminEdizioniContent() {
                 </option>
               ))
             )}
+          </select>
+
+          <select
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm md:w-[180px]"
+            value={timeSlot}
+            onChange={(event) => setTimeSlot(event.target.value)}
+            aria-label="Filtro fascia oraria"
+          >
+            <option value="all">Tutte le fasce orarie</option>
+            <option value="AM">Mattina</option>
+            <option value="PM">Pomeriggio</option>
+            <option value="none">Non impostata</option>
           </select>
 
           <div className="flex w-full items-center gap-2 md:w-auto">

@@ -13,6 +13,7 @@ import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import { timeSlotLabel } from "@/lib/time-slot";
 import { Download, Upload } from "lucide-react";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 
@@ -31,6 +32,7 @@ type CourseDetail = {
   presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   status?: string | null;
+  timeSlot?: "AM" | "PM" | null;
   notes?: string | null;
   luoghi?: string[];
   lessons?: Array<{
@@ -467,6 +469,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             <span> - {formatItalianDate(course.endDate)}</span>
           ) : null}
         </div>
+        <p className="text-sm text-muted-foreground">
+          Fascia oraria: {timeSlotLabel(course.timeSlot)}
+        </p>
         {course.durationHours ? (
           <p className="text-sm text-muted-foreground">
             Ore: {course.durationHours}

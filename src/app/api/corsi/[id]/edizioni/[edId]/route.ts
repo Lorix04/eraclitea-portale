@@ -197,6 +197,7 @@ export async function PUT(
       endDate: data.endDate ?? undefined,
       deadlineRegistry: data.deadlineRegistry ?? undefined,
       status: data.status ?? undefined,
+      ...(data.timeSlot !== undefined ? { timeSlot: data.timeSlot } : {}),
       presenzaMinimaType,
       presenzaMinimaValue,
       notes: data.notes ?? undefined,

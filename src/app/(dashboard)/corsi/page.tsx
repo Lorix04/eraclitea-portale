@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { BrandedTabs } from "@/components/BrandedTabs";
 import { useDebounce } from "@/hooks/useDebounce";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import { timeSlotLabel } from "@/lib/time-slot";
 
 type Tab = "tutti" | "disponibili" | "in_progress" | "completati";
 
@@ -29,6 +30,7 @@ type EditionItem = {
   deadlineRegistry?: string | null;
   status: "AVAILABLE" | "IN_PROGRESS" | "COMPLETED";
   editionStatus: "DRAFT" | "OPEN" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+  timeSlot?: "AM" | "PM" | null;
   isSubmitted: boolean;
   submittedAt?: string | null;
   registrationsCount: number;
@@ -72,6 +74,9 @@ function ClientCorsiContent() {
   );
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [yearFilter, setYearFilter] = useState(searchParams.get("year") ?? "");
+  const [timeSlotFilter, setTimeSlotFilter] = useState(
+    searchParams.get("timeSlot") ?? "all"
+  );
   const [categories, setCategories] = useState<
     { id: string; name: string }[]
   >([]);
@@ -124,11 +129,12 @@ function ClientCorsiContent() {
     if (categoryFilter) params.set("categoryId", categoryFilter);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (yearFilter) params.set("year", yearFilter);
+    if (timeSlotFilter !== "all") params.set("timeSlot", timeSlotFilter);
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
     });
-  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, router, pathname]);
+  }, [activeTab, scope, categoryFilter, debouncedSearch, yearFilter, timeSlotFilter, router, pathname]);
 
   const courses = useMemo(() => data?.data ?? [], [data]);
   const yearOptions = useMemo(() => {
@@ -159,6 +165,14 @@ function ClientCorsiContent() {
           });
         }
 
+        if (timeSlotFilter !== "all") {
+          editions = editions.filter((edition) =>
+            timeSlotFilter === "none"
+              ? !edition.timeSlot
+              : edition.timeSlot === timeSlotFilter
+          );
+        }
+
         if (term) {
           const courseMatch = course.title.toLowerCase().includes(term);
           if (!courseMatch) {
@@ -171,7 +185,7 @@ function ClientCorsiContent() {
         return { ...course, editions };
       })
       .filter((course) => course.editions.length > 0);
-  }, [courses, debouncedSearch, yearFilter]);
+  }, [courses, debouncedSearch, yearFilter, timeSlotFilter]);
   const now = useMemo(() => new Date(), []);
 
   return (
@@ -254,6 +268,17 @@ function ClientCorsiContent() {
               {year}
             </option>
           ))}
+        </select>
+        <select
+          className="min-h-[44px] rounded-full border bg-background px-4 py-2 text-sm"
+          value={timeSlotFilter}
+          onChange={(event) => setTimeSlotFilter(event.target.value)}
+          aria-label="Filtro fascia oraria"
+        >
+          <option value="all">Tutte le fasce orarie</option>
+          <option value="AM">Mattina</option>
+          <option value="PM">Pomeriggio</option>
+          <option value="none">Non impostata</option>
         </select>
       </div>
 
@@ -350,6 +375,11 @@ function ClientCorsiContent() {
                                 ? ` · ${formatItalianDate(edition.endDate)}`
                                 : ""}
                             </p>
+                            {edition.timeSlot ? (
+                              <p className="text-xs text-muted-foreground">
+                                Fascia oraria: {timeSlotLabel(edition.timeSlot)}
+                              </p>
+                            ) : null}
                           </div>
                           <EditionStatusBadge status={edition.editionStatus} />
                         </div>

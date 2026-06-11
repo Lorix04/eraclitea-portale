@@ -116,6 +116,7 @@ export async function GET(request: Request) {
         presenzaMinimaValue: edition.presenzaMinimaValue,
         status,
         editionStatus: edition.status,
+        timeSlot: edition.timeSlot,
         isSubmitted,
         submittedAt,
         registrationsCount,

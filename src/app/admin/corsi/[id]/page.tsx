@@ -48,6 +48,7 @@ export default async function AdminCourseDetailPage({
     endDate: edition.endDate?.toISOString() ?? null,
     deadlineRegistry: edition.deadlineRegistry?.toISOString() ?? null,
     status: edition.status,
+    timeSlot: edition.timeSlot,
     clientId: edition.client?.id ?? null,
     clientName: edition.client?.ragioneSociale ?? null,
     registrationsCount: edition._count?.registrations ?? 0,

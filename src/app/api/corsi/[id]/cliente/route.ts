@@ -77,6 +77,7 @@ export async function GET(
       editionNumber: edition.editionNumber,
       clientId: edition.clientId,
       status: edition.status,
+      timeSlot: edition.timeSlot,
       startDate: edition.startDate,
       endDate: edition.endDate,
       deadlineRegistry: edition.deadlineRegistry,

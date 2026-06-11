@@ -8,6 +8,7 @@ import { formatItalianDate } from "@/lib/date-utils";
 import { useDebounce } from "@/hooks/useDebounce";
 import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import { timeSlotLabel } from "@/lib/time-slot";
 
 type EditionRow = {
   id: string;
@@ -16,6 +17,7 @@ type EditionRow = {
   endDate?: string | null;
   deadlineRegistry?: string | null;
   status: string;
+  timeSlot?: "AM" | "PM" | null;
   clientId?: string | null;
   clientName?: string | null;
   registrationsCount: number;
@@ -147,6 +149,7 @@ export default function CourseEditionsTable({
             <th className="px-4 py-3">Fine</th>
             <th className="px-4 py-3">Deadline</th>
             <th className="px-4 py-3">Stato</th>
+            <th className="px-4 py-3">Fascia oraria</th>
             <th className="px-4 py-3">Partecipanti</th>
             <th className="px-4 py-3">Azioni</th>
           </tr>
@@ -155,7 +158,7 @@ export default function CourseEditionsTable({
           {filteredEditions.length === 0 ? (
             <tr>
               <td
-                colSpan={8}
+                colSpan={9}
                 className="px-4 py-6 text-center text-muted-foreground"
               >
                 Nessuna edizione presente.
@@ -190,6 +193,15 @@ export default function CourseEditionsTable({
                       <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700" title="Notifiche a tutti gli utenti">Tutti</span>
                     ) : null}
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  {edition.timeSlot ? (
+                    <span className="rounded-full bg-sky-100 px-2 py-1 text-xs text-sky-700">
+                      {timeSlotLabel(edition.timeSlot)}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">{edition.registrationsCount}</td>
                 <td className="px-4 py-3">

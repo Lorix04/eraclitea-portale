@@ -247,6 +247,7 @@ model CourseEdition {
   endDate          DateTime?
   deadlineRegistry DateTime?
   status           CourseStatus  @default(DRAFT)
+  timeSlot         TimeSlot?     // opzionale: Mattina (AM) / Pomeriggio (PM); null = non impostata
   presenzaMinimaType  String?
   presenzaMinimaValue Int?
   notes            String?
@@ -530,6 +531,12 @@ enum NotifyPolicy {
   REFERENT_ONLY
   REFERENT_PLUS
   ALL
+}
+
+// Fascia oraria opzionale di un'edizione: AM = Mattina, PM = Pomeriggio.
+enum TimeSlot {
+  AM
+  PM
 }
 
 model CourseVisibility {

@@ -178,6 +178,7 @@ export async function POST(
         endDate: (data.endDate as Date | null | undefined) ?? null,
         deadlineRegistry: (data.deadlineRegistry as Date | null | undefined) ?? null,
         status: data.status ?? "DRAFT",
+        timeSlot: data.timeSlot ?? null,
         presenzaMinimaType,
         presenzaMinimaValue,
         notes: data.notes ?? null,

@@ -72,6 +72,10 @@ const courseEditionBaseSchema = z.object({
   endDate: optionalDate,
   deadlineRegistry: optionalDate,
   status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
+  timeSlot: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.enum(["AM", "PM"]).nullable().optional()
+  ),
   presenzaMinimaType: z
     .preprocess(
       (value) => (value === "" ? null : value),

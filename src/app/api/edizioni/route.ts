@@ -11,6 +11,7 @@ const querySchema = z.object({
   clientId: z.string().optional(),
   courseId: z.string().optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"]).optional(),
+  timeSlot: z.enum(["AM", "PM", "none"]).optional(),
   search: z.string().optional(),
   categoryId: z.string().optional(),
   dateFrom: z.string().optional(),
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
     clientId,
     courseId,
     status,
+    timeSlot,
     search,
     categoryId,
     dateFrom,
@@ -73,6 +75,7 @@ export async function GET(request: Request) {
   if (clientId) filters.push({ clientId });
   if (courseId) filters.push({ courseId });
   if (status) filters.push({ status });
+  if (timeSlot) filters.push({ timeSlot: timeSlot === "none" ? null : timeSlot });
 
   if (search) {
     filters.push({

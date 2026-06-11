@@ -42,6 +42,7 @@ import EditionStatusBadge from "@/components/EditionStatusBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { calculateAttendanceStats } from "@/lib/attendance-utils";
 import { getArrayData } from "@/lib/api-response";
+import { TIME_SLOT_OPTIONS } from "@/lib/time-slot";
 
 const AnagraficheResponsive = dynamic(
   () => import("@/components/AnagraficheResponsive"),
@@ -70,6 +71,7 @@ type EditionDetail = {
   endDate?: string | null;
   deadlineRegistry?: string | null;
   status: string;
+  timeSlot?: "AM" | "PM" | null;
   presenzaMinimaType?: "percentage" | "days" | "hours" | null;
   presenzaMinimaValue?: number | null;
   notes?: string | null;
@@ -158,6 +160,7 @@ export default function AdminEditionDetailPage({
   const [endDate, setEndDate] = useState("");
   const [deadlineRegistry, setDeadlineRegistry] = useState("");
   const [status, setStatus] = useState("DRAFT");
+  const [timeSlot, setTimeSlot] = useState("");
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
@@ -256,6 +259,7 @@ export default function AdminEditionDetailPage({
     setEndDate(formatItalianDate(data.endDate));
     setDeadlineRegistry(formatItalianDate(data.deadlineRegistry));
     setStatus(data.status ?? "DRAFT");
+    setTimeSlot(data.timeSlot ?? "");
     setNotes(data.notes ?? "");
     const hasMinimum =
       (data.presenzaMinimaType === "percentage" ||
@@ -448,6 +452,7 @@ export default function AdminEditionDetailPage({
       endDate,
       deadlineRegistry,
       status,
+      timeSlot: timeSlot || null,
       presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
       presenzaMinimaValue: presenzaMinimaPayloadValue,
       notes,
@@ -476,6 +481,7 @@ export default function AdminEditionDetailPage({
     setEndDate(formatItalianDate(data.endDate));
     setDeadlineRegistry(formatItalianDate(data.deadlineRegistry));
     setStatus(data.status ?? "DRAFT");
+    setTimeSlot(data.timeSlot ?? "");
     setNotes(data.notes ?? "");
     const hasMinimum =
       (data.presenzaMinimaType === "percentage" ||
@@ -819,6 +825,23 @@ export default function AdminEditionDetailPage({
               <option value="PUBLISHED">Aperto</option>
               <option value="CLOSED">Chiuso</option>
               <option value="ARCHIVED">Archiviato</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm">
+            <FormLabel>Fascia oraria</FormLabel>
+            <select
+              className="rounded-md border bg-background px-3 py-2"
+              value={timeSlot}
+              onChange={(event) => setTimeSlot(event.target.value)}
+              disabled={isArchived}
+            >
+              <option value="">Non impostata</option>
+              {TIME_SLOT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </label>
 

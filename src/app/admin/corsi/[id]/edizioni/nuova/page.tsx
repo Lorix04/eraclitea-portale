@@ -9,6 +9,7 @@ import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { getArrayData } from "@/lib/api-response";
+import { TIME_SLOT_OPTIONS } from "@/lib/time-slot";
 
 type ClientOption = {
   id: string;
@@ -31,6 +32,7 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
   const [endDate, setEndDate] = useState("");
   const [deadlineRegistry, setDeadlineRegistry] = useState("");
   const [status, setStatus] = useState("DRAFT");
+  const [timeSlot, setTimeSlot] = useState("");
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
@@ -153,6 +155,7 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
         endDate,
         deadlineRegistry,
         status,
+        timeSlot: timeSlot || null,
         presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
         presenzaMinimaValue: hasPresenzaMinima ? Number(presenzaMinimaValue) : null,
         notes,
@@ -282,6 +285,22 @@ export default function NewEditionPage({ params }: { params: { id: string } }) {
             <option value="PUBLISHED">Aperto</option>
             <option value="CLOSED">Chiuso</option>
             <option value="ARCHIVED">Archiviato</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm">
+          <FormLabel>Fascia oraria</FormLabel>
+          <select
+            className="rounded-md border bg-background px-3 py-2"
+            value={timeSlot}
+            onChange={(event) => setTimeSlot(event.target.value)}
+          >
+            <option value="">Non impostata</option>
+            {TIME_SLOT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </label>
 

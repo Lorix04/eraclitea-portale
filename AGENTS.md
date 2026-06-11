@@ -84,7 +84,8 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 
 ### Formazione
 - `Course` — `CourseEdition` (per cliente), categorie e visibilita, `CourseMaterial[]`
-- `CourseEdition` — lezioni, registrazioni, presenze, certificati, notifiche, materiali, `presenzaMinimaType`/`presenzaMinimaValue`, `referents` (EditionReferent[]), `notifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `notifyExtraUserIds`
+- `CourseEdition` — lezioni, registrazioni, presenze, certificati, notifiche, materiali, `presenzaMinimaType`/`presenzaMinimaValue`, `referents` (EditionReferent[]), `notifyPolicy` (REFERENT_ONLY/REFERENT_PLUS/ALL), `notifyExtraUserIds`, `timeSlot` (enum `TimeSlot` opzionale: AM = Mattina, PM = Pomeriggio; null = non impostata)
+- **Fascia oraria edizione** (`CourseEdition.timeSlot`, enum `TimeSlot` AM/PM, opzionale): impostabile in creazione (modale `CreateEditionModal` + pagina `/admin/corsi/[id]/edizioni/nuova`) e modifica (tab Info dettaglio edizione); mostrata ovunque compaiono le edizioni (lista `/admin/edizioni` come colonna personalizzabile `timeSlot`, `CourseEditionsTable` nel dettaglio corso, dettaglio edizione admin, liste/dettaglio corsi cliente) con label italiane "Mattina"/"Pomeriggio" o "—" se null; filtrabile (Tutte/Mattina/Pomeriggio/Non impostata) sia in `/admin/edizioni` (filtro server-side in `/api/edizioni`, param `timeSlot=AM|PM|none`) sia nella pagina corsi cliente (filtro client-side). Helper label/opzioni: `src/lib/time-slot.ts` (`timeSlotLabel`, `TIME_SLOT_OPTIONS`)
 - `CourseMaterial` — materiali a livello di corso (libreria standard), importabili nelle edizioni
 - `Lesson` — data, orario, durata, luogo, titolo, `teacherAssignments`, presenze
 - `Employee` — `nome?`, `cognome?`, `codiceFiscale?` (tutti nullable per custom fields), relazione con registrazioni/presenze/certificati, `customData` (JSON per campi personalizzati)

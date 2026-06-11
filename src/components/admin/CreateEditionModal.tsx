@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormLabel } from "@/components/ui/FormLabel";
+import { TIME_SLOT_OPTIONS } from "@/lib/time-slot";
 
 type CourseOption = {
   id: string;
@@ -81,6 +82,7 @@ export default function CreateEditionModal({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [deadlineRegistry, setDeadlineRegistry] = useState("");
+  const [timeSlot, setTimeSlot] = useState("");
   const [notes, setNotes] = useState("");
   const [hasPresenzaMinima, setHasPresenzaMinima] = useState(false);
   const [presenzaMinimaType, setPresenzaMinimaType] = useState<
@@ -99,6 +101,7 @@ export default function CreateEditionModal({
     setStartDate("");
     setEndDate("");
     setDeadlineRegistry("");
+    setTimeSlot("");
     setNotes("");
     setHasPresenzaMinima(false);
     setPresenzaMinimaType("percentage");
@@ -242,6 +245,7 @@ export default function CreateEditionModal({
           startDate,
           endDate,
           deadlineRegistry: deadlineRegistry || null,
+          timeSlot: timeSlot || null,
           presenzaMinimaType: hasPresenzaMinima ? presenzaMinimaType : null,
           presenzaMinimaValue: hasPresenzaMinima ? Number(presenzaMinimaValue) : null,
           notes: notes.trim() || undefined,
@@ -438,6 +442,22 @@ export default function CreateEditionModal({
                   />
                   <FormFieldError message={fieldErrors.deadlineRegistry} />
                 </div>
+              </div>
+
+              <div className="space-y-2 md:max-w-xs">
+                <FormLabel>Fascia oraria</FormLabel>
+                <select
+                  value={timeSlot}
+                  onChange={(event) => setTimeSlot(event.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Non impostata</option>
+                  {TIME_SLOT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-2">
