@@ -94,6 +94,7 @@ export const NOTIFICATION_TYPES: NotificationTypeConfig[] = [
   { type: "ADMIN_DEADLINE_REMINDER_2D", label: "Deadline anagrafiche (2gg)", description: "Client non hanno inviato a 2 giorni dalla scadenza", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
   { type: "ADMIN_DEADLINE_TODAY", label: "Deadline anagrafiche (oggi)", description: "Avviso il giorno della scadenza", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
   { type: "ADMIN_ALL_REGISTRIES_RECEIVED", label: "Anagrafiche complete", description: "Tutti i client hanno inviato per un'edizione", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
+  { type: "ADMIN_POST_DEADLINE_EDIT", label: "Modifica anagrafiche dopo la scadenza", description: "Un'anagrafica e stata modificata dopo la deadline (max 1 avviso/edizione ogni 60 min)", category: "anagrafiche", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
 
   // === ADMIN — CORSI ===
   { type: "ADMIN_COURSE_STARTING", label: "Corso in partenza domani", description: "Un corso inizia domani", category: "corsi", roles: ["ADMIN"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },

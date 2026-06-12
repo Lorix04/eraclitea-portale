@@ -248,6 +248,7 @@ model CourseEdition {
   deadlineRegistry DateTime?
   status           CourseStatus  @default(DRAFT)
   timeSlot         TimeSlot?     // opzionale: Mattina (AM) / Pomeriggio (PM); null = non impostata
+  lastPostDeadlineNotifyAt DateTime? // throttle notifica ADMIN_POST_DEADLINE_EDIT (max 1/60min per edizione)
   presenzaMinimaType  String?
   presenzaMinimaValue Int?
   notes            String?
@@ -854,6 +855,7 @@ enum NotificationType {
   ADMIN_ACCOUNT_LOCKED
   ADMIN_ATTENDANCE_BELOW_MIN
   ADMIN_DAILY_SUMMARY
+  ADMIN_POST_DEADLINE_EDIT
 }
 
 enum TicketStatus {
