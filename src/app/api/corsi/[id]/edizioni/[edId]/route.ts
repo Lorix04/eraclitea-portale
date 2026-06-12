@@ -34,6 +34,10 @@ export async function GET(
         course: { select: { id: true, title: true, durationHours: true } },
         client: { select: { id: true, ragioneSociale: true } },
         _count: { select: { registrations: true, lessons: true, certificates: true } },
+        postDeadlineEdits: {
+          orderBy: { editedAt: "desc" },
+          select: { id: true, editedAt: true, userRole: true, source: true },
+        },
       },
     });
 

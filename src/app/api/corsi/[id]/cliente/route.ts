@@ -32,6 +32,10 @@ export async function GET(
       registrations: {
         include: { employee: true },
       },
+      postDeadlineEdits: {
+        orderBy: { editedAt: "desc" },
+        select: { id: true, editedAt: true, userRole: true, source: true },
+      },
     },
   });
 
@@ -78,6 +82,7 @@ export async function GET(
       clientId: edition.clientId,
       status: edition.status,
       timeSlot: edition.timeSlot,
+      postDeadlineEdits: edition.postDeadlineEdits,
       startDate: edition.startDate,
       endDate: edition.endDate,
       deadlineRegistry: edition.deadlineRegistry,

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { isValidCodiceFiscale, normalizeCodiceFiscale } from "@/lib/validators";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { parseItalianDate } from "@/lib/date-utils";
+import { recordPostDeadlineEdit } from "@/lib/post-deadline";
 
 type EmployeeRow = {
   employeeId?: string;
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
     : [];
   const courseEditionId =
     typeof body.courseEditionId === "string" ? body.courseEditionId : undefined;
+  let editionDeadlineRegistry: Date | null = null;
   if (courseEditionId) {
     const edition = await prisma.courseEdition.findUnique({
       where: { id: courseEditionId },
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
         deadlineRegistry: true,
       },
     });
+    editionDeadlineRegistry = edition?.deadlineRegistry ?? null;
     if (!edition) {
       return NextResponse.json(
         { error: "Edizione non trovata" },
@@ -135,18 +138,8 @@ export async function POST(request: Request) {
         );
       }
 
-      if (
-        edition.deadlineRegistry &&
-        new Date() > new Date(edition.deadlineRegistry)
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Le anagrafiche non possono essere modificate: la deadline e scaduta.",
-          },
-          { status: 403 }
-        );
-      }
+      // Le modifiche dopo la deadline sono CONSENTITE (vengono tracciate via
+      // PostDeadlineEdit dopo il salvataggio): nessun blocco temporale qui.
     }
   }
 
@@ -407,6 +400,18 @@ export async function POST(request: Request) {
         }
       }
     }
+  }
+
+  // Traccia la modifica se avvenuta dopo la deadline dell'edizione.
+  if (courseEditionId) {
+    const effective = await getEffectiveClientContext();
+    await recordPostDeadlineEdit({
+      courseEditionId,
+      deadlineRegistry: editionDeadlineRegistry,
+      userId: effective?.userId ?? session.user.id,
+      userRole: effective?.role ?? session.user.role,
+      source: "spreadsheet",
+    });
   }
 
   await logAudit({

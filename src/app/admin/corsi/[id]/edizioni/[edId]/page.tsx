@@ -39,6 +39,7 @@ import DeleteEditionModal from "@/components/admin/DeleteEditionModal";
 import DuplicateEditionModal from "@/components/admin/DuplicateEditionModal";
 import EditionTeachersTab from "@/components/admin/EditionTeachersTab";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import PostDeadlineBadge, { type PostDeadlineEditItem } from "@/components/PostDeadlineBadge";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
 import { calculateAttendanceStats } from "@/lib/attendance-utils";
 import { getArrayData } from "@/lib/api-response";
@@ -81,6 +82,7 @@ type EditionDetail = {
   client: { id: string; ragioneSociale: string };
   clientId?: string;
   referents?: Array<{ userId: string }>;
+  postDeadlineEdits?: PostDeadlineEditItem[];
   _count?: { registrations: number; lessons: number; certificates: number };
 };
 
@@ -746,6 +748,10 @@ export default function AdminEditionDetailPage({
 
       <div className="flex flex-wrap items-center gap-2 text-xs md:gap-3 md:text-sm">
         <EditionStatusBadge status={edition.status} className="px-2 py-0.5 text-xs md:px-3 md:py-1 md:text-sm" />
+        <PostDeadlineBadge
+          deadline={edition.deadlineRegistry}
+          edits={edition.postDeadlineEdits ?? []}
+        />
         <span className="text-muted-foreground">
           Lezioni: {edition._count?.lessons ?? 0}
         </span>

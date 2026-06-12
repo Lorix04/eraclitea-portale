@@ -8,6 +8,8 @@ import { parseItalianDate } from "@/lib/date-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { normalizeCodiceFiscale, validateEmail } from "@/lib/validators";
 import { getCustomFieldsForEdition, getCustomFieldsForClient } from "@/lib/custom-field-resolver";
+import { getEffectiveClientContext } from "@/lib/impersonate";
+import { recordPostDeadlineEdit } from "@/lib/post-deadline";
 
 const TEMPLATE_HEADERS = [
   "nome",
@@ -216,10 +218,11 @@ export async function POST(request: Request) {
       }
     }
 
+    let editionDeadlineRegistry: Date | null = null;
     if (editionId) {
       const edition = await prisma.courseEdition.findUnique({
         where: { id: editionId },
-        select: { id: true, clientId: true },
+        select: { id: true, clientId: true, deadlineRegistry: true },
       });
 
       if (!edition) {
@@ -228,6 +231,8 @@ export async function POST(request: Request) {
           { status: 404 }
         );
       }
+
+      editionDeadlineRegistry = edition.deadlineRegistry ?? null;
 
       if (edition.clientId !== clientId) {
         return NextResponse.json(
@@ -633,6 +638,18 @@ export async function POST(request: Request) {
           reason: "Errore durante il salvataggio della riga",
         });
       }
+    }
+
+    // Traccia l'import se avvenuto dopo la deadline dell'edizione.
+    if (editionId && created + updated > 0) {
+      const effective = await getEffectiveClientContext();
+      await recordPostDeadlineEdit({
+        courseEditionId: editionId,
+        deadlineRegistry: editionDeadlineRegistry,
+        userId: effective?.userId ?? session.user.id,
+        userRole: effective?.role ?? session.user.role,
+        source: "import",
+      });
     }
 
     await logAudit({

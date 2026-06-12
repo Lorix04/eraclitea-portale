@@ -263,6 +263,7 @@ model CourseEdition {
   materials        EditionMaterial[]
   referents        EditionReferent[]
   clientAssignments EditionClientAssignment[]
+  postDeadlineEdits PostDeadlineEdit[]
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -288,6 +289,21 @@ model EditionClientAssignment {
   @@unique([courseEditionId, userId])
   @@index([courseEditionId])
   @@index([userId])
+}
+
+// Storico delle modifiche alle anagrafiche effettuate DOPO la deadline
+// dell'edizione (le modifiche post-deadline sono consentite ma tracciate).
+model PostDeadlineEdit {
+  id              String   @id @default(cuid())
+  courseEditionId String
+  editedAt        DateTime @default(now())
+  userId          String?  // chi ha modificato (opzionale, per audit)
+  userRole        String?  // "ADMIN" | "CLIENT" (ruolo effettivo, opzionale)
+  source          String?  // "spreadsheet" | "import" | "submit" (contesto, opzionale)
+
+  courseEdition CourseEdition @relation(fields: [courseEditionId], references: [id], onDelete: Cascade)
+
+  @@index([courseEditionId])
 }
 
 model EditionReferent {

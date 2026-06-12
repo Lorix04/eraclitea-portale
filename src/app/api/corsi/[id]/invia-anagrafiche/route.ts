@@ -8,6 +8,7 @@ import {
 } from "@/lib/email-notifications";
 import { notifyAssignedClientUsers, emailAssignedClientUsers, notifyAllAdmins, emailAllAdmins, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
 import { clientEditionUrl, adminEditionAnagraficheUrl } from "@/lib/portal-links";
+import { recordPostDeadlineEdit } from "@/lib/post-deadline";
 
 export async function POST(
   request: Request,
@@ -54,15 +55,8 @@ export async function POST(
     );
   }
 
-  if (edition.deadlineRegistry && new Date() > edition.deadlineRegistry) {
-    return NextResponse.json(
-      {
-        error:
-          "Le anagrafiche non possono essere inviate: la deadline e scaduta.",
-      },
-      { status: 403 }
-    );
-  }
+  // L'invio dopo la deadline e CONSENTITO (tracciato via PostDeadlineEdit):
+  // nessun blocco temporale qui.
 
   const registrations = await prisma.courseRegistration.findMany({
     where: {
@@ -247,6 +241,15 @@ export async function POST(
       });
     }
   } catch { /* ignore */ }
+
+  // Traccia l'invio se avvenuto dopo la deadline dell'edizione.
+  await recordPostDeadlineEdit({
+    courseEditionId: edition.id,
+    deadlineRegistry: edition.deadlineRegistry,
+    userId: effectiveClient.userId,
+    userRole: effectiveClient.role,
+    source: "submit",
+  });
 
   return NextResponse.json({
     success: true,

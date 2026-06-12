@@ -13,6 +13,7 @@ import { BrandedTabs } from "@/components/BrandedTabs";
 import { BrandedButton } from "@/components/BrandedButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
+import PostDeadlineBadge, { type PostDeadlineEditItem } from "@/components/PostDeadlineBadge";
 import { timeSlotLabel } from "@/lib/time-slot";
 import { Download, Upload } from "lucide-react";
 import ImportEmployeesModal from "@/components/ImportEmployeesModal";
@@ -33,6 +34,7 @@ type CourseDetail = {
   presenzaMinimaValue?: number | null;
   status?: string | null;
   timeSlot?: "AM" | "PM" | null;
+  postDeadlineEdits?: PostDeadlineEditItem[];
   notes?: string | null;
   luoghi?: string[];
   lessons?: Array<{
@@ -366,7 +368,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     return status === "CLOSED" || status === "ARCHIVED";
   }, [course?.status]);
 
-  const isEditionLocked = isClosedStatus || deadlineExpired;
+  // Le anagrafiche restano modificabili anche dopo la deadline (le modifiche
+  // post-deadline vengono tracciate). Il blocco resta solo per edizione chiusa/archiviata.
+  const isEditionLocked = isClosedStatus;
   const isAnagraficheReadOnly = isEditionLocked;
 
   const handleSend = async () => {
@@ -491,10 +495,21 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           </p>
         ) : null}
         {course.status ? (
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <EditionStatusBadge status={course.status} className="text-xs" />
+            <PostDeadlineBadge
+              deadline={course.deadlineRegistry}
+              edits={course.postDeadlineEdits ?? []}
+            />
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-2">
+            <PostDeadlineBadge
+              deadline={course.deadlineRegistry}
+              edits={course.postDeadlineEdits ?? []}
+            />
+          </div>
+        )}
       </div>
 
       <BrandedTabs
@@ -513,8 +528,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
           ) : null}
           {!isClosedStatus && deadlineExpired && deadlineDate ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              <strong>Anagrafiche bloccate:</strong> la deadline per
-              l&apos;inserimento e scaduta il {formatItalianDate(deadlineDate)}.
+              La deadline del {formatItalianDate(deadlineDate)} e superata. Le
+              modifiche successive vengono registrate.
             </div>
           ) : null}
 
@@ -557,7 +572,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
               <p className="text-sm text-emerald-700">
                 Anagrafiche inviate all&apos;ente di formazione
                 {submittedAt ? ` il ${formatItalianDate(submittedAt)}` : ""}.
-                {!isEditionLocked ? " Puoi ancora modificarle entro la deadline." : ""}
+                {!isEditionLocked ? " Puoi ancora modificarle." : ""}
               </p>
             ) : null}
           </div>
