@@ -122,6 +122,7 @@ export async function GET(request: Request) {
       partitaIva: true,
       iban: true,
       pec: true,
+      note: true,
       customData: true,
       clientId: true,
     },
