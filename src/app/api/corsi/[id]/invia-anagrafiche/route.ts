@@ -90,7 +90,9 @@ export async function POST(
           const val = (emp as any)[field.standardField];
           if (!val || !String(val).trim()) return true;
         } else {
-          const cd = emp.customData as Record<string, any> | null;
+          // Anagrafica per-edizione: i custom puri vivono su registration.customData
+          // (sempre salvati), non su Employee.customData (gated dal toggle).
+          const cd = reg.customData as Record<string, any> | null;
           const val = cd?.[field.name];
           if (!val || !String(val).trim()) return true;
         }

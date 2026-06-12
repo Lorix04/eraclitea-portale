@@ -373,8 +373,9 @@ export async function POST(request: Request) {
       select: { hasCustomFields: true, saveEmployeeCustomData: true },
     });
     const isCustomMode = importMode === "custom" && clientForReq?.hasCustomFields && customFieldDefs.length > 0;
-    // When the client has the toggle OFF, Employee.customData is NOT persisted.
-    // Required-custom-fields validation is also skipped (they would be discarded).
+    // Toggle OFF → Employee.customData NON viene persistito (profilo dipendente).
+    // I custom restano comunque su CourseRegistration.customData (anagrafica
+    // per-edizione, sempre) e la validazione dei custom obbligatori resta attiva.
     const persistCustomData = clientForReq?.saveEmployeeCustomData === true;
 
     let effectiveStandardRequired: Set<TemplateHeader>;
@@ -388,8 +389,9 @@ export async function POST(request: Request) {
         if (cf.standardField) {
           const tmpl = STANDARD_TO_TEMPLATE[cf.standardField];
           if (tmpl) reqSet.add(tmpl);
-        } else if (persistCustomData) {
-          // Only enforce required on pure-custom fields when they will be saved
+        } else {
+          // I custom obbligatori del template si validano SEMPRE (anche con
+          // toggle OFF): i valori vengono comunque salvati su registration.customData.
           requiredCustomFieldNames.add(cf.name);
         }
       }
@@ -488,8 +490,11 @@ export async function POST(request: Request) {
         if (val) customData[fieldName] = val;
       }
       const hasCustomDataInRow = Object.keys(customData).length > 0;
+      // Employee.customData: SOLO col toggle ON (profilo dipendente).
       const customDataForCreate =
         persistCustomData && hasCustomDataInRow ? customData : undefined;
+      // CourseRegistration.customData: SEMPRE (anagrafica per-edizione).
+      const registrationCustomData = hasCustomDataInRow ? customData : undefined;
 
       const existingEmployeeId = normalizedCF ? employeesByCodiceFiscale.get(normalizedCF) : undefined;
 
@@ -546,8 +551,16 @@ export async function POST(request: Request) {
                     employeeId: existingEmployeeId,
                   },
                 },
-                select: { id: true },
+                select: { id: true, customData: true },
               });
+              // Anagrafica per-edizione: scrivi SEMPRE i custom (merge per chiave)
+              // sulla registration, indipendentemente dal toggle client.
+              const mergedRegCustom = registrationCustomData
+                ? {
+                    ...((existingReg?.customData as Record<string, string> | null) ?? {}),
+                    ...registrationCustomData,
+                  }
+                : undefined;
               if (!existingReg) {
                 await tx.courseRegistration.create({
                   data: {
@@ -555,7 +568,13 @@ export async function POST(request: Request) {
                     courseEditionId: editionId,
                     employeeId: existingEmployeeId,
                     status: "INSERTED",
+                    ...(mergedRegCustom ? { customData: mergedRegCustom } : {}),
                   },
+                });
+              } else if (mergedRegCustom) {
+                await tx.courseRegistration.update({
+                  where: { id: existingReg.id },
+                  data: { customData: mergedRegCustom },
                 });
               }
             }
@@ -609,6 +628,10 @@ export async function POST(request: Request) {
                 courseEditionId: editionId,
                 employeeId: createdEmployee.id,
                 status: "INSERTED",
+                // Anagrafica per-edizione: custom SEMPRE sulla registration.
+                ...(registrationCustomData
+                  ? { customData: registrationCustomData }
+                  : {}),
               },
             });
           }

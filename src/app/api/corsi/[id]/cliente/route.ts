@@ -111,6 +111,8 @@ export async function GET(
         id: reg.id,
         status: reg.status,
         updatedAt: reg.updatedAt,
+        // Anagrafica per-edizione (custom della griglia): dalla registration.
+        customData: reg.customData,
         employee: {
           id: reg.employee.id,
           nome: reg.employee.nome,

@@ -299,7 +299,7 @@ export async function POST(request: Request) {
 
           if (Object.keys(upd).length === 0) {
             // Nothing meaningful to update: return the existing record stub
-            return { id: existing.id };
+            return { id: existing.id, customData };
           }
 
           const employee = await prisma.employee.update({
@@ -307,7 +307,7 @@ export async function POST(request: Request) {
             data: upd,
             select: { id: true },
           });
-          return employee;
+          return { id: employee.id, customData };
         }
 
         // Create path: nulls for blanks are fine here (no prior data to keep).
@@ -340,7 +340,7 @@ export async function POST(request: Request) {
           },
           select: { id: true },
         });
-        return employee;
+        return { id: employee.id, customData };
       } catch (_error) {
         errors.push({
           codiceFiscale: row.codiceFiscale,
@@ -367,6 +367,45 @@ export async function POST(request: Request) {
         })),
         skipDuplicates: true,
       });
+
+      // Anagrafica per-edizione: scrivi SEMPRE i custom (cf.name) sulla
+      // registration (merge per chiave), indipendentemente dal toggle client.
+      const withCustom = savedResults.filter(
+        (r) => r.customData && Object.keys(r.customData).length > 0
+      );
+      if (withCustom.length > 0) {
+        const existingRegs = await prisma.courseRegistration.findMany({
+          where: {
+            courseEditionId,
+            employeeId: { in: withCustom.map((r) => r.id) },
+          },
+          select: { employeeId: true, customData: true },
+        });
+        const priorByEmployee = new Map(
+          existingRegs.map((r) => [
+            r.employeeId,
+            (r.customData as Record<string, string> | null) ?? {},
+          ])
+        );
+        await Promise.all(
+          withCustom.map((r) =>
+            prisma.courseRegistration.update({
+              where: {
+                courseEditionId_employeeId: {
+                  courseEditionId,
+                  employeeId: r.id,
+                },
+              },
+              data: {
+                customData: {
+                  ...(priorByEmployee.get(r.id) ?? {}),
+                  ...r.customData,
+                },
+              },
+            })
+          )
+        );
+      }
     }
 
     if (removedEmployeeIds.length > 0) {

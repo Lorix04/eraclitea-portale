@@ -678,6 +678,7 @@ model CourseRegistration {
   employeeId String
   employee   Employee           @relation(fields: [employeeId], references: [id])
   status     RegistrationStatus @default(INSERTED)
+  customData Json?              // anagrafica custom DI QUESTA edizione (per cf.name); sempre salvata, indipendente dal toggle client
   insertedAt DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
 

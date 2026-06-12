@@ -50,6 +50,7 @@ type CourseDetail = {
     id: string;
     status: string;
     updatedAt: string | Date;
+    customData?: Record<string, any> | null;
     employee: {
       id: string;
       nome: string;
@@ -261,7 +262,8 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
       pec: reg.employee.pec ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
-      customData: reg.employee.customData ?? undefined,
+      // Anagrafica per-edizione: i custom della griglia vengono dalla registration.
+      customData: reg.customData ?? undefined,
     }));
   }, [course]);
 

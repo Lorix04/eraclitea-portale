@@ -90,6 +90,7 @@ type RegistrationRow = {
   id: string;
   status: string;
   insertedAt: string;
+  customData?: Record<string, any> | null;
   employee: {
     id: string;
     nome: string;
@@ -242,7 +243,8 @@ export default function AdminEditionDetailPage({
       pec: reg.employee.pec ?? "",
       mansione: reg.employee.mansione ?? "",
       note: reg.employee.note ?? "",
-      customData: reg.employee.customData ?? undefined,
+      // Anagrafica per-edizione: i custom della griglia vengono dalla registration.
+      customData: reg.customData ?? undefined,
     }));
   }, [registrations]);
 

@@ -128,6 +128,9 @@ export async function GET(request: Request) {
   });
 
   // Fetch custom fields if requested — prefer edition-specific, fallback to client
+  // TODO (Fase 2): quando l'export è per una specifica edizione (exportEditionId),
+  // leggere i valori custom da CourseRegistration.customData invece di
+  // Employee.customData (anagrafica per-edizione). Per ora resta su Employee.customData.
   const includeCustom = validation.data.includeCustom === "true";
   let customFieldDefs: { name: string; label: string; columnHeader: string | null }[] = [];
   if (includeCustom) {
