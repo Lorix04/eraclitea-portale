@@ -102,6 +102,7 @@ export async function GET(request: Request) {
   const employees = await prisma.employee.findMany({
     where,
     select: {
+      id: true,
       cognome: true,
       nome: true,
       sesso: true,
@@ -128,9 +129,6 @@ export async function GET(request: Request) {
   });
 
   // Fetch custom fields if requested — prefer edition-specific, fallback to client
-  // TODO (Fase 2): quando l'export è per una specifica edizione (exportEditionId),
-  // leggere i valori custom da CourseRegistration.customData invece di
-  // Employee.customData (anagrafica per-edizione). Per ora resta su Employee.customData.
   const includeCustom = validation.data.includeCustom === "true";
   let customFieldDefs: { name: string; label: string; columnHeader: string | null }[] = [];
   if (includeCustom) {
@@ -142,6 +140,27 @@ export async function GET(request: Request) {
     if (cfResult.enabled) {
       customFieldDefs = cfResult.fields;
     }
+  }
+
+  // Export edition-scoped: i valori custom (campi puri) provengono da
+  // CourseRegistration.customData (anagrafica per-edizione), NON da
+  // Employee.customData (profilo, gated dal toggle). I campi standardField
+  // restano dai campi Employee diretti. Senza edizione → resta sul profilo.
+  let regCustomByEmployee: Map<string, Record<string, any>> | null = null;
+  if (includeCustom && exportEditionId && employees.length > 0) {
+    const regs = await prisma.courseRegistration.findMany({
+      where: {
+        courseEditionId: exportEditionId,
+        employeeId: { in: employees.map((e) => e.id) },
+      },
+      select: { employeeId: true, customData: true },
+    });
+    regCustomByEmployee = new Map(
+      regs.map((r) => [
+        r.employeeId,
+        (r.customData as Record<string, any> | null) ?? {},
+      ])
+    );
   }
 
   const toValue = (value: string | null | undefined) => value ?? "";
@@ -182,7 +201,9 @@ export async function GET(request: Request) {
 
     rows = employees.map((employee) => {
       const row: Record<string, string> = {};
-      const cd = (employee.customData as Record<string, any>) || {};
+      const cd = regCustomByEmployee
+        ? regCustomByEmployee.get(employee.id) ?? {}
+        : (employee.customData as Record<string, any>) || {};
       for (const cf of fullDefs) {
         const header = cf.columnHeader || cf.label;
         if (cf.standardField && STANDARD_FIELD_TO_DATA[cf.standardField]) {

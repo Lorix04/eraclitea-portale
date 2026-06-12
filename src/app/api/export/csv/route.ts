@@ -152,6 +152,7 @@ export async function GET(request: Request) {
     const employees = await prisma.employee.findMany({
       where,
       select: {
+        id: true,
         cognome: true,
         nome: true,
         sesso: true,
@@ -176,6 +177,25 @@ export async function GET(request: Request) {
       orderBy: { cognome: "asc" },
       take: preview ? limit : undefined,
     });
+
+    // Export edition-scoped: i custom (campi puri) vengono da
+    // CourseRegistration.customData dell'edizione, non da Employee.customData.
+    let regCustomByEmployee: Map<string, Record<string, any>> | null = null;
+    if (includeCustom && csvEditionId && employees.length > 0) {
+      const regs = await prisma.courseRegistration.findMany({
+        where: {
+          courseEditionId: csvEditionId,
+          employeeId: { in: employees.map((e) => e.id) },
+        },
+        select: { employeeId: true, customData: true },
+      });
+      regCustomByEmployee = new Map(
+        regs.map((r) => [
+          r.employeeId,
+          (r.customData as Record<string, any> | null) ?? {},
+        ])
+      );
+    }
 
     const toValue = (value: string | null | undefined) => value ?? "";
 
@@ -202,7 +222,9 @@ export async function GET(request: Request) {
 
       rows = employees.map((employee) => {
         const row: Record<string, string> = {};
-        const cd = (employee.customData as Record<string, any>) || {};
+        const cd = regCustomByEmployee
+          ? regCustomByEmployee.get(employee.id) ?? {}
+          : (employee.customData as Record<string, any>) || {};
         for (const cf of fullDefs) {
           const header = cf.columnHeader || cf.label;
           if (cf.standardField && STANDARD_GETTERS[cf.standardField]) {
