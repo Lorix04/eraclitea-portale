@@ -109,7 +109,7 @@ export default function SearchableCheckboxList({
       </div>
 
       <div
-        className={`rounded-md border ${disabled ? "opacity-60" : ""}`}
+        className={`overflow-y-auto rounded-md border ${disabled ? "opacity-60" : ""}`}
         style={{ maxHeight }}
       >
         {filteredItems.length === 0 ? (

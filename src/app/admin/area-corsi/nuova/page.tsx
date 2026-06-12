@@ -187,7 +187,7 @@ export default function NuovaAreaPage() {
                 onSelectionChange={setCourseIds}
                 placeholder="Cerca corso per titolo..."
                 emptyMessage="Nessun corso disponibile"
-                maxHeight="300px"
+                maxHeight="400px"
               />
             )}
           </div>
@@ -208,7 +208,7 @@ export default function NuovaAreaPage() {
                 onSelectionChange={setClientIds}
                 placeholder="Cerca cliente per nome..."
                 emptyMessage="Nessun cliente disponibile"
-                maxHeight="300px"
+                maxHeight="400px"
               />
             )}
           </div>
