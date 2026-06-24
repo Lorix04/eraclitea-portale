@@ -359,7 +359,7 @@ Area docente: dashboard con calendario, lezioni, disponibilita, documenti, profi
 - **Livello edizione**: `EditionMaterial`, tab "Materiali" nel dettaglio edizione
 - **Importazione**: "Importa dal corso" copia materiali come file indipendenti con `sourceCourseMediaId`
 - Upload per edizione: admin e client caricano (status APPROVED), docente propone (status PENDING)
-- Categorie: Slide, Esercitazioni, Documenti, Normativa, Modelli, Altro
+- Categorie: Slide, Esercitazioni, Documenti, Normativa, Modelli, Registro, Altro (sorgente unica `MATERIAL_CATEGORIES` in `src/lib/material-storage-shared.ts`; "Altro" sempre ultimo)
 - Ordinamento frecce su/giu
 - Anteprima inline: PDF (iframe), immagini (img tag) — modale quasi full-screen
 - Download ZIP di tutti i materiali organizzati per categoria

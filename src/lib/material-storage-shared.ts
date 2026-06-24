@@ -6,6 +6,7 @@ export const MATERIAL_CATEGORIES: Record<string, string> = {
   documents: "Documenti",
   regulations: "Normativa",
   templates: "Modelli",
+  register: "Registro",
   other: "Altro",
 };
 
