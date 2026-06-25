@@ -70,6 +70,18 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "@tanstack/react-query"],
+    // pdfkit reads its standard-font metrics (.afm) at runtime via
+    // fs.readFileSync(__dirname + '/data/<Font>.afm'). Keep pdfkit EXTERNAL (loaded from
+    // node_modules, not bundled into the route chunk) so __dirname resolves to
+    // node_modules/pdfkit/js, AND ship the .afm files into the standalone bundle via file
+    // tracing. Together these fix the production-only ENOENT Helvetica.afm on the presenze
+    // PDF export route (output: 'standalone' / Docker). Only that route uses pdfkit.
+    serverComponentsExternalPackages: ["pdfkit"],
+    outputFileTracingIncludes: {
+      // Key uses '*' (NOT '[id]'): Next matches it against the normalized route
+      // '/api/corsi/[id]/presenze/export' via picomatch, where '[id]' would be a char class.
+      "/api/corsi/*/presenze/export": ["./node_modules/pdfkit/js/data/**/*"],
+    },
   },
   async headers() {
     return [
