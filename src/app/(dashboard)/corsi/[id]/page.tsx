@@ -107,6 +107,10 @@ const TABS = [
   { value: "info", label: "Info" },
 ];
 
+// Mirror del cap server in /api/attestati/download-zip (z.array(...).max(100)).
+// Se un domani si alza il cap lato API, aggiornare qui in un punto solo.
+const MAX_ZIP_CERTS = 100;
+
 const ClientEditionMaterialsTab = dynamic(
   () => import("@/components/client/EditionMaterialsTab"),
   { ssr: false }
@@ -132,6 +136,7 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCerts, setSelectedCerts] = useState<string[]>([]);
+  const selectAllCertsRef = useRef<HTMLInputElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -384,9 +389,35 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
     });
   };
 
+  const allCertsSelected =
+    (course?.certificates.length ?? 0) > 0 &&
+    (course?.certificates.every((cert) => selectedCerts.includes(cert.id)) ??
+      false);
+  const someCertsSelected = selectedCerts.length > 0 && !allCertsSelected;
+
+  // `indeterminate` is not a React prop — must be set imperatively via ref.
+  useEffect(() => {
+    if (selectAllCertsRef.current) {
+      selectAllCertsRef.current.indeterminate = someCertsSelected;
+    }
+  }, [someCertsSelected, tab]);
+
+  const handleToggleAllCerts = (checked: boolean) => {
+    setSelectedCerts(
+      checked ? (course?.certificates.map((cert) => cert.id) ?? []) : []
+    );
+  };
+
   const handleDownloadZip = async () => {
     if (!selectedCerts.length) {
       toast.error("Seleziona almeno un attestato.");
+      return;
+    }
+
+    if (selectedCerts.length > MAX_ZIP_CERTS) {
+      toast.error(
+        `Puoi scaricare al massimo ${MAX_ZIP_CERTS} attestati per volta. Ne hai selezionati ${selectedCerts.length}: deseleziona almeno ${selectedCerts.length - MAX_ZIP_CERTS} e riprova.`
+      );
       return;
     }
 
@@ -646,8 +677,22 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
             {course.certificates.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">Nessun attestato.</p>
             ) : (
-              <ul className="divide-y text-sm">
-                {course.certificates.map((cert) => (
+              <>
+                <label className="flex cursor-pointer items-center gap-3 border-b bg-muted/40 p-4">
+                  <input
+                    ref={selectAllCertsRef}
+                    type="checkbox"
+                    checked={allCertsSelected}
+                    onChange={(event) =>
+                      handleToggleAllCerts(event.target.checked)
+                    }
+                  />
+                  <span className="text-sm font-medium">
+                    {allCertsSelected ? "Deseleziona tutti" : "Seleziona tutti"}
+                  </span>
+                </label>
+                <ul className="divide-y text-sm">
+                  {course.certificates.map((cert) => (
                   <li key={cert.id} className="flex items-center gap-3 p-4">
                     <input
                       type="checkbox"
@@ -673,8 +718,9 @@ export default function CourseDetailPage({ params }: { params: { id: string } })
                       Scarica
                     </Link>
                   </li>
-                ))}
-              </ul>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>
