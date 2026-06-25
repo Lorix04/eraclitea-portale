@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
+import { unzipSync } from "fflate";
+import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { FormLabel } from "@/components/ui/FormLabel";
 import { FormFieldError } from "@/components/ui/FormFieldError";
 import { FormRequiredLegend } from "@/components/ui/FormRequiredLegend";
 import { getArrayData } from "@/lib/api-response";
+import {
+  matchEmployeeResult,
+  type MatchStatus,
+} from "@/lib/attestati-matching";
 
 type Edition = {
   id: string;
@@ -31,6 +38,12 @@ type UploadItem = {
   employeeId?: string;
 };
 
+type MatchReportItem = {
+  fileName: string;
+  status: MatchStatus;
+  employeeName?: string;
+};
+
 type EmployeeOption = {
   id: string;
   label: string;
@@ -43,6 +56,36 @@ const CF_REGEX = /[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]/i;
 function extractCFFromFilename(filename: string) {
   const match = filename.match(CF_REGEX);
   return match ? match[0].toUpperCase() : null;
+}
+
+function isZipFile(file: File) {
+  return (
+    file.name.toLowerCase().endsWith(".zip") ||
+    file.type === "application/zip" ||
+    file.type === "application/x-zip-compressed"
+  );
+}
+
+function isPdfFile(file: File) {
+  return (
+    file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
+  );
+}
+
+/** Estrae SOLO i PDF da uno ZIP (ignora cartelle, __MACOSX, file nascosti). */
+async function extractPdfsFromZip(zip: File): Promise<File[]> {
+  const buffer = new Uint8Array(await zip.arrayBuffer());
+  const entries = unzipSync(buffer);
+  const pdfs: File[] = [];
+  for (const [entryPath, data] of Object.entries(entries)) {
+    if (entryPath.startsWith("__MACOSX")) continue;
+    const baseName = entryPath.split("/").pop() ?? entryPath;
+    if (!baseName || baseName.startsWith(".")) continue; // cartelle / file nascosti
+    if (!baseName.toLowerCase().endsWith(".pdf")) continue;
+    if (data.length === 0) continue;
+    pdfs.push(new File([data], baseName, { type: "application/pdf" }));
+  }
+  return pdfs;
 }
 
 export default function AdminUploadAttestatiPageClient() {
@@ -58,6 +101,9 @@ export default function AdminUploadAttestatiPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [matchReport, setMatchReport] = useState<MatchReportItem[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
   const [attendanceWarnings, setAttendanceWarnings] = useState<
     Record<string, { percentage: number; belowMinimum: boolean }>
   >({});
@@ -182,27 +228,105 @@ export default function AdminUploadAttestatiPageClient() {
     [employees, attendanceWarnings]
   );
 
-  const handleFiles = (fileList: FileList | File[]) => {
-    const cfMap = new Map(
-      employeeOptions.map((employee) => [employee.codiceFiscale, employee.id])
-    );
+  const employeeNameById = (id: string): string => {
+    const employee = employees.find((item) => item.id === id);
+    return employee ? `${employee.nome} ${employee.cognome}`.trim() : "";
+  };
 
-    const nextUploads: UploadItem[] = Array.from(fileList).map((file) => {
-      const cf = extractCFFromFilename(file.name);
-      return {
-        file,
-        employeeId: cf ? cfMap.get(cf) : undefined,
-      };
+  // Auto-match nome-file → dipendente sullo STESSO pool del dropdown (employees):
+  // 1) CF nel nome file (esatto → matched), 2) fallback match per token nome/cognome
+  // (unico → matched, 0 → none, >1 → ambiguous). Logica di abbinamento invariata.
+  const resolveMatch = (
+    filename: string
+  ): { report: MatchReportItem; employeeId?: string } => {
+    const cf = extractCFFromFilename(filename);
+    if (cf) {
+      const byCf = employees.find(
+        (employee) => employee.codiceFiscale?.toUpperCase() === cf
+      );
+      if (byCf) {
+        return {
+          employeeId: byCf.id,
+          report: {
+            fileName: filename,
+            status: "matched",
+            employeeName: `${byCf.nome} ${byCf.cognome}`.trim(),
+          },
+        };
+      }
+    }
+    const result = matchEmployeeResult(filename, employees);
+    return {
+      employeeId: result.employeeId ?? undefined,
+      report: {
+        fileName: filename,
+        status: result.status,
+        employeeName: result.employeeId
+          ? employeeNameById(result.employeeId)
+          : undefined,
+      },
+    };
+  };
+
+  // Pipeline unica di ingestione (bottone + drag&drop): spacchetta gli ZIP, tiene solo i PDF,
+  // pre-compila l'associazione via auto-match e costruisce il report dell'ULTIMO batch.
+  const ingestFiles = async (fileList: FileList | File[]) => {
+    const incoming = Array.from(fileList);
+    let cameFromZip = false;
+    const pdfFiles: File[] = [];
+    for (const file of incoming) {
+      if (isZipFile(file)) {
+        cameFromZip = true;
+        try {
+          pdfFiles.push(...(await extractPdfsFromZip(file)));
+        } catch {
+          setError(`Impossibile leggere lo ZIP "${file.name}".`);
+        }
+      } else if (isPdfFile(file)) {
+        pdfFiles.push(file);
+      }
+      // file non PDF/ZIP ignorati silenziosamente
+    }
+
+    if (pdfFiles.length === 0) {
+      if (cameFromZip) setError("Lo ZIP non contiene PDF.");
+      return;
+    }
+
+    const reportItems: MatchReportItem[] = [];
+    const nextUploads: UploadItem[] = pdfFiles.map((file) => {
+      const { report, employeeId } = resolveMatch(file.name);
+      reportItems.push(report);
+      return { file, employeeId };
     });
 
     setUploads((prev) => [...prev, ...nextUploads]);
+    setMatchReport(reportItems);
+    setErrors((prev) => ({ ...prev, files: "" }));
+
+    // Auto-apri il report dopo uno ZIP o quando si caricano ≥2 file insieme.
+    // Un singolo PDF a mano: niente auto-apertura (resta il bottone "Vedi report").
+    if (cameFromZip || pdfFiles.length >= 2) {
+      setReportOpen(true);
+    }
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    if (event.dataTransfer.files) {
-      handleFiles(event.dataTransfer.files);
+    setDragActive(false);
+    if (event.dataTransfer.files?.length) {
+      void ingestFiles(event.dataTransfer.files);
     }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (!dragActive) setDragActive(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragActive(false);
   };
 
   const handleUpload = async () => {
@@ -255,7 +379,8 @@ export default function AdminUploadAttestatiPageClient() {
       <div>
         <h1 className="text-xl font-semibold">Upload attestati</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Carica PDF multipli e associa gli attestati ai dipendenti.
+          Carica PDF multipli o uno ZIP e associa gli attestati ai dipendenti.
+          I file vengono abbinati automaticamente dal nome (modificabile prima di salvare).
         </p>
       </div>
 
@@ -348,35 +473,62 @@ export default function AdminUploadAttestatiPageClient() {
       </div>
 
       <div className="space-y-2">
-        <FormLabel required>File PDF</FormLabel>
+        <FormLabel required>File PDF o ZIP</FormLabel>
         <div
-          className={`flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30 p-6 text-center ${
-            errors.files ? "border-red-500" : ""
+          className={`flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center transition-colors ${
+            dragActive
+              ? "border-primary bg-primary/10"
+              : errors.files
+                ? "border-red-500 bg-muted/30"
+                : "border-input bg-muted/30"
           }`}
-          onDragOver={(event) => event.preventDefault()}
+          onDragEnter={handleDragOver}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <p className="text-sm">Trascina i PDF qui o clicca per selezionare.</p>
-          <input
-            type="file"
-            accept="application/pdf"
-            multiple
-            className="text-sm"
-            onChange={(event) => {
-              if (event.target.files) {
-                handleFiles(event.target.files);
-                if (errors.files) {
-                  setErrors((prev) => ({ ...prev, files: "" }));
+          <p className="text-sm">
+            Trascina qui i PDF o uno ZIP, oppure scegli i file.
+          </p>
+          <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+            Scegli file
+            <input
+              type="file"
+              accept=".pdf,.zip,application/pdf,application/zip,application/x-zip-compressed"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                if (event.target.files) {
+                  void ingestFiles(event.target.files);
                 }
-              }
-            }}
-          />
+                event.target.value = "";
+              }}
+            />
+          </label>
         </div>
         <FormFieldError message={errors.files} />
       </div>
 
       <div className="space-y-3">
         <p className="text-sm font-medium">File caricati</p>
+        {uploads.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs text-muted-foreground">
+              {uploads.length} file:{" "}
+              {uploads.filter((item) => item.employeeId).length} abbinati,{" "}
+              {uploads.filter((item) => !item.employeeId).length} da associare
+            </p>
+            {matchReport.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Vedi report
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {uploads.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nessun file selezionato.</p>
         ) : (
@@ -414,6 +566,12 @@ export default function AdminUploadAttestatiPageClient() {
       >
         {loading ? "Caricamento..." : "Conferma e salva"}
       </button>
+
+      <MatchReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        items={matchReport}
+      />
     </div>
   );
 }
@@ -489,5 +647,132 @@ function EmployeeSearchSelect({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function reportMotivo(item: MatchReportItem): string {
+  if (item.status === "matched") {
+    return `Abbinato a ${item.employeeName ?? ""}`.trim();
+  }
+  if (item.status === "ambiguous") {
+    return "Corrispondenza ambigua: più dipendenti compatibili, associa manualmente";
+  }
+  return "Nessun dipendente corrispondente (verifica che sia iscritto all'edizione)";
+}
+
+function MatchReportModal({
+  open,
+  onClose,
+  items,
+}: {
+  open: boolean;
+  onClose: () => void;
+  items: MatchReportItem[];
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const matched = items.filter((item) => item.status === "matched");
+  const toAssociate = items.filter((item) => item.status !== "matched");
+  // Abbinati prima, poi i da-associare (quelli da sistemare, in evidenza).
+  const ordered = [...matched, ...toAssociate];
+
+  return createPortal(
+    <div className="fixed inset-0 z-[80]">
+      <div
+        className="fixed inset-0 bg-black/60"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-0 sm:p-4">
+        <div
+          className="flex max-h-[100dvh] w-full flex-col bg-card shadow-xl sm:max-h-[85vh] sm:w-[34rem] sm:rounded-lg"
+          role="dialog"
+          aria-modal="true"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+            <h2 className="text-sm font-semibold">Report abbinamenti</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded p-1 text-muted-foreground hover:bg-muted"
+              title="Chiudi"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="shrink-0 border-b px-4 py-2 text-xs text-muted-foreground">
+            {items.length} file — {matched.length} abbinati, {toAssociate.length}{" "}
+            da associare
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">
+            {ordered.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground">
+                Nessun file nell&apos;ultimo caricamento.
+              </p>
+            ) : (
+              <ul className="space-y-1">
+                {ordered.map((item, index) => {
+                  const isMatched = item.status === "matched";
+                  return (
+                    <li
+                      key={`${item.fileName}-${index}`}
+                      className={`flex items-start gap-2 rounded-md border p-2 ${
+                        isMatched
+                          ? "border-transparent"
+                          : "border-amber-200 bg-amber-50"
+                      }`}
+                    >
+                      {isMatched ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                      ) : (
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="truncate text-sm font-medium"
+                          title={item.fileName}
+                        >
+                          {item.fileName}
+                        </p>
+                        <p
+                          className={`text-xs ${
+                            isMatched ? "text-muted-foreground" : "text-amber-700"
+                          }`}
+                        >
+                          {reportMotivo(item)}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex shrink-0 justify-end border-t px-4 py-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[44px] rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+            >
+              Chiudi
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
