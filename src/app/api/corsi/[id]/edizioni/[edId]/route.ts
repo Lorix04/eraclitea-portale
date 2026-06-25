@@ -7,10 +7,11 @@ import { validateBody } from "@/lib/api-utils";
 import { courseEditionUpdateSchema } from "@/lib/schemas";
 import { deleteCertificateFile } from "@/lib/certificate-storage";
 import { formatDate } from "@/lib/date-utils";
-import { sendEditionCancelledEmail } from "@/lib/email-notifications";
 import { checkApiPermission, editionVisibilityFilter, canAccessArea } from "@/lib/permissions";
-import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph } from "@/lib/notify-client";
-import { clientEditionUrl, clientAttestatiUrl } from "@/lib/portal-links";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, buildCourseInfoBox, emailParagraph, buildEmailHtml } from "@/lib/notify-client";
+import { filterUsersForInApp, filterUsersForEmail } from "@/lib/notification-preferences";
+import { sendAutoEmail } from "@/lib/email-service";
+import { clientEditionUrl, clientAttestatiUrl, clientCoursesUrl } from "@/lib/portal-links";
 
 export const dynamic = "force-dynamic";
 
@@ -321,47 +322,24 @@ export async function PUT(
     oldStatus === "PUBLISHED" &&
     (newStatus === "CLOSED" || newStatus === "ARCHIVED")
   ) {
-    void notifyAssignedClientUsers({
-      editionId: updated.id,
-      clientId: updated.client.id,
-      type: "EDITION_CANCELLED",
-      title: "Edizione annullata",
-      message: `${updated.course.title} (Ed. #${updated.editionNumber}) e stata annullata o chiusa.`,
-      courseEditionId: updated.id,
-    });
-
-    void emailAssignedClientUsers({
-      editionId: updated.id,
-      clientId: updated.client.id,
-      emailType: "EDITION_CANCELLED",
-      subject: `Edizione annullata - ${updated.course.title} (Ed. #${updated.editionNumber})`,
-      title: "Edizione annullata",
-      bodyHtml: `
-        ${emailParagraph("La seguente edizione e stata annullata o chiusa:")}
-        ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
-      `,
-      ctaText: "Vai al Portale",
-      ctaUrl: clientEditionUrl(updated.id),
-      courseEditionId: updated.id,
-    });
-
-    // Also send COURSE_COMPLETED notification to all client users
+    // Chiusura/completamento edizione → UNA sola notifica + email (COURSE_COMPLETED),
+    // distinta dall'ANNULLAMENTO (DELETE, EDITION_CANCELLED). Non più "annullata o chiusa".
     void notifyAssignedClientUsers({
       editionId: updated.id,
       clientId: updated.client.id,
       type: "COURSE_COMPLETED",
-      title: "Corso completato",
-      message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stato completato. Gli attestati saranno disponibili a breve.`,
+      title: "Edizione completata",
+      message: `${updated.course.title} (Ed. #${updated.editionNumber}) è stata completata.`,
       courseEditionId: updated.id,
     });
     void emailAssignedClientUsers({
       editionId: updated.id,
       clientId: updated.client.id,
       emailType: "COURSE_COMPLETED",
-      subject: `Corso completato - ${updated.course.title} (Ed. #${updated.editionNumber})`,
-      title: "Corso Completato",
+      subject: `Edizione completata - ${updated.course.title} (Ed. #${updated.editionNumber})`,
+      title: "Edizione completata",
       bodyHtml: `
-        ${emailParagraph("Il seguente corso è stato completato:")}
+        ${emailParagraph("La seguente edizione è stata completata:")}
         ${buildCourseInfoBox(updated.course.title, updated.editionNumber)}
         ${emailParagraph("Gli attestati saranno disponibili a breve nella sezione dedicata del portale.")}
       `,
@@ -456,25 +434,75 @@ export async function DELETE(
     return NextResponse.json({ error: "Edizione non trovata" }, { status: 404 });
   }
 
-  if (existing.status === "PUBLISHED" && existing.client?.referenteEmail) {
-    await prisma.notification.create({
-      data: {
-        type: "EDITION_CANCELLED",
-        title: "Edizione annullata",
-        message: `${existing.course.title} (Ed. #${existing.editionNumber}) e stata annullata.`,
-        courseEditionId: existing.id,
-        isGlobal: false,
-      },
-    });
+  // Annullamento (eliminazione edizione): notifica + email ai client ASSEGNATI
+  // (fallback a tutti gli attivi), rispettando le preferenze. Destinatari e dati corso
+  // risolti PRIMA del deleteMany; la notifica NON è legata all'edizione (sta per essere
+  // eliminata) → courseEditionId null, link alla lista corsi.
+  if (existing.status === "PUBLISHED" && existing.client?.id) {
+    const clientId = existing.client.id;
+    const courseTitle = existing.course.title;
+    const editionNumber = existing.editionNumber;
+    const title = "Edizione annullata";
+    const message = `${courseTitle} (Ed. #${editionNumber}) è stata annullata e non avrà luogo.`;
 
-    void sendEditionCancelledEmail({
-      clientEmail: existing.client.referenteEmail,
-      clientName: existing.client.referenteNome || existing.client.ragioneSociale,
-      clientId: existing.client.id,
-      courseName: existing.course.title,
-      editionNumber: existing.editionNumber,
-      courseEditionId: existing.id,
+    const assignments = await prisma.editionClientAssignment.findMany({
+      where: { courseEditionId: existing.id },
+      select: { userId: true },
     });
+    const recipients = await prisma.clientUser.findMany({
+      where: {
+        clientId,
+        status: "ACTIVE",
+        ...(assignments.length > 0
+          ? { userId: { in: assignments.map((a) => a.userId) } }
+          : {}),
+      },
+      include: { user: { select: { id: true, email: true, name: true } } },
+    });
+    const recipientIds = recipients.map((cu) => cu.userId);
+
+    // In-app (default ON via preferenze). courseEditionId null → sopravvive al deleteMany
+    // (filtrato per courseEditionId) e non resta un FK verso un'edizione eliminata.
+    const inAppIds = await filterUsersForInApp(recipientIds, "EDITION_CANCELLED");
+    if (inAppIds.length > 0) {
+      await prisma.notification.createMany({
+        data: inAppIds.map((userId) => ({
+          userId,
+          type: "EDITION_CANCELLED" as const,
+          title,
+          message,
+          courseEditionId: null,
+          isGlobal: false,
+        })),
+      });
+    }
+
+    // Email (default ON) — CTA alla lista corsi (la pagina dell'edizione non esiste più).
+    const emailEligible = new Set(
+      await filterUsersForEmail(recipientIds, "EDITION_CANCELLED")
+    );
+    for (const cu of recipients) {
+      if (!emailEligible.has(cu.userId)) continue;
+      const userName = cu.user.name || cu.user.email;
+      const html = buildEmailHtml({
+        title,
+        greeting: `Gentile ${userName},`,
+        bodyHtml: `
+          ${emailParagraph("La seguente edizione è stata annullata e non avrà luogo:")}
+          ${buildCourseInfoBox(courseTitle, editionNumber)}
+        `,
+        ctaText: "Vai ai Corsi",
+        ctaUrl: clientCoursesUrl(),
+      });
+      void sendAutoEmail({
+        emailType: "EDITION_CANCELLED",
+        recipientEmail: cu.user.email,
+        recipientName: userName,
+        recipientId: cu.user.id,
+        subject: `Edizione annullata - ${courseTitle} (Ed. #${editionNumber})`,
+        html,
+      });
+    }
   }
 
   const certificates = await prisma.certificate.findMany({

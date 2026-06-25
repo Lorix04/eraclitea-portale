@@ -89,9 +89,9 @@ export const EMAIL_PREFERENCE_DEFAULTS: EmailPreferenceSeed[] = [
   },
   {
     emailType: "EDITION_CANCELLED",
-    label: "Edizione cancellata",
+    label: "Edizione annullata",
     description:
-      "Notifica quando un'edizione aperta viene chiusa o eliminata.",
+      "Notifica quando un'edizione viene annullata (eliminata).",
     isEnabled: true,
     category: "CLIENT",
   },
@@ -129,9 +129,9 @@ export const EMAIL_PREFERENCE_DEFAULTS: EmailPreferenceSeed[] = [
   },
   {
     emailType: "COURSE_COMPLETED",
-    label: "Corso completato",
+    label: "Edizione completata",
     description:
-      "Notifica quando un'edizione viene completata o chiusa.",
+      "Notifica quando un'edizione viene completata (chiusa).",
     isEnabled: true,
     category: "CLIENT",
   },

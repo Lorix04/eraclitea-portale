@@ -152,6 +152,7 @@ export default function NotifichePage() {
           { id: "REGISTRY_RECEIVED", label: "Anagrafiche" },
           { id: "EDITION_DATES_CHANGED", label: "Variazioni" },
           { id: "EDITION_CANCELLED", label: "Annullamenti" },
+          { id: "COURSE_COMPLETED", label: "Completate" },
           { id: "TICKET_REPLY", label: "Supporto" },
           { id: "TICKET_STATUS_CHANGED", label: "Stato ticket" },
         ]}

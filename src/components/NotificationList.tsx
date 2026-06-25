@@ -14,6 +14,7 @@ export type NotificationItem = {
     | "REGISTRY_RECEIVED"
     | "EDITION_DATES_CHANGED"
     | "EDITION_CANCELLED"
+    | "COURSE_COMPLETED"
     | "COURSE_PUBLISHED"
     | "CERT_UPLOADED"
     | "REMINDER"
@@ -50,6 +51,7 @@ const ICONS = {
   REGISTRY_RECEIVED: ClipboardCheck,
   EDITION_DATES_CHANGED: BookOpen,
   EDITION_CANCELLED: Bell,
+  COURSE_COMPLETED: BookOpen,
   COURSE_PUBLISHED: BookOpen,
   CERT_UPLOADED: FileCheck,
   REMINDER: Bell,
