@@ -13,7 +13,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import EditionStatusBadge from "@/components/EditionStatusBadge";
 import { timeSlotLabel } from "@/lib/time-slot";
 
-type Tab = "tutti" | "disponibili" | "in_progress" | "completati";
+type Tab = "tutti" | "disponibili" | "in_progress" | "completati" | "chiuse";
 
 // Sentinel for the "Senza sede" option in the Sede filter.
 const NO_SEDE = "__no_sede__";
@@ -23,6 +23,7 @@ const TABS: Array<{ value: Tab; label: string }> = [
   { value: "disponibili", label: "Disponibili" },
   { value: "in_progress", label: "In compilazione" },
   { value: "completati", label: "Completati" },
+  { value: "chiuse", label: "Chiuse" },
 ];
 
 type EditionItem = {
@@ -98,21 +99,26 @@ function ClientCorsiContent() {
   const queryClient = useQueryClient();
   const debouncedSearch = useDebounce(search, 250);
 
+  // "chiuse" is a client-side filter on editionStatus, not an API tab: fetch the full
+  // "tutti" dataset (includes CLOSED editions) and narrow it in filteredCourses below.
+  const fetchTab = activeTab === "chiuse" ? "tutti" : activeTab;
+
   const { data, isLoading, isFetching, isError } = useQuery<{ data: CourseGroup[] }>({
-    queryKey: ["courses", "cliente", activeTab, categoryFilter, scope],
+    queryKey: ["courses", "cliente", fetchTab, categoryFilter, scope],
     queryFn: () =>
       fetchCourses(
-        `${activeTab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
+        `${fetchTab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
       ),
     placeholderData: (previousData) => previousData,
   });
 
   const prefetchTab = (tab: Tab) => {
+    const targetTab = tab === "chiuse" ? "tutti" : tab;
     queryClient.prefetchQuery({
-      queryKey: ["courses", "cliente", tab, categoryFilter, scope],
+      queryKey: ["courses", "cliente", targetTab, categoryFilter, scope],
       queryFn: () =>
         fetchCourses(
-          `${tab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
+          `${targetTab}${categoryFilter ? `&categoryId=${categoryFilter}` : ""}&scope=${scope}`
         ),
       staleTime: 60 * 1000,
     });
@@ -199,6 +205,12 @@ function ClientCorsiContent() {
       .map((course) => {
         let editions = course.editions;
 
+        if (activeTab === "chiuse") {
+          editions = editions.filter(
+            (edition) => edition.editionStatus === "CLOSED"
+          );
+        }
+
         if (yearFilter) {
           editions = editions.filter((edition) => {
             const dateValue = edition.startDate || edition.endDate;
@@ -249,7 +261,7 @@ function ClientCorsiContent() {
         return { ...course, editions: sorted };
       })
       .filter((course) => course.editions.length > 0);
-  }, [courses, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, sortBy, sortOrder]);
+  }, [courses, activeTab, debouncedSearch, yearFilter, timeSlotFilter, sedeFilter, sortBy, sortOrder]);
   const now = useMemo(() => new Date(), []);
 
   return (
