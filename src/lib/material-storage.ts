@@ -15,6 +15,7 @@ function sanitizeFileName(fileName: string) {
 
 export {
   MATERIAL_CATEGORIES,
+  MATERIAL_CATEGORY_REGISTER,
   MATERIAL_ALLOWED_TYPES,
   MATERIAL_MAX_SIZE_BYTES,
 } from "./material-storage-shared";

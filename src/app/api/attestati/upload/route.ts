@@ -292,17 +292,10 @@ export async function POST(request: Request) {
       })),
     });
 
-    if (hasCourseEdition) {
-      await tx.notification.create({
-        data: {
-          type: "CERTIFICATES_AVAILABLE",
-          title: "Attestati disponibili",
-          message: `Sono stati caricati ${savedFiles.length} attestati per ${edition?.course.title ?? ""} (Ed. #${edition?.editionNumber ?? "-"})`,
-          courseEditionId,
-          isGlobal: false,
-        },
-      });
-    }
+    // La notifica "Attestati disponibili" è inviata (per-utente, rispettando assegnazioni e
+    // preferenze) da notifyAssignedClientUsers più sotto. Qui NON creiamo più una riga
+    // "orfana" (userId null) che, essendo visibile a tutti gli utenti del cliente, si
+    // sommava a quelle per-utente creando una notifica extra.
   });
 
   const client = await prisma.client.findUnique({ where: { id: clientId } });

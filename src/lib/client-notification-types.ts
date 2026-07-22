@@ -9,6 +9,7 @@ export const CLIENT_NOTIFICATION_TYPES = [
   "EDITION_DATES_CHANGED",
   "EDITION_CANCELLED",
   "COURSE_COMPLETED",
+  "MATERIAL_REGISTRO_UPLOADED",
   "TICKET_REPLY",
   "TICKET_STATUS_CHANGED",
   // Legacy values kept for backward compatibility with existing rows.

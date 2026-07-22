@@ -54,6 +54,7 @@ export const NOTIFICATION_TYPES: NotificationTypeConfig[] = [
 
   // === MATERIALI (CLIENT) ===
   { type: "MATERIAL_UPLOADED", label: "Nuovo materiale", description: "Quando vengono caricati nuovi materiali per un corso", category: "materiali", roles: ["CLIENT"], hasInApp: true, hasEmail: false, locked: false, defaultInApp: true, defaultEmail: false },
+  { type: "MATERIAL_REGISTRO_UPLOADED", label: "Registro caricato", description: "Quando viene caricato un materiale nella categoria Registro", category: "materiali", roles: ["CLIENT"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },
 
   // === TICKET (CLIENT) ===
   { type: "TICKET_REPLY", label: "Risposta al ticket", description: "Quando il supporto risponde al tuo ticket", category: "ticket", roles: ["CLIENT"], hasInApp: true, hasEmail: true, locked: false, defaultInApp: true, defaultEmail: true },

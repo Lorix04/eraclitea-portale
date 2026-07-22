@@ -136,6 +136,14 @@ export const EMAIL_PREFERENCE_DEFAULTS: EmailPreferenceSeed[] = [
     category: "CLIENT",
   },
   {
+    emailType: "MATERIAL_REGISTRO_UPLOADED",
+    label: "Registro caricato",
+    description:
+      "Notifica quando viene caricato un materiale nella categoria Registro.",
+    isEnabled: true,
+    category: "CLIENT",
+  },
+  {
     emailType: "TICKET_CLOSED",
     label: "Ticket chiuso",
     description:

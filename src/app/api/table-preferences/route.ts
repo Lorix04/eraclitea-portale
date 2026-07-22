@@ -3,8 +3,18 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveUserId } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Utente EFFETTIVO: durante l'impersonazione le preferenze colonne devono essere quelle
+ * dell'utente impersonato (le tabelle che sta guardando), non quelle dell'admin.
+ */
+async function resolveUserId(sessionUserId: string): Promise<string> {
+  const effective = await getEffectiveUserId();
+  return effective?.userId ?? sessionUserId;
+}
 
 // Opaque key list — keys are validated against the CLIENT-side registry,
 // never against a server allow-list. We just bound size to avoid abuse.
@@ -30,8 +40,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "tableKey mancante" }, { status: 400 });
   }
 
+  const userId = await resolveUserId(session.user.id);
   const pref = await prisma.userTablePreference.findUnique({
-    where: { userId_tableKey: { userId: session.user.id, tableKey } },
+    where: { userId_tableKey: { userId, tableKey } },
     select: { config: true },
   });
 
@@ -60,11 +71,12 @@ export async function PUT(request: Request) {
 
   const config = { order: body.config.order, hidden: body.config.hidden };
 
+  const userId = await resolveUserId(session.user.id);
   await prisma.userTablePreference.upsert({
     where: {
-      userId_tableKey: { userId: session.user.id, tableKey: body.tableKey },
+      userId_tableKey: { userId, tableKey: body.tableKey },
     },
-    create: { userId: session.user.id, tableKey: body.tableKey, config },
+    create: { userId, tableKey: body.tableKey, config },
     update: { config },
   });
 
@@ -83,8 +95,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "tableKey mancante" }, { status: 400 });
   }
 
+  const userId = await resolveUserId(session.user.id);
   await prisma.userTablePreference.deleteMany({
-    where: { userId: session.user.id, tableKey },
+    where: { userId, tableKey },
   });
 
   return NextResponse.json({ success: true });

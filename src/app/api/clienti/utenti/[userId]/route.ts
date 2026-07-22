@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isClientOwner, logClientActivity } from "@/lib/client-users";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const dynamic = "force-dynamic";
 
@@ -59,9 +60,17 @@ export async function PATCH(
   context: { params: { userId: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT" || !session.user.clientId) {
+  if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
+
+  // Contesto EFFETTIVO: con `session.user.role` un admin che impersona (role ADMIN)
+  // riceveva 401 e le azioni sugli amministratori del cliente erano inutilizzabili.
+  const effectiveClient = await getEffectiveClientContext();
+  if (!effectiveClient) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+  }
+  const currentUserId = effectiveClient.userId;
 
   let body: { action?: "deactivate" | "reactivate" } = {};
   try {
@@ -74,10 +83,10 @@ export async function PATCH(
     return NextResponse.json({ error: "action richiesta" }, { status: 400 });
   }
 
-  const clientId = session.user.clientId;
+  const clientId = effectiveClient.clientId;
   const targetUserId = context.params.userId;
   const targetClientUser = await getAuthorizedTargetClientUser({
-    sessionUserId: session.user.id,
+    sessionUserId: currentUserId,
     sessionClientId: clientId,
     targetUserId,
   });
@@ -107,7 +116,7 @@ export async function PATCH(
 
     await logClientActivity({
       clientId,
-      userId: session.user.id,
+      userId: currentUserId,
       action: "USER_DEACTIVATED",
       details: { email: targetClientUser.user.email },
     });
@@ -138,7 +147,7 @@ export async function PATCH(
 
   await logClientActivity({
     clientId,
-    userId: session.user.id,
+    userId: currentUserId,
     action: "USER_REACTIVATED",
     details: { email: targetClientUser.user.email },
   });
@@ -155,14 +164,21 @@ export async function DELETE(
   context: { params: { userId: string } }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "CLIENT" || !session.user.clientId) {
+  if (!session) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  const clientId = session.user.clientId;
+  // Contesto EFFETTIVO (vedi PATCH): supporta l'impersonazione admin→cliente.
+  const effectiveClient = await getEffectiveClientContext();
+  if (!effectiveClient) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+  }
+  const currentUserId = effectiveClient.userId;
+
+  const clientId = effectiveClient.clientId;
   const targetUserId = context.params.userId;
   const targetClientUser = await getAuthorizedTargetClientUser({
-    sessionUserId: session.user.id,
+    sessionUserId: currentUserId,
     sessionClientId: clientId,
     targetUserId,
   });
@@ -183,7 +199,7 @@ export async function DELETE(
 
   await logClientActivity({
     clientId,
-    userId: session.user.id,
+    userId: currentUserId,
     action: "USER_DELETED",
     details: { removedEmail: targetClientUser.user.email },
   });

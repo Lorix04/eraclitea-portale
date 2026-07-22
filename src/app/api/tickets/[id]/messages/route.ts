@@ -11,6 +11,7 @@ import {
   deleteTicketAttachment,
   saveTicketAttachment,
 } from "@/lib/ticket-storage";
+import { getEffectiveClientContext } from "@/lib/impersonate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,8 +42,17 @@ export async function POST(
       return NextResponse.json({ error: "Ticket non trovato" }, { status: 404 });
     }
 
-    const isClient = session.user.role === "CLIENT";
-    if (isClient && ticket.clientId !== session.user.id) {
+    // Contesto EFFETTIVO: durante l'impersonazione admin→cliente il ruolo di sessione resta
+    // ADMIN, quindi il ramo "cliente" veniva saltato e il messaggio attribuito all'admin.
+    const effectiveClient = await getEffectiveClientContext();
+    const isClient = effectiveClient !== null;
+    // L'utente che scrive davvero (impersonato se in impersonazione).
+    const actingUserId = effectiveClient?.userId ?? session.user.id;
+
+    // NB: `Ticket.clientId` è una FK verso User (nome fuorviante): contiene lo USER id di chi
+    // ha aperto il ticket. Il confronto con l'utente corrente è quindi corretto; qui cambia
+    // solo che si usa l'utente EFFETTIVO invece di `session.user.id`.
+    if (isClient && ticket.clientId !== actingUserId) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
     }
 
@@ -96,7 +106,7 @@ export async function POST(
 
     try {
       for (const file of files) {
-        const filePath = await saveTicketAttachment(file, session.user.id);
+        const filePath = await saveTicketAttachment(file, actingUserId);
         attachmentPaths.push(filePath);
       }
 
@@ -107,7 +117,7 @@ export async function POST(
         const messageRow = await tx.ticketMessage.create({
           data: {
             ticketId: ticket.id,
-            senderId: session.user.id,
+            senderId: actingUserId,
             message,
             attachments: attachmentPaths,
           },
@@ -132,7 +142,7 @@ export async function POST(
       try {
         if (isClient) {
           const clientUser = await prisma.user.findUnique({
-            where: { id: session.user.id },
+            where: { id: actingUserId },
             select: {
               email: true,
               client: { select: { ragioneSociale: true } },

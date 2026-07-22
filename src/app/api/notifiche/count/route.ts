@@ -17,7 +17,10 @@ function clientVisibilityFilter(
     OR: [
       { userId },
       { isGlobal: true },
-      { courseEdition: { clientId } },
+      // Solo notifiche "di cliente" senza destinatario (userId null). Le per-utente
+      // le conta solo il destinatario via { userId }; il vincolo userId:null evita di
+      // contare le righe degli altri utenti dello stesso cliente (N copie).
+      { userId: null, courseEdition: { clientId } },
     ],
   };
 }

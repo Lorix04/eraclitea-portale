@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveUserId } from "@/lib/impersonate";
 import {
   getNotificationTypesForRole,
   getCategoriesForRole,
@@ -16,8 +17,14 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
   }
 
-  const role = session.user.role as "ADMIN" | "CLIENT" | "TEACHER";
-  const userId = session.user.id;
+  // Rispetta l'impersonazione: ruolo e utente EFFETTIVI. Un admin che impersona un cliente
+  // deve vedere le preferenze del CLIENTE (tipi CLIENT), non le proprie (tipi ADMIN).
+  const effective = await getEffectiveUserId();
+  const role = (effective?.role ?? session.user.role) as
+    | "ADMIN"
+    | "CLIENT"
+    | "TEACHER";
+  const userId = effective?.userId ?? session.user.id;
   const typesForRole = getNotificationTypesForRole(role);
 
   const savedPrefs = await prisma.userNotificationPreference.findMany({
@@ -71,8 +78,13 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
 
-  const role = session.user.role as "ADMIN" | "CLIENT" | "TEACHER";
-  const userId = session.user.id;
+  // Rispetta l'impersonazione: si salvano le preferenze dell'utente EFFETTIVO.
+  const effective = await getEffectiveUserId();
+  const role = (effective?.role ?? session.user.role) as
+    | "ADMIN"
+    | "CLIENT"
+    | "TEACHER";
+  const userId = effective?.userId ?? session.user.id;
 
   // Batch action
   if (body.action) {

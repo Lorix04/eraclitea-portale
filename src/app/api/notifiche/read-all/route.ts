@@ -15,7 +15,10 @@ function visibilityFilter(
     OR: [
       { userId },
       { isGlobal: true },
-      { courseEdition: { clientId } },
+      // Solo notifiche "di cliente" senza destinatario (userId null). Le per-utente
+      // le marca lette solo il destinatario via { userId }; il vincolo userId:null evita
+      // di agire sulle righe degli altri utenti dello stesso cliente.
+      { userId: null, courseEdition: { clientId } },
     ],
   };
 }

@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getEffectiveClientContext } from "@/lib/impersonate";
-import { notifyAssignedClientUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox } from "@/lib/notify-client";
-import { adminEditionMaterialiUrl } from "@/lib/portal-links";
+import { notifyAssignedClientUsers, emailAssignedClientUsers, notifyAllAdmins, emailAllAdmins, emailParagraph, emailInfoBox, buildCourseInfoBox } from "@/lib/notify-client";
+import { adminEditionMaterialiUrl, clientEditionUrl } from "@/lib/portal-links";
 import { prisma } from "@/lib/prisma";
 import { validateFileContent } from "@/lib/security";
 import {
   saveMaterial,
   deleteMaterial,
   MATERIAL_CATEGORIES,
+  MATERIAL_CATEGORY_REGISTER,
   MATERIAL_ALLOWED_TYPES,
   MATERIAL_MAX_SIZE_BYTES,
 } from "@/lib/material-storage";
@@ -51,7 +52,14 @@ export async function GET(
 
     const edition = await prisma.courseEdition.findUnique({
       where: { id: context.params.edId },
-      select: { id: true, courseId: true, clientId: true },
+      // editionNumber + course.title servono all'email "Registro caricato" (POST).
+      select: {
+        id: true,
+        courseId: true,
+        clientId: true,
+        editionNumber: true,
+        course: { select: { title: true } },
+      },
     });
 
     if (!edition || edition.courseId !== context.params.id) {
@@ -169,7 +177,14 @@ export async function POST(
 
     const edition = await prisma.courseEdition.findUnique({
       where: { id: context.params.edId },
-      select: { id: true, courseId: true, clientId: true },
+      // editionNumber + course.title servono all'email "Registro caricato" (POST).
+      select: {
+        id: true,
+        courseId: true,
+        clientId: true,
+        editionNumber: true,
+        course: { select: { title: true } },
+      },
     });
 
     if (!edition || edition.courseId !== context.params.id) {
@@ -343,16 +358,50 @@ export async function POST(
         });
       }
 
-      // Notify client users when admin/teacher uploads a material
+      // Notify client users when admin/teacher uploads a material.
+      // Il materiale in categoria "Registro" usa un tipo DEDICATO (notifica + email), così il
+      // cliente può scegliere di essere avvisato solo per il registro. Gli altri materiali
+      // mantengono la notifica generica. Ne parte sempre e solo UNA delle due.
       if (uploadedByRole !== "CLIENT" && edition.clientId) {
-        void notifyAssignedClientUsers({
-          editionId: edition.id,
-          clientId: edition.clientId,
-          type: "MATERIAL_UPLOADED",
-          title: "Nuovo materiale disponibile",
-          message: `Nuovo documento "${title!.trim()}" disponibile per il tuo corso.`,
-          courseEditionId: edition.id,
-        });
+        const materialTitle = title!.trim();
+
+        if (category === MATERIAL_CATEGORY_REGISTER) {
+          void notifyAssignedClientUsers({
+            editionId: edition.id,
+            clientId: edition.clientId,
+            type: "MATERIAL_REGISTRO_UPLOADED",
+            title: "Registro caricato",
+            message: `Il registro "${materialTitle}" è disponibile per il tuo corso.`,
+            courseEditionId: edition.id,
+          });
+          void emailAssignedClientUsers({
+            editionId: edition.id,
+            clientId: edition.clientId,
+            emailType: "MATERIAL_REGISTRO_UPLOADED",
+            subject: `Registro caricato - ${edition.course?.title ?? "Corso"}`,
+            title: "Registro caricato",
+            bodyHtml: `
+              ${emailParagraph("È stato caricato il registro per la seguente edizione:")}
+              ${buildCourseInfoBox(
+                edition.course?.title ?? "Corso",
+                edition.editionNumber,
+                `<p style="margin:0; font-size:14px; color:#1A1A1A;"><strong>Documento:</strong> ${materialTitle}</p>`
+              )}
+            `,
+            ctaText: "Vai ai Materiali",
+            ctaUrl: clientEditionUrl(edition.id),
+            courseEditionId: edition.id,
+          });
+        } else {
+          void notifyAssignedClientUsers({
+            editionId: edition.id,
+            clientId: edition.clientId,
+            type: "MATERIAL_UPLOADED",
+            title: "Nuovo materiale disponibile",
+            message: `Nuovo documento "${materialTitle}" disponibile per il tuo corso.`,
+            courseEditionId: edition.id,
+          });
+        }
       }
 
       return NextResponse.json({ data: newMaterial }, { status: 201 });

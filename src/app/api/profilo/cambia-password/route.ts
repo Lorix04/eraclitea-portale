@@ -8,6 +8,7 @@ import { validateBody } from "@/lib/api-utils";
 import { getClientIP, logAudit } from "@/lib/audit";
 import { sendAutoEmail } from "@/lib/email-service";
 import { buildEmailHtml, emailParagraph } from "@/lib/email-templates";
+import { getEffectiveUserId } from "@/lib/impersonate";
 
 const changePasswordSchema = z.object({
   newPassword: z.string().min(8, "La password deve contenere almeno 8 caratteri"),
@@ -18,6 +19,20 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Durante l'impersonazione il cambio password è BLOCCATO: `session.user.id` sarebbe
+    // quello dell'admin (si cambierebbe la password dell'admin, non del cliente), e cambiare
+    // la password del cliente a sua insaputa non è comunque accettabile.
+    const effective = await getEffectiveUserId();
+    if (effective?.isImpersonating) {
+      return NextResponse.json(
+        {
+          error:
+            "Non disponibile durante l'impersonazione. Usa 'Reset password' dall'area admin.",
+        },
+        { status: 403 }
+      );
     }
 
     const validation = await validateBody(request, changePasswordSchema);

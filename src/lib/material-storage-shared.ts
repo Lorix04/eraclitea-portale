@@ -10,6 +10,13 @@ export const MATERIAL_CATEGORIES: Record<string, string> = {
   other: "Altro",
 };
 
+/**
+ * Chiave della categoria "Registro". Il caricamento di un materiale con questa categoria
+ * genera per il cliente una notifica dedicata (MATERIAL_REGISTRO_UPLOADED) invece della
+ * generica "Nuovo materiale", così chi vuole può essere avvisato SOLO per il registro.
+ */
+export const MATERIAL_CATEGORY_REGISTER = "register";
+
 export const MATERIAL_ALLOWED_TYPES = new Set([
   "application/pdf",
   "application/msword",
