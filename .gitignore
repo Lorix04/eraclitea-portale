@@ -7,3 +7,18 @@ out
 !.env.production.example
 .DS_Store
 prisma/dev.db
+
+# build / cache
+tsconfig.tsbuildinfo
+
+# artefatti test
+playwright-report/
+test-results/
+
+# log
+*.log
+*.err
+
+# file caricati a runtime (attestati, materiali, loghi, CV)
+storage/
+!storage/certificates/demo/
