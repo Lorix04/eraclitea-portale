@@ -56,7 +56,7 @@ function formatPrice(prompt: string, completion: string): string {
 }
 
 export default function AiIntegrationsPage() {
-  const { can, canAccess } = usePermissions();
+  const { can, canAccess, isLoading: permissionsLoading } = usePermissions();
   const queryClient = useQueryClient();
   const canEdit = can("integrazioni-ai", "edit");
 
@@ -183,6 +183,20 @@ export default function AiIntegrationsPage() {
   );
   const freeModels = filteredModels.filter((m: AiModel) => m.isFree);
   const paidModels = filteredModels.filter((m: AiModel) => !m.isFree);
+
+  // Attende il caricamento della sessione (vedi usePermissions): evita il lampeggio di
+  // "Accesso non consentito" mentre i permessi non sono ancora noti.
+  if (permissionsLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+          role="status"
+          aria-label="Caricamento"
+        />
+      </div>
+    );
+  }
 
   if (!canAccess("integrazioni-ai")) {
     return (

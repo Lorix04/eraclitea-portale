@@ -142,7 +142,7 @@ export default function AdminClienteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { confirm: confirmDialog } = useConfirmDialog();
-  const { can, canAccess } = usePermissions();
+  const { can, canAccess, isLoading: permissionsLoading } = usePermissions();
   const [impersonating, setImpersonating] = useState(false);
 
   const clientQuery = useQuery({
@@ -242,6 +242,20 @@ export default function AdminClienteDetailPage() {
       toast.error(err.message || "Errore");
     }
   };
+
+  // Attende il caricamento della sessione (vedi usePermissions): evita il lampeggio di
+  // "Accesso non consentito" mentre i permessi non sono ancora noti.
+  if (permissionsLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+          role="status"
+          aria-label="Caricamento"
+        />
+      </div>
+    );
+  }
 
   if (!canAccess("clienti")) {
     return (

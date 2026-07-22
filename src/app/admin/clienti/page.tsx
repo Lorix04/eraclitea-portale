@@ -42,7 +42,7 @@ type ResetPasswordResult = {
 };
 
 export default function AdminClientiPage() {
-  const { can, canAccess } = usePermissions();
+  const { can, canAccess, isLoading: permissionsLoading } = usePermissions();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState("all");
@@ -341,6 +341,20 @@ export default function AdminClientiPage() {
     tableKey: "admin.clienti",
     columns: clientColumns,
   });
+
+  // Attende il caricamento della sessione: senza questa guardia i permessi risultano vuoti
+  // per un istante e comparirebbe "Accesso non consentito" prima del contenuto.
+  if (permissionsLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+          role="status"
+          aria-label="Caricamento"
+        />
+      </div>
+    );
+  }
 
   if (!canAccess("clienti")) {
     return (

@@ -124,7 +124,7 @@ export default function Sidebar({
   className,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { canAccess } = usePermissions();
+  const { canAccess, isLoading: permissionsLoading } = usePermissions();
 
   // Filter admin sections by permissions
   const rawSections = role === "ADMIN" ? ADMIN_SECTIONS : CLIENT_SECTIONS;
@@ -191,7 +191,16 @@ export default function Sidebar({
         </p>
       </div>
       <nav className="flex flex-col">
-        {sections.map((section, sectionIndex) => (
+        {/* Permessi non ancora noti: placeholder al posto di un menu vuoto (le voci admin
+            sono filtrate da canAccess, che risponde false finché la sessione carica). */}
+        {role === "ADMIN" && permissionsLoading
+          ? Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={`sidebar-skeleton-${index}`}
+                className="mx-4 my-1.5 h-8 animate-pulse rounded-md bg-gray-200/60"
+              />
+            ))
+          : sections.map((section, sectionIndex) => (
           <div key={`${section.label ?? "section"}-${sectionIndex}`} className="flex flex-col gap-1">
             {sectionIndex > 0 ? (
               <div
